@@ -1,0 +1,12 @@
+{
+  "name": "可能性空间",
+  "short_name": "可能性空间",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F2F4F8",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.png", "sizes": "64x64", "type": "image/png" }
+  ]
+}

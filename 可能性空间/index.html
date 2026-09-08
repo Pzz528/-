@@ -7,6 +7,7 @@
 <title>可能性空间</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
 <style>
 /* ══════════════════════════════════════════════════════════════
    1. 设计变量与基础重置
@@ -306,7 +307,7 @@ img{max-width:100%;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.0.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.0.1', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
@@ -478,7 +479,7 @@ function dayDoc(dk){
   if(!S.days.has(dk)) S.days.set(dk, Store.loadDay(dk) || {spaceRecords:{},rhythmEntries:[],autoSchedules:[],updatedAt:Date.now()});
   return S.days.get(dk);
 }
-/* 某天某空间的确定性迭代列表（旧版单条对象自动兼容为数组） */
+/* 某天某空间的可能性确定列表（旧版单条对象自动兼容为数组） */
 function spaceRecordsOf(dk, spId){
   const v = dayDoc(dk).spaceRecords[spId];
   if(v == null) return [];
@@ -1388,7 +1389,7 @@ const Actions = {
     }
     doc.spaceRecords[sp.id] = recs;
     saveDay(dk);
-    /* 同步到「可能性确定」分类笔记：收藏则创建/更新，取消收藏则移除 */
+    /* 同步到「确定性迭代」分类笔记：收藏则创建/更新，取消收藏则移除 */
     const linked = S.catnotes.find(n=>n.fromIter===rec.id);
     if(catId){
       const cat = (sp.categories||[]).find(c=>c.id===catId);
@@ -1407,7 +1408,7 @@ const Actions = {
     }
     UI.closeModal();
     scheduleRender();
-    UI.toast('确定性迭代已记录 ✓');
+    UI.toast('可能性确定已记录 ✓');
   },
   'day-iter-del'(btn){
     const sp = spaceById(S.spaceId);
@@ -1417,7 +1418,7 @@ const Actions = {
     const recs = spaceRecordsOf(dk, sp.id);
     const rec = recs.find(r=>r.id===btn.dataset.id);
     if(!rec) return;
-    UI.confirmDialog('删除这条迭代', '删除后不可恢复。若已收藏到可能性确定，对应笔记也会一并删除。', true, ()=>{
+    UI.confirmDialog('删除这条记录', '删除后不可恢复。若已收藏到确定性迭代，对应笔记也会一并删除。', true, ()=>{
       doc.spaceRecords[sp.id] = recs.filter(r=>r.id!==rec.id);
       S.catnotes = S.catnotes.filter(n=>n.fromIter!==rec.id);
       saveDay(dk); saveCatnotes();
@@ -1666,7 +1667,7 @@ const Actions = {
     scheduleRender();
     UI.toast('这一天的情绪已保存');
   },
-  /* —— 空间专属每日情绪（独立设置，不沿用迭代表情） —— */
+  /* —— 空间专属每日情绪（独立设置，不沿用记录里的表情） —— */
   'space-mood'(btn){
     const dk = S.dayFilter || D.dateKey(Date.now());
     const doc = dayDoc(dk);
@@ -1882,7 +1883,7 @@ function openTodoForm(id, presetSpaceId){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   8.6 可能性空间辅助（空间表单/确定性迭代/日历/可能性确定）
+   8.6 可能性空间辅助（空间表单/可能性确定/日历/确定性迭代）
    ══════════════════════════════════════════════════════════════ */
 /* 图片缩略图网格（editable=true 时带删除角标，点击查看大图） */
 function imgsHtml(imgIds, editable){
@@ -1962,7 +1963,7 @@ function isTodayTodo(t, now){
   if(due == null) return true;
   return due <= D.dkToTs(dk) + 86400000;
 }
-/* 该空间做过确定性迭代的天数 */
+/* 该空间做过可能性确定的天数 */
 function iterDays(spId){
   let n = 0;
   for(const k of Store.allKeys()){
@@ -2002,7 +2003,7 @@ function openCatNameModal(id){
   if(!sp) return;
   const c = id ? (sp.categories||[]).find(x=>x.id===id) : null;
   UI.openModal(
-    '<div class="modal-title">'+(c?'重命名分类':'新建可能性确定')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="modal-title">'+(c?'重命名分类':'新建确定性迭代')+'<button class="x" data-action="modal-close">×</button></div>'+
     '<div class="field"><label>分类名 *</label>'+
       '<input class="input" id="cat-name" maxlength="20" value="'+esc(c?c.name:'')+'" placeholder="例如：五十音图笔记"></div>'+
     '<div class="modal-actions">'+
@@ -2010,8 +2011,8 @@ function openCatNameModal(id){
       '<button class="btn btn--primary" data-action="cat-save"'+(c?' data-id="'+c.id+'"':'')+'>保存</button>'+
     '</div>');
 }
-/* 确定性迭代弹窗（某空间某天的情绪/标签/笔记/图片）。
-   iterId 为空则新增一条迭代；每天可以有很多条迭代。 */
+/* 可能性确定弹窗（某空间某天的情绪/标签/笔记/图片）。
+   iterId 为空则新增一条记录；每天可以有很多条记录。 */
 function openDayRecordModal(dk, iterId){
   const sp = spaceById(S.spaceId);
   if(!sp) return;
@@ -2026,7 +2027,7 @@ function openDayRecordModal(dk, iterId){
   const catOpts = '<option value="">（不收藏，仅留在当日）</option>'+
     (sp.categories||[]).map(c=>'<option value="'+c.id+'"'+(S.form.catId===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   UI.openModal(
-    '<div class="modal-title">'+(rec?'编辑确定性迭代':'确定性迭代')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="modal-title">'+(rec?'编辑可能性确定':'可能性确定')+'<button class="x" data-action="modal-close">×</button></div>'+
     '<div style="font-size:12px;color:var(--text-2);margin:-6px 0 14px">'+esc(sp.name)+' · '+D.fmtDateCN(D.dkToTs(dk))+
       (rec&&rec.createdAt?' · '+D.tsToHHMM(rec.createdAt):'')+'</div>'+
     '<div class="field"><label>情绪（点选一个，再点取消）</label>'+
@@ -2039,9 +2040,9 @@ function openDayRecordModal(dk, iterId){
       '<button class="btn" data-action="tag-add" style="flex:none">添加</button></div></div>'+
     '<div class="field"><label>笔记 / 心得</label>'+
       '<textarea class="textarea" id="dr-note" style="min-height:110px" placeholder="今天做了什么、有什么收获…">'+esc(rec?rec.note:'')+'</textarea></div>'+
-    '<div class="field"><label>收藏到「可能性确定」（可选）</label>'+
+    '<div class="field"><label>收藏到「确定性迭代」（可选）</label>'+
       '<select class="select" id="dr-cat">'+catOpts+'</select>'+
-      '<div class="hint">选择后，这条迭代会同时收进该分类的笔记里长期留存</div></div>'+
+      '<div class="hint">选择后，这条记录会同时收进该分类的笔记里长期留存</div></div>'+
     '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
       '<div id="dr-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
       '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
@@ -2052,14 +2053,14 @@ function openDayRecordModal(dk, iterId){
       '<button class="btn btn--primary" data-action="save-dayrecord"'+(rec?' data-id="'+rec.id+'"':'')+'>保存记录</button>'+
     '</div>');
 }
-/* 可能性确定：分类列表 */
+/* 确定性迭代：分类列表 */
 function catListHtml(){
   const sp = spaceById(S.spaceId);
   if(!sp) return '';
   const cats = (sp.categories||[]).slice().sort((a,b)=>(a.order??0)-(b.order??0));
-  let h = '<button class="btn btn--primary btn--block" data-action="cat-add">＋ 新建可能性确定</button>';
+  let h = '<button class="btn btn--primary btn--block" data-action="cat-add">＋ 新建确定性迭代</button>';
   if(cats.length===0){
-    h += '<div class="empty" style="margin-top:12px"><span class="empty-ico">◇</span>还没有可能性确定<br>用它分类收纳值得留存的笔记，就像图库、歌单一样</div>';
+    h += '<div class="empty" style="margin-top:12px"><span class="empty-ico">◇</span>还没有确定性迭代<br>用它分类收纳值得留存的笔记，就像图库、歌单一样</div>';
   }else{
     h += '<div style="margin-top:12px">';
     for(const c of cats){
@@ -2076,7 +2077,7 @@ function catListHtml(){
   }
   return h;
 }
-/* 可能性确定：某分类下的笔记列表 */
+/* 确定性迭代：某分类下的笔记列表 */
 function catNotesHtml(){
   const sp = spaceById(S.spaceId);
   if(!sp) return '';
@@ -2126,7 +2127,7 @@ function openNoteForm(id){
       '<button class="btn btn--primary" data-action="save-note"'+(n?' data-id="'+n.id+'"':'')+'>保存</button>'+
     '</div>');
 }
-/* 空间详情 · 确定性迭代页（某一天的所有迭代，可以有很多条） */
+/* 空间详情 · 可能性确定页（某一天的所有记录，可以有很多条） */
 function spDayHtml(sp){
   const dk = S.dayFilter || D.dateKey(Date.now());
   const recs = spaceRecordsOf(dk, sp.id);
@@ -2136,16 +2137,16 @@ function spDayHtml(sp){
       (dk===D.dateKey(Date.now())?' · <span style="color:var(--accent)">今天</span>':'')+'</div>'+
     '<button class="icon-btn" data-action="day-next" aria-label="后一天">▶</button>'+
   '</div>';
-  /* 该空间这一天的专属情绪（独立设置，不沿用迭代的表情） */
+  /* 该空间这一天的专属情绪（独立设置，不沿用记录里的表情） */
   const mood = (dayDoc(dk).spaceMood||{})[sp.id];
   h += '<div class="card pad" style="margin-bottom:12px">'+
-         '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px">这一天的情绪（'+esc(sp.name)+'专属，独立于确定性迭代）</div>'+
+         '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px">这一天的情绪（'+esc(sp.name)+'专属，独立于可能性确定）</div>'+
          '<div class="chip-row">'+CONFIG.EMOJIS.map(e=>
            '<button class="chip'+(mood&&mood.emoji===e?' on':'')+'" data-action="space-mood" data-e="'+e+'" style="font-size:15px">'+e+'</button>').join('')+'</div>'+
        '</div>';
   h += '<div class="card pad">';
   if(recs.length===0){
-    h += '<div class="empty" style="border:none;padding:16px 0">这一天还没有记录<br><span style="font-size:12px">点下方按钮写下第一条确定性迭代</span></div>';
+    h += '<div class="empty" style="border:none;padding:16px 0">这一天还没有记录<br><span style="font-size:12px">点下方按钮写下第一条可能性确定</span></div>';
   }else{
     for(const rec of recs){
       const cat = rec.catId ? (sp.categories||[]).find(c=>c.id===rec.catId) : null;
@@ -2173,7 +2174,7 @@ function spDayHtml(sp){
       h += '<div class="kv"><span class="k">'+D.tsToHHMM(s.start)+' ~ '+D.tsToHHMM(s.end)+'</span><span class="v num">'+fmtDur(s.end-s.start)+'</span></div>';
     }
   }
-  h += '<button class="btn btn--primary btn--block" data-action="day-edit" style="margin-top:12px">✎ 确定性迭代 · 记录这一刻</button>';
+  h += '<button class="btn btn--primary btn--block" data-action="day-edit" style="margin-top:12px">✎ 可能性确定 · 记录这一刻</button>';
   h += '</div>';
   return h;
 }
@@ -2189,7 +2190,7 @@ function calMonthHtml(y, m){
   for(let d=1;d<=daysIn;d++){
     const dk = y+'-'+pad2(m+1)+'-'+pad2(d);
     const recs = spaceRecordsOf(dk, S.spaceId);
-    /* 情绪显示独立设置的 spaceMood，不再沿用确定性迭代的表情 */
+    /* 情绪显示独立设置的 spaceMood，不再沿用可能性确定的表情 */
     const moodEmoji = ((dayDoc(dk).spaceMood||{})[S.spaceId]||{}).emoji || null;
     const withTag = recs.find(r=>r.tags&&r.tags.length);
     h += '<button class="cal-day'+(dk===today?' today':'')+((recs.length||moodEmoji)?' has':'')+'" data-action="cal-day" data-dk="'+dk+'">'+
@@ -2597,7 +2598,7 @@ const Views = {
         h += '<div class="space-card" data-action="open-space" data-id="'+sp.id+'" style="--sc:'+sp.color+'">'+
                '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
                '<div class="space-name">'+esc(sp.name)+'</div>'+
-               '<div class="space-meta">'+(isTodayView?'今日':'当日')+' '+fmtMin(Rhythm.daySpaceMinutes(hd, sp.id))+' · '+(sp.categories||[]).length+' 个确定</div>'+
+               '<div class="space-meta">'+(isTodayView?'今日':'当日')+' '+fmtMin(Rhythm.daySpaceMinutes(hd, sp.id))+' · '+(sp.categories||[]).length+' 个迭代</div>'+
              '</div>';
       }
       h += '</div>';
@@ -2643,7 +2644,7 @@ const Views = {
         h += '<div class="space-card" data-action="open-space" data-id="'+sp.id+'" style="--sc:'+sp.color+'">'+
                '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
                '<div class="space-name">'+esc(sp.name)+'</div>'+
-               '<div class="space-meta">'+(sp.categories||[]).length+' 个可能性确定</div>'+
+               '<div class="space-meta">'+(sp.categories||[]).length+' 个确定性迭代</div>'+
              '</div>';
       }
       h += '</div>';
@@ -2651,7 +2652,7 @@ const Views = {
     h += '<div class="grid-2" style="margin-top:12px"><div class="space-card add-card" data-action="add-space">'+
            '<span class="plus">＋</span>新建可能性空间</div></div>';
     h += '</section>';
-    h += '<div class="hint" style="font-size:12px;color:var(--text-2)">空间详情（每日记录 · 情绪 · 标签 · 可能性确定）将在空间阶段完成</div>';
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2)">每个空间都有每日记录 · 日历 · 确定性迭代 · 专属待办</div>';
     return h;
   },
   /* —— 空间详情 —— */
@@ -2671,10 +2672,10 @@ const Views = {
       '<div class="stat-row">'+
         '<div class="stat"><div class="stat-v num">'+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div><div class="stat-k">今日递归</div></div>'+
         '<div class="stat"><div class="stat-v num">'+fmtMin(Rhythm.totalSpaceMinutes(sp.id))+'</div><div class="stat-k">累计递归</div></div>'+
-        '<div class="stat"><div class="stat-v num">'+iterDays(sp.id)+'</div><div class="stat-k">迭代天数</div></div>'+
+        '<div class="stat"><div class="stat-v num">'+iterDays(sp.id)+'</div><div class="stat-k">记录天数</div></div>'+
       '</div>'+
     '</div>';
-    const tabs = {day:'确定性迭代', cal:'日历', cat:'可能性确定', todos:'待办'};
+    const tabs = {day:'可能性确定', cal:'日历', cat:'确定性迭代', todos:'待办'};
     h += '<div class="chip-row" style="margin:14px 0 16px">'+Object.keys(tabs).map(k=>
       '<button class="chip'+(S.spaceTab===k?' on':'')+'" data-action="space-tab" data-tab="'+k+'">'+tabs[k]+'</button>').join('')+'</div>';
     if(S.spaceTab==='day') h += spDayHtml(sp);
@@ -2750,7 +2751,7 @@ const Views = {
                  '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div>'+
                  (isAct?'<div class="rec-live num" data-rec-t>'+fmtDur(now - acts[0].start)+'</div>':'')+
                  '<div style="display:flex;gap:8px;margin-top:4px">'+
-                   '<button class="btn btn--small" style="flex:1" data-action="rhythm-iter" data-id="'+sp.id+'">确定性迭代</button>'+
+                   '<button class="btn btn--small" style="flex:1" data-action="rhythm-iter" data-id="'+sp.id+'">可能性确定</button>'+
                    '<button class="btn btn--small '+(isAct?'btn--danger':'btn--primary')+'" style="flex:1" data-action="rhythm-rec" data-id="'+sp.id+'">'+(isAct?'停止':'可能性递归')+'</button>'+
                  '</div>'+
                '</div>';
