@@ -129,14 +129,15 @@ img{max-width:100%;display:block}
    5. 弹窗 / 确认框 / Toast
    ══════════════════════════════════════════════════════════════ */
 #modal-root:empty{display:none}
-.modal-mask{position:fixed;inset:0;background:rgba(20,26,36,.45);display:flex;align-items:flex-end;justify-content:center;z-index:100;animation:fadeIn .15s}
-.modal-panel{background:#fff;border-radius:8px 8px 0 0;width:100%;max-width:480px;max-height:86vh;overflow-y:auto;
+.modal-wrap{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal-mask{position:absolute;inset:0;background:rgba(20,26,36,.45);animation:fadeIn .15s}
+.modal-panel{position:relative;background:#fff;border-radius:8px 8px 0 0;width:100%;max-width:480px;max-height:86vh;overflow-y:auto;
   padding:20px 18px calc(18px + env(safe-area-inset-bottom));animation:slideUp .18s}
 .modal-title{font-weight:700;font-size:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
 .modal-title .x{background:none;border:none;color:var(--text-2);font-size:20px;line-height:1;padding:4px}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
 .modal-actions .btn{flex:1}
-@media (min-width:520px){.modal-mask{align-items:center}.modal-panel{border-radius:8px;margin:24px}}
+@media (min-width:520px){.modal-wrap{align-items:center}.modal-panel{border-radius:8px;margin:24px}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 #toast-root{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));z-index:200;
@@ -177,6 +178,7 @@ img{max-width:100%;display:block}
 .cal-day{display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 2px;border:1px solid var(--line);border-radius:3px;background:#fff;cursor:pointer;min-height:54px;overflow:hidden}
 .cal-day.has{background:var(--accent-soft);border-color:#B9D1F5}
 .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.cal-day.sel{outline:2px solid var(--accent);outline-offset:-1px}
 .cal-n{font-size:13px;font-weight:600}
 .cal-day.today .cal-n{color:var(--accent)}
 .cal-e{font-size:15px;line-height:1.1}
@@ -215,7 +217,13 @@ img{max-width:100%;display:block}
 /* ══════════════════════════════════════════════════════════════
    9. 首页（收纳卡/紧急行/进行中指示）与图片角标
    ══════════════════════════════════════════════════════════════ */
-.home-todo-card{cursor:pointer}
+.home-todo-card{cursor:pointer;transition:background .25s}
+/* 全部完成：仅文字条浅绿 + 绿色左边条，整卡保持白色，避免大色块吞掉下方板块 */
+.home-todo-card.all-done{border-left:3px solid var(--green)}
+.home-todo-card.all-done .home-todo-ico{background:var(--green)}
+.home-todo-card.all-done .home-todo-count{color:var(--green);font-weight:600}
+.home-todo-open{margin-top:12px;border-top:1px dashed var(--line-strong);padding-top:12px}
+.home-todo-open .todo-card:last-child{margin-bottom:0}
 .home-todo-ico{width:42px;height:42px;border-radius:6px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
 .home-todo-arrow{color:var(--text-2);font-size:12px}
 .home-urgent{margin-top:12px;padding:9px 12px;background:var(--red-soft);border:1px solid #F0C6C4;border-radius:3px;font-size:13px;color:var(--text)}
@@ -225,6 +233,9 @@ img{max-width:100%;display:block}
 @keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.35}}
 .img-thumb{position:relative;cursor:pointer}
 .img-x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(20,26,36,.6);color:#fff;border:none;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.iter-item{border:1px dashed var(--line-strong);border-radius:4px;padding:10px 12px;margin-bottom:10px;position:relative;background:#FBFCFE}
+.daynav{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:16px}
+.daynav .nav-date{flex:1;text-align:center;font-weight:600;font-size:14px;min-width:0}
 </style>
 </head>
 <body>
@@ -262,7 +273,7 @@ img{max-width:100%;display:block}
 const CONFIG = {
   APP_NAME:'可能性空间', VERSION:'1.0.0', SCHEMA:1,
   PREFIX:'ps1:',
-  DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:120, confirmSeconds:10},
+  DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
   PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
   EMOJIS:['😄','🙂','😌','😐','😔','😢','😡','🤩','😴','😮','🤔','🥰','😅','🥳'],
@@ -412,7 +423,7 @@ const Store = {
    4. State 内存镜像 + 渲染调度
    ══════════════════════════════════════════════════════════════ */
 const S = {
-  view:'home', spaceId:null, backTarget:'home', dayFilter:null,
+  view:'home', spaceId:null, backTarget:'home', dayFilter:null, homeDay:null, rhythmDay:null,
   meta:{}, settings:{}, spaces:[], todos:[], catnotes:[], sessions:[],
   days:new Map(),          // dk → day doc（已加载的每日文档）
   confirmMap:new Map(),    // todoId → 确认截止时间戳（纯内存瞬态）
@@ -430,6 +441,12 @@ function scheduleRender(){
 function dayDoc(dk){
   if(!S.days.has(dk)) S.days.set(dk, Store.loadDay(dk) || {spaceRecords:{},rhythmEntries:[],autoSchedules:[],updatedAt:Date.now()});
   return S.days.get(dk);
+}
+/* 某天某空间的确定性迭代列表（旧版单条对象自动兼容为数组） */
+function spaceRecordsOf(dk, spId){
+  const v = dayDoc(dk).spaceRecords[spId];
+  if(v == null) return [];
+  return Array.isArray(v) ? v : [v];
 }
 function saveSpaces(){ Store.set('spaces', S.spaces); }
 function saveTodos(){ Store.set('todos', S.todos); }
@@ -475,10 +492,11 @@ const TodoLogic = {
     if(t.repeat==='weekly'){ const due = this.currentDueAt(t, now); return due ? D.dateKey(due) : null; }
     return null;
   },
-  /* 有效状态（派生值，不入库） */
+  /* 有效状态（派生值，不入库）：doneKeys 记录每次完成归属的日期键，
+     因此历史某一天可以被单独标记完成/取消，互不影响 */
   effStatus(t, now){
-    if(t.lastCompletedKey == null) return 'pending';
-    return t.lastCompletedKey === this.occKey(t, now) ? 'done' : 'pending';
+    const k = this.occKey(t, now);
+    return k != null && (t.doneKeys||[]).includes(k) ? 'done' : 'pending';
   },
   /* 到期时间（无期限备忘返回 null） */
   dueAt(t, now){
@@ -494,11 +512,16 @@ const TodoLogic = {
     if(remainMs <= (t.thresholdYellowMin??240)*60000) return 'yellow';
     return 'blue';
   },
-  /* 点击待办卡片：pending→确认中(内存态) / 确认中→完成 / 完成→恢复 */
+  /* 点击待办卡片：pending→确认中(内存态) / 确认中→完成 / 完成→恢复。
+     now 为"当天视角"时间戳（历史日传该天23:59），完成记到对应日期键上 */
   tap(t, now){
     if(S.confirmMap.has(t.id)){  // 确认中 → 完成
-      t.lastCompletedKey = this.occKey(t, now);
-      t.completedAt = now;
+      const k = this.occKey(t, now);
+      if(k != null){
+        if(!t.doneKeys) t.doneKeys = [];
+        if(!t.doneKeys.includes(k)) t.doneKeys.push(k);
+        t.lastCompletedKey = k; t.completedAt = Date.now();
+      }
       S.confirmMap.delete(t.id);
       saveTodos();
       return;
@@ -508,7 +531,9 @@ const TodoLogic = {
       S.confirmMap.set(t.id, now + S.settings.confirmSeconds*1000);
       return;
     }
-    if(st==='done'){             // 已完成 → 恢复未完成
+    if(st==='done'){             // 已完成 → 恢复未完成（只撤销当前这天的完成）
+      const k = this.occKey(t, now);
+      t.doneKeys = (t.doneKeys||[]).filter(x=>x!==k);
       t.lastCompletedKey = null; t.completedAt = null;
       saveTodos();
       return;
@@ -536,8 +561,10 @@ const TodoLogic = {
     }
     return changed;
   },
-  /* 每张卡片每秒的定向刷新（状态类/侧边标记/倒计时文本/确认提示） */
+  /* 每张卡片每秒的定向刷新（状态类/侧边标记/倒计时文本/确认提示）。
+     历史日卡片带 data-day，按"当天视角"刷新而非真实此刻 */
   tickEl(el, now){
+    if(el.dataset.day) now = D.dkToTs(el.dataset.day) + 86400000 - 1;
     const id = el.dataset.id;
     const t = S.todos.find(x=>x.id===id);
     if(!t) return;
@@ -625,7 +652,13 @@ const Rhythm = {
   activeSlices(){ return S.sessions.filter(x=>x.end==null); },
   activeManual(){ return S.sessions.find(x=>x.end==null && x.mode==='manual') || null; },
   activeForSpace(spId){ return S.sessions.filter(x=>x.end==null && x.spaceId===spId); },
-  quota(){ return S.settings.rhythmQuotaMinutes || 480; },
+  /* 某天的额度：当日可单独设定（存在当日文档的 quotaMinutes），否则用设置里的默认值 */
+  quotaFor(dk){
+    const doc = dayDoc(dk);
+    if(doc.quotaMinutes && doc.quotaMinutes > 0) return doc.quotaMinutes;
+    return S.settings.rhythmQuotaMinutes || 480;
+  },
+  quota(){ return this.quotaFor(D.dateKey(Date.now())); },
   dayStartMin(dk){ return D.dkToTs(dk); },
   /* —— 统计 —— */
   finalizedMs(dk, spaceId){
@@ -647,6 +680,12 @@ const Rhythm = {
   todaySpaceMinutes(spId){
     const now = Date.now(), dk = D.dateKey(now);
     return (this.finalizedMs(dk, spId) + this.activeMs(dk, spId, now)) / 60000;
+  },
+  /* 任意一天某空间的递归分钟（历史日无活跃切片，直接按已终结统计） */
+  daySpaceMinutes(dk, spId){
+    const now = Date.now();
+    const active = dk===D.dateKey(now) ? this.activeMs(dk, spId, now) : 0;
+    return (this.finalizedMs(dk, spId) + active) / 60000;
   },
   totalSpaceMinutes(spId){
     let sum = 0;
@@ -673,7 +712,7 @@ const Rhythm = {
     const horizon = Math.min(endTs, dayEnd);
     const active = S.sessions.filter(s=>s.end==null && s.day===day);
     if(active.length===0) return Infinity;
-    const Qms = this.quota() * 60000;
+    const Qms = this.quotaFor(day) * 60000;   // 用该日额度（可单独设定）
     const ints = [];
     for(const s of S.sessions){
       if(s.day!==day) continue;
@@ -735,7 +774,7 @@ const Rhythm = {
     if(m) this.sliceManualAcrossDays(m, today);
   },
   /* —— 自流转槽位 —— */
-  remainingMinutesOn(dk, now){ return Math.max(0, this.quota() - this.consumedMinutes(dk, now)); },
+  remainingMinutesOn(dk, now){ return Math.max(0, this.quotaFor(dk) - this.consumedMinutes(dk, now)); },
   /* 某槽位从 s 起的已覆盖终点（含进行中的活跃切片，按墙钟实时） */
   slotCoverage(dk, scheduleId, s){
     const now = Date.now();
@@ -962,8 +1001,13 @@ const UI = {
     setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),320); }, 2400);
   },
   openModal(html){
+    /* 遮罩与面板必须是兄弟节点：面板内（输入框等）的点击若冒泡到遮罩的
+       data-action=modal-close，会把弹窗误关 —— 这就是"点输入框弹窗跳出"的根源 */
     document.getElementById('modal-root').innerHTML =
-      '<div class="modal-mask" data-action="modal-close"><div class="modal-panel">'+html+'</div></div>';
+      '<div class="modal-wrap">'+
+        '<div class="modal-mask" data-action="modal-close"></div>'+
+        '<div class="modal-panel">'+html+'</div>'+
+      '</div>';
   },
   closeModal(){ document.getElementById('modal-root').innerHTML = ''; },
   confirmDialog(title, msg, danger, onOk){
@@ -1034,11 +1078,13 @@ const Actions = {
     const id = btn.dataset.id;
     const t = S.todos.find(x=>x.id===id);
     if(!t) return;
-    const before = todoStatus(t, Date.now());
-    TodoLogic.tap(t, Date.now());
-    const after = todoStatus(t, Date.now());
+    /* 历史日卡片带 data-day：按"当天视角"记账，完成/恢复都归属那一天 */
+    const now = btn.dataset.day ? (D.dkToTs(btn.dataset.day) + 86400000 - 1) : Date.now();
+    const before = todoStatus(t, now);
+    TodoLogic.tap(t, now);
+    const after = todoStatus(t, now);
     if(after!==before){
-      if(after==='confirming'){ TodoLogic.tickEl(btn, Date.now()); UI.toast('10秒内再点一次确认完成'); }
+      if(after==='confirming'){ TodoLogic.tickEl(btn, now); UI.toast('10秒内再点一次确认完成'); }
       else if(after==='done'){ scheduleRender(); UI.toast('已完成 ✓'); }
       else { scheduleRender(); UI.toast('已恢复为未完成'); }
     }
@@ -1102,8 +1148,8 @@ const Actions = {
       t.dueAt = null; t.dailyTime = null;
     }
     const repeatChanged = (oldRepeat!==t.repeat) || (t.repeat==='daily' && oldDaily!==t.dailyTime) || (t.repeat==='weekly' && (oldWd!==t.weekdays.join(',') || oldWeekly!==t.weeklyTime));
-    if(!isNew && repeatChanged && t.lastCompletedKey!=null){
-      t.lastCompletedKey = null; t.completedAt = null;
+    if(!isNew && repeatChanged && (t.doneKeys||[]).length>0){
+      t.doneKeys = []; t.lastCompletedKey = null; t.completedAt = null;
       UI.toast('重复规则已变更，完成状态已重置');
     }
     if(isNew) S.todos.push(t);
@@ -1184,7 +1230,7 @@ const Actions = {
   'cal-prev'(){ S.calM--; if(S.calM<0){ S.calM=11; S.calY--; } scheduleRender(); },
   'cal-next'(){ S.calM++; if(S.calM>11){ S.calM=0; S.calY++; } scheduleRender(); },
   'cal-day'(btn){ S.dayFilter = btn.dataset.dk; S.spaceTab = 'day'; scheduleRender(); },
-  'day-edit'(){ openDayRecordModal(S.dayFilter || D.dateKey(Date.now())); },
+  'day-edit'(btn){ openDayRecordModal(S.dayFilter || D.dateKey(Date.now()), btn?.dataset?.id || null); },
   'emoji'(btn){
     S.form.emoji = S.form.emoji===btn.dataset.e ? null : btn.dataset.e;
     document.querySelectorAll('#dr-emoji .chip').forEach(c=>c.classList.toggle('on', c.dataset.e===S.form.emoji));
@@ -1204,20 +1250,63 @@ const Actions = {
     document.getElementById('dr-tags').innerHTML = S.form.tags.map((t,i)=>
       '<span class="chip">'+esc(t)+'<button class="x-btn" data-action="tag-del" data-i="'+i+'">×</button></span>').join('');
   },
-  'save-dayrecord'(){
+  'save-dayrecord'(btn){
     const sp = spaceById(S.spaceId);
     if(!sp) return;
     const dk = S.dayFilter || D.dateKey(Date.now());
     const doc = dayDoc(dk);
-    doc.spaceRecords[sp.id] = {
-      emoji:S.form.emoji, tags:S.form.tags,
-      note:document.getElementById('dr-note').value.trim(),
-      images:S.form.images, updatedAt:Date.now()
-    };
+    const iterId = btn?.dataset?.id || null;
+    const note = document.getElementById('dr-note').value.trim();
+    const catId = document.getElementById('dr-cat') ? (document.getElementById('dr-cat').value || null) : null;
+    let recs = spaceRecordsOf(dk, sp.id);
+    let rec;
+    if(iterId){
+      rec = recs.find(r=>r.id===iterId);
+      if(rec){ Object.assign(rec, {emoji:S.form.emoji, tags:S.form.tags, note, images:S.form.images, catId, updatedAt:Date.now()}); }
+      else return;
+    }else{
+      rec = {id:uid('di_'), emoji:S.form.emoji, tags:S.form.tags, note, images:S.form.images, catId, createdAt:Date.now(), updatedAt:Date.now()};
+      recs.push(rec);
+    }
+    doc.spaceRecords[sp.id] = recs;
     saveDay(dk);
+    /* 同步到「可能性确定」分类笔记：收藏则创建/更新，取消收藏则移除 */
+    const linked = S.catnotes.find(n=>n.fromIter===rec.id);
+    if(catId){
+      const cat = (sp.categories||[]).find(c=>c.id===catId);
+      const title = D.fmtDateShort(dk)+' · '+(rec.tags[0]||'迭代记录');
+      if(linked){
+        linked.categoryId = catId; linked.title = title; linked.note = note || '(无文字)';
+        linked.images = rec.images; linked.updatedAt = Date.now();
+      }else{
+        S.catnotes.push({id:uid('cn_'), spaceId:sp.id, categoryId:catId, title, note:note||'(无文字)', images:rec.images, createdAt:Date.now(), updatedAt:Date.now(), fromIter:rec.id});
+      }
+      saveCatnotes();
+      UI.toast('已收藏到「'+(cat?cat.name:catId)+'」 ✓');
+    }else if(linked){
+      S.catnotes = S.catnotes.filter(n=>n.id!==linked.id);
+      saveCatnotes();
+    }
     UI.closeModal();
     scheduleRender();
     UI.toast('确定性迭代已记录 ✓');
+  },
+  'day-iter-del'(btn){
+    const sp = spaceById(S.spaceId);
+    if(!sp) return;
+    const dk = S.dayFilter || D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const recs = spaceRecordsOf(dk, sp.id);
+    const rec = recs.find(r=>r.id===btn.dataset.id);
+    if(!rec) return;
+    UI.confirmDialog('删除这条迭代', '删除后不可恢复。若已收藏到可能性确定，对应笔记也会一并删除。', true, ()=>{
+      doc.spaceRecords[sp.id] = recs.filter(r=>r.id!==rec.id);
+      S.catnotes = S.catnotes.filter(n=>n.fromIter!==rec.id);
+      saveDay(dk); saveCatnotes();
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
   },
   'img-add'(){
     if(!S.form || !S.form.images){ UI.toast('当前表单不支持图片', 'err'); return; }
@@ -1323,20 +1412,21 @@ const Actions = {
     if(m && m.spaceId===spId){ Rhythm.manualStop(); }
     else Rhythm.manualStart(spId);
   },
-  'rhythm-entry'(btn){ openRhythmEntryModal(btn.dataset.id || null); },
+  'rhythm-entry'(btn){ openRhythmEntryModal(S.rhythmDay || D.dateKey(Date.now()), btn.dataset.id || null); },
   'rhythm-entry-save'(btn){
-    const dk = D.dateKey(Date.now());
+    const dk = S.rhythmDay || D.dateKey(Date.now());
     const doc = dayDoc(dk);
     const text = document.getElementById('re-text').value.trim();
-    if(!text){ UI.toast('写点内容再保存吧', 'err'); return; }
-    const at = document.getElementById('re-time').value || D.tsToHHMM(Date.now());
+    const images = (S.form && S.form.images) ? S.form.images : [];
+    if(!text && images.length===0){ UI.toast('写点内容或添加图片再保存', 'err'); return; }
+    const at = document.getElementById('re-time').value || (dk===D.dateKey(Date.now()) ? D.tsToHHMM(Date.now()) : '21:00');
     const id = btn?.dataset?.id || null;
     if(id){
       const en = (doc.rhythmEntries||[]).find(x=>x.id===id);
-      if(en){ en.text = text; en.at = at; }
+      if(en){ en.text = text; en.at = at; en.images = images; }
     }else{
       doc.rhythmEntries = doc.rhythmEntries || [];
-      doc.rhythmEntries.push({id:uid('re_'), at, text, images:[], createdAt:Date.now()});
+      doc.rhythmEntries.push({id:uid('re_'), at, text, images, createdAt:Date.now()});
     }
     saveDay(dk);
     UI.closeModal();
@@ -1344,7 +1434,7 @@ const Actions = {
     UI.toast('已记录');
   },
   'rhythm-entry-del'(btn){
-    const dk = D.dateKey(Date.now());
+    const dk = S.rhythmDay || D.dateKey(Date.now());
     const doc = dayDoc(dk);
     const en = (doc.rhythmEntries||[]).find(x=>x.id===btn.dataset.id);
     if(!en) return;
@@ -1425,7 +1515,69 @@ const Actions = {
   },
   /* —— 首页 —— */
   'home-todo-toggle'(){ S.homeTodoOpen = !S.homeTodoOpen; scheduleRender(); },
-  'goto-rhythm'(){ goView('rhythm'); }
+  'goto-rhythm'(){ goView('rhythm'); },
+  'home-day-prev'(){ S.homeDay = D.dateKey(D.addDaysTs(D.dkToTs(S.homeDay || D.dateKey(Date.now())), -1)); scheduleRender(); },
+  'home-day-next'(){ S.homeDay = D.dateKey(D.addDaysTs(D.dkToTs(S.homeDay || D.dateKey(Date.now())), 1)); scheduleRender(); },
+  'home-day-today'(){ S.homeDay = null; scheduleRender(); },
+  'home-cal-toggle'(){ S.homeCalOpen = S.homeCalOpen === false; scheduleRender(); },
+  'home-cal-prev'(){ S.homeCalM--; if(S.homeCalM<0){ S.homeCalM=11; S.homeCalY--; } scheduleRender(); },
+  'home-cal-next'(){ S.homeCalM++; if(S.homeCalM>11){ S.homeCalM=0; S.homeCalY++; } scheduleRender(); },
+  'home-cal-day'(btn){ S.homeDay = btn.dataset.dk; scheduleRender(); },
+  /* —— 节律表历史浏览 —— */
+  'rhythm-day-prev'(){ S.rhythmDay = D.dateKey(D.addDaysTs(D.dkToTs(S.rhythmDay || D.dateKey(Date.now())), -1)); scheduleRender(); },
+  'rhythm-day-next'(){ S.rhythmDay = D.dateKey(D.addDaysTs(D.dkToTs(S.rhythmDay || D.dateKey(Date.now())), 1)); scheduleRender(); },
+  'rhythm-day-today'(){ S.rhythmDay = null; scheduleRender(); },
+  /* —— 日历选择器 —— */
+  'pick-date'(btn){ openDatePickerModal(btn.dataset.target || 'home'); },
+  'dp-prev'(){ S.dpM--; if(S.dpM<0){ S.dpM=11; S.dpY--; } refreshDp(); },
+  'dp-next'(){ S.dpM++; if(S.dpM>11){ S.dpM=0; S.dpY++; } refreshDp(); },
+  'dp-day'(btn){
+    const dk = btn.dataset.dk;
+    if(S.dpTarget==='home') S.homeDay = dk; else S.rhythmDay = dk;
+    UI.closeModal();
+    scheduleRender();
+  },
+  /* —— 全局每日情绪（首页/节律表共享） —— */
+  'day-mood'(btn){ openMoodModal(btn.dataset.target || 'home'); },
+  'mood-save'(){
+    const dk = S.form.moodDk;
+    const doc = dayDoc(dk);
+    doc.dayMood = { emoji:S.form.emoji, tags:S.form.tags, updatedAt:Date.now() };
+    saveDay(dk);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('这一天的情绪已保存');
+  },
+  /* —— 空间专属每日情绪（独立设置，不沿用迭代表情） —— */
+  'space-mood'(btn){
+    const dk = S.dayFilter || D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    doc.spaceMood = doc.spaceMood || {};
+    const cur = ((doc.spaceMood[S.spaceId]||{}).emoji) || null;
+    if(cur===btn.dataset.e){ delete doc.spaceMood[S.spaceId]; }
+    else { doc.spaceMood[S.spaceId] = {emoji:btn.dataset.e, updatedAt:Date.now()}; }
+    saveDay(dk);
+    scheduleRender();
+  },
+  /* —— 当日节律递归时间额度 —— */
+  'quota-edit'(){ openQuotaModal(); },
+  'quota-save'(){
+    const dk = S.form.quotaDk;
+    const v = clamp(parseInt(document.getElementById('qt-min').value)||0, 30, 1440);
+    dayDoc(dk).quotaMinutes = v;
+    saveDay(dk);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('该日额度已设为 '+fmtMin(v));
+  },
+  'quota-reset'(){
+    const dk = S.form.quotaDk;
+    delete dayDoc(dk).quotaMinutes;
+    saveDay(dk);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('已恢复默认额度');
+  }
 };
 function handleImportFile(file){
   const fr = new FileReader();
@@ -1444,9 +1596,12 @@ function handleImportFile(file){
 /* ══════════════════════════════════════════════════════════════
    8.5 待办视图辅助（卡片渲染 / 表单弹窗）
    ══════════════════════════════════════════════════════════════ */
-function todoCardHtml(t, now){
+function todoCardHtml(t, now, live){
+  if(live===undefined) live = true;
   const st = todoStatus(t, now);
-  const cls = st==='confirming' ? 't-confirm' : st==='done' ? 't-done' : 't-'+TodoLogic.color(t, now);
+  let cls = st==='confirming' ? 't-confirm' : st==='done' ? 't-done' : 't-'+TodoLogic.color(t, now);
+  /* 未来日：截止还没到来，不判超时（保持蓝色） */
+  if(!live && st==='pending' && D.dateKey(now) > D.dateKey(Date.now())) cls = 't-blue';
   const side = st==='confirming' ? '<span class="q">?</span>' : st==='done' ? '<span class="ok">✓</span>' : '';
   const due = TodoLogic.dueAt(t, now);
   let cd;
@@ -1455,6 +1610,9 @@ function todoCardHtml(t, now){
     cd = nx ? '已完成 · 下次 '+TodoLogic.fmtNextShort(nx, now) : '已完成';
   }else if(due==null){
     cd = '无期限';
+  }else if(!live && due <= now){
+    /* 历史日：显示当日截止时刻而非"已超时X小时" */
+    cd = '当日 '+D.tsToHHMM(due)+' 截止';
   }else{
     cd = fmtRemain(due - now);
   }
@@ -1467,7 +1625,7 @@ function todoCardHtml(t, now){
     const c = sp ? sp.color : '#8A93A3';
     meta += '<span class="badge badge--space" style="--space-color:'+c+';--space-soft:'+c+'22;--space-line:'+c+'55">来自'+esc(spaceNameOf(t.spaceId))+'</span>';
   }
-  return '<div class="todo-card '+cls+'" data-bind="todo" data-id="'+t.id+'" data-action="tap-todo">'+
+  return '<div class="todo-card '+cls+'"'+(live?' data-bind="todo"':' data-day="'+D.dateKey(now)+'"')+' data-id="'+t.id+'" data-action="tap-todo">'+
     '<div class="todo-main">'+
       '<div class="todo-title">'+esc(t.title)+'</div>'+
       '<div class="todo-sub">'+meta+'</div>'+
@@ -1589,7 +1747,11 @@ function gcImages(){
     if(k.startsWith('day:')){
       const doc = Store.loadDay(k.slice(4));
       if(!doc) continue;
-      for(const spId in (doc.spaceRecords||{})){ (doc.spaceRecords[spId].images||[]).forEach(id=>refs.add(id)); }
+      for(const spId in (doc.spaceRecords||{})){
+        const v = doc.spaceRecords[spId];
+        if(Array.isArray(v)){ for(const r of v){ (r.images||[]).forEach(id=>refs.add(id)); } }
+        else (v.images||[]).forEach(id=>refs.add(id));   // 旧版单条兼容
+      }
       (doc.rhythmEntries||[]).forEach(en=>(en.images||[]).forEach(id=>refs.add(id)));
     }
   }
@@ -1600,10 +1762,11 @@ function gcImages(){
   }
   return removed;
 }
-/* 是否属于「今日待办」（首页收纳卡口径）：今日到期/已超时/无期限，或今天完成的 */
+/* 是否属于「当日待办」（首页收纳卡口径，now 为当天视角）：
+   完成态=已记到该天；未完成=当天到期/已超时/无期限 */
 function isTodayTodo(t, now){
   const dk = D.dateKey(now);
-  if(todoStatus(t, now)==='done') return t.completedAt != null && D.dateKey(t.completedAt) === dk;
+  if(todoStatus(t, now)==='done') return true;
   const due = TodoLogic.dueAt(t, now);
   if(due == null) return true;
   return due <= D.dkToTs(dk) + 86400000;
@@ -1614,7 +1777,8 @@ function iterDays(spId){
   for(const k of Store.allKeys()){
     if(k.startsWith('day:')){
       const doc = Store.loadDay(k.slice(4));
-      if(doc && doc.spaceRecords && doc.spaceRecords[spId]) n++;
+      const v = doc && doc.spaceRecords ? doc.spaceRecords[spId] : null;
+      if(v != null && (Array.isArray(v) ? v.length>0 : true)) n++;
     }
   }
   return n;
@@ -1655,16 +1819,26 @@ function openCatNameModal(id){
       '<button class="btn btn--primary" data-action="cat-save"'+(c?' data-id="'+c.id+'"':'')+'>保存</button>'+
     '</div>');
 }
-/* 确定性迭代弹窗（某空间某天的情绪/标签/笔记/图片） */
-function openDayRecordModal(dk){
+/* 确定性迭代弹窗（某空间某天的情绪/标签/笔记/图片）。
+   iterId 为空则新增一条迭代；每天可以有很多条迭代。 */
+function openDayRecordModal(dk, iterId){
   const sp = spaceById(S.spaceId);
   if(!sp) return;
-  const rec = dayDoc(dk).spaceRecords[sp.id] || {emoji:null, tags:[], note:'', images:[], updatedAt:Date.now()};
-  S.form = { emoji: rec.emoji||null, tags:[...(rec.tags||[])], images:[...(rec.images||[])] };
+  const recs = spaceRecordsOf(dk, sp.id);
+  const rec = iterId ? recs.find(r=>r.id===iterId) : null;
+  S.form = {
+    emoji: rec ? (rec.emoji||null) : null,
+    tags: [...(rec ? (rec.tags||[]) : [])],
+    images: [...(rec ? (rec.images||[]) : [])],
+    catId: rec ? (rec.catId||null) : null
+  };
+  const catOpts = '<option value="">（不收藏，仅留在当日）</option>'+
+    (sp.categories||[]).map(c=>'<option value="'+c.id+'"'+(S.form.catId===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
   UI.openModal(
-    '<div class="modal-title">确定性迭代<button class="x" data-action="modal-close">×</button></div>'+
-    '<div style="font-size:12px;color:var(--text-2);margin:-6px 0 14px">'+esc(sp.name)+' · '+D.fmtDateCN(D.dkToTs(dk))+'</div>'+
-    '<div class="field"><label>今日情绪（点选一个，再点取消）</label>'+
+    '<div class="modal-title">'+(rec?'编辑确定性迭代':'确定性迭代')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div style="font-size:12px;color:var(--text-2);margin:-6px 0 14px">'+esc(sp.name)+' · '+D.fmtDateCN(D.dkToTs(dk))+
+      (rec&&rec.createdAt?' · '+D.tsToHHMM(rec.createdAt):'')+'</div>'+
+    '<div class="field"><label>情绪（点选一个，再点取消）</label>'+
       '<div class="chip-row" id="dr-emoji">'+CONFIG.EMOJIS.map(e=>
         '<button class="chip'+(S.form.emoji===e?' on':'')+'" data-action="emoji" data-e="'+e+'" style="font-size:16px">'+e+'</button>').join('')+'</div></div>'+
     '<div class="field"><label>小标签（≤8个，每个≤12字）</label>'+
@@ -1673,14 +1847,18 @@ function openDayRecordModal(dk){
       '<div class="row"><input class="input" id="dr-tag-input" maxlength="12" placeholder="输入标签，如：背了50词">'+
       '<button class="btn" data-action="tag-add" style="flex:none">添加</button></div></div>'+
     '<div class="field"><label>笔记 / 心得</label>'+
-      '<textarea class="textarea" id="dr-note" style="min-height:110px" placeholder="今天做了什么、有什么收获…">'+esc(rec.note||'')+'</textarea></div>'+
+      '<textarea class="textarea" id="dr-note" style="min-height:110px" placeholder="今天做了什么、有什么收获…">'+esc(rec?rec.note:'')+'</textarea></div>'+
+    '<div class="field"><label>收藏到「可能性确定」（可选）</label>'+
+      '<select class="select" id="dr-cat">'+catOpts+'</select>'+
+      '<div class="hint">选择后，这条迭代会同时收进该分类的笔记里长期留存</div></div>'+
     '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
       '<div id="dr-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
       '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
       '<div class="hint">图片会自动压缩后保存在本浏览器中</div></div>'+
     '<div class="modal-actions">'+
+      (rec?'<button class="btn btn--danger" data-action="day-iter-del" data-id="'+rec.id+'">删除</button>':'')+
       '<button class="btn" data-action="modal-close">取消</button>'+
-      '<button class="btn btn--primary" data-action="save-dayrecord">保存记录</button>'+
+      '<button class="btn btn--primary" data-action="save-dayrecord"'+(rec?' data-id="'+rec.id+'"':'')+'>保存记录</button>'+
     '</div>');
 }
 /* 可能性确定：分类列表 */
@@ -1757,36 +1935,54 @@ function openNoteForm(id){
       '<button class="btn btn--primary" data-action="save-note"'+(n?' data-id="'+n.id+'"':'')+'>保存</button>'+
     '</div>');
 }
-/* 空间详情 · 确定性迭代页（某一天的记录） */
+/* 空间详情 · 确定性迭代页（某一天的所有迭代，可以有很多条） */
 function spDayHtml(sp){
   const dk = S.dayFilter || D.dateKey(Date.now());
-  const rec = dayDoc(dk).spaceRecords[sp.id];
+  const recs = spaceRecordsOf(dk, sp.id);
   let h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
     '<button class="icon-btn" data-action="day-prev" aria-label="前一天">◀</button>'+
     '<div style="flex:1;text-align:center;font-weight:600">'+D.fmtDateCN(D.dkToTs(dk))+
       (dk===D.dateKey(Date.now())?' · <span style="color:var(--accent)">今天</span>':'')+'</div>'+
     '<button class="icon-btn" data-action="day-next" aria-label="后一天">▶</button>'+
   '</div>';
+  /* 该空间这一天的专属情绪（独立设置，不沿用迭代的表情） */
+  const mood = (dayDoc(dk).spaceMood||{})[sp.id];
+  h += '<div class="card pad" style="margin-bottom:12px">'+
+         '<div style="font-size:12px;color:var(--text-2);margin-bottom:8px">这一天的情绪（'+esc(sp.name)+'专属，独立于确定性迭代）</div>'+
+         '<div class="chip-row">'+CONFIG.EMOJIS.map(e=>
+           '<button class="chip'+(mood&&mood.emoji===e?' on':'')+'" data-action="space-mood" data-e="'+e+'" style="font-size:15px">'+e+'</button>').join('')+'</div>'+
+       '</div>';
   h += '<div class="card pad">';
-  if(rec && (rec.emoji || (rec.tags||[]).length || rec.note || (rec.images||[]).length)){
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
-           (rec.emoji?'<span style="font-size:28px;line-height:1">'+rec.emoji+'</span>':'')+
-           (rec.tags||[]).map(t=>'<span class="badge">'+esc(t)+'</span>').join('')+
-         '</div>';
-    if(rec.note) h += '<div style="font-size:13.5px;white-space:pre-wrap">'+esc(rec.note)+'</div>';
-    h += imgsHtml(rec.images);
-    const sess = Rhythm.sessionsOfDay(dk, sp.id);
-    if(sess.length){
-      h += '<div class="sec-sub" style="margin:14px 0 6px">该日递归时段</div>';
-      for(const s of sess){
-        h += '<div class="kv"><span class="k">'+D.tsToHHMM(s.start)+' ~ '+D.tsToHHMM(s.end)+'</span><span class="v">'+fmtDur(s.end-s.start)+'</span></div>';
-      }
-    }
-  }else{
+  if(recs.length===0){
     h += '<div class="empty" style="border:none;padding:16px 0">这一天还没有记录<br><span style="font-size:12px">点下方按钮写下第一条确定性迭代</span></div>';
+  }else{
+    for(const rec of recs){
+      const cat = rec.catId ? (sp.categories||[]).find(c=>c.id===rec.catId) : null;
+      h += '<div class="iter-item">'+
+             '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-right:60px">'+
+               (rec.emoji?'<span style="font-size:24px;line-height:1">'+rec.emoji+'</span>':'')+
+               '<span class="num" style="font-size:11px;color:var(--text-2)">'+D.tsToHHMM(rec.createdAt||rec.updatedAt)+'</span>'+
+               (cat?'<span class="badge badge--space" style="--space-color:'+sp.color+';--space-soft:'+sp.color+'22;--space-line:'+sp.color+'55">◇ '+esc(cat.name)+'</span>':'')+
+             '</div>'+
+             ((rec.tags||[]).length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+               rec.tags.map(t=>'<span class="badge">'+esc(t)+'</span>').join('')+'</div>':'')+
+             (rec.note?'<div style="font-size:13.5px;white-space:pre-wrap;margin-top:6px">'+esc(rec.note)+'</div>':'')+
+             imgsHtml(rec.images)+
+             '<div style="position:absolute;top:6px;right:6px;display:flex">'+
+               '<button class="icon-btn" data-action="day-edit" data-id="'+rec.id+'" style="width:26px;height:26px">✎</button>'+
+               '<button class="icon-btn" data-action="day-iter-del" data-id="'+rec.id+'" style="width:26px;height:26px">🗑</button>'+
+             '</div>'+
+           '</div>';
+    }
   }
-  h += '<button class="btn btn--primary btn--block" data-action="day-edit" style="margin-top:12px">'+
-         (rec && (rec.note||(rec.tags||[]).length||rec.emoji) ? '✎ 编辑记录' : '✎ 确定性迭代 · 记录这一天')+'</button>';
+  const sess = Rhythm.sessionsOfDay(dk, sp.id);
+  if(sess.length){
+    h += '<div class="sec-sub" style="margin:14px 0 6px">该日递归时段</div>';
+    for(const s of sess){
+      h += '<div class="kv"><span class="k">'+D.tsToHHMM(s.start)+' ~ '+D.tsToHHMM(s.end)+'</span><span class="v num">'+fmtDur(s.end-s.start)+'</span></div>';
+    }
+  }
+  h += '<button class="btn btn--primary btn--block" data-action="day-edit" style="margin-top:12px">✎ 确定性迭代 · 记录这一刻</button>';
   h += '</div>';
   return h;
 }
@@ -1801,11 +1997,14 @@ function calMonthHtml(y, m){
   for(let i=0;i<startWd;i++) h += '<span></span>';
   for(let d=1;d<=daysIn;d++){
     const dk = y+'-'+pad2(m+1)+'-'+pad2(d);
-    const rec = dayDoc(dk).spaceRecords[S.spaceId];
-    h += '<button class="cal-day'+(dk===today?' today':'')+(rec?' has':'')+'" data-action="cal-day" data-dk="'+dk+'">'+
+    const recs = spaceRecordsOf(dk, S.spaceId);
+    /* 情绪显示独立设置的 spaceMood，不再沿用确定性迭代的表情 */
+    const moodEmoji = ((dayDoc(dk).spaceMood||{})[S.spaceId]||{}).emoji || null;
+    const withTag = recs.find(r=>r.tags&&r.tags.length);
+    h += '<button class="cal-day'+(dk===today?' today':'')+((recs.length||moodEmoji)?' has':'')+'" data-action="cal-day" data-dk="'+dk+'">'+
            '<span class="cal-n">'+d+'</span>'+
-           (rec&&rec.emoji?'<span class="cal-e">'+rec.emoji+'</span>':'')+
-           (rec&&rec.tags&&rec.tags.length?'<span class="cal-t">'+esc(rec.tags[0])+'</span>':'')+
+           (moodEmoji?'<span class="cal-e">'+moodEmoji+'</span>':'')+
+           (withTag?'<span class="cal-t">'+esc(withTag.tags[0])+'</span>':'')+
          '</button>';
   }
   h += '</div>';
@@ -1842,13 +2041,160 @@ function spTodosHtml(sp){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   8.65 日期浏览条 / 日历选择器 / 全局情绪 / 当日额度
+   ══════════════════════════════════════════════════════════════ */
+/* 日期浏览条（首页/节律表共用）：◀ 日期 ▶ · 📅日历跳转 · 情绪 · 回到今天 */
+function dayNavHtml(target){
+  const dk = target==='home' ? (S.homeDay || D.dateKey(Date.now())) : (S.rhythmDay || D.dateKey(Date.now()));
+  const today = D.dateKey(Date.now());
+  const isTodayView = dk===today;
+  const mood = dayDoc(dk).dayMood;
+  const pfx = target==='home' ? 'home' : 'rhythm';
+  return '<div class="card daynav">'+
+    '<button class="icon-btn" data-action="'+pfx+'-day-prev" aria-label="前一天">◀</button>'+
+    '<div class="nav-date">'+
+      (mood&&mood.emoji?'<span style="font-size:15px;vertical-align:-2px">'+mood.emoji+'</span> ':'')+
+      D.fmtDateCN(D.dkToTs(dk))+(isTodayView?' · <span style="color:var(--accent)">今天</span>':'')+
+      ((mood&&mood.tags&&mood.tags.length)?'<div style="font-size:10.5px;color:var(--text-2);font-weight:400;letter-spacing:0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+        mood.tags.map(t=>esc(t)).join(' · ')+'</div>':'')+
+    '</div>'+
+    '<button class="icon-btn" data-action="'+pfx+'-day-next" aria-label="后一天">▶</button>'+
+    '<button class="icon-btn" data-action="pick-date" data-target="'+target+'" aria-label="日历选择">📅</button>'+
+    '<button class="icon-btn" data-action="day-mood" data-target="'+target+'" aria-label="当日情绪">'+(mood&&mood.emoji?mood.emoji:'🙂')+'</button>'+
+    (isTodayView?'':'<button class="btn btn--small" data-action="'+pfx+'-day-today">回到今天</button>')+
+  '</div>';
+}
+/* 首页内嵌日历板块（月网格，点任意日期跳转到那天） */
+function homeCalHtml(){
+  if(!S.homeCalY){ const d = new Date(); S.homeCalY = d.getFullYear(); S.homeCalM = d.getMonth(); }
+  const today = D.dateKey(Date.now());
+  const sel = S.homeDay || today;
+  const first = new Date(S.homeCalY, S.homeCalM, 1);
+  const startWd = first.getDay();
+  const daysIn = new Date(S.homeCalY, S.homeCalM+1, 0).getDate();
+  let h = '<div class="card pad" style="margin-top:10px">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+      '<button class="icon-btn" data-action="home-cal-prev" aria-label="上个月">◀</button>'+
+      '<div style="flex:1;text-align:center;font-weight:600;font-size:14px">'+S.homeCalY+'年'+(S.homeCalM+1)+'月</div>'+
+      '<button class="icon-btn" data-action="home-cal-next" aria-label="下个月">▶</button>'+
+    '</div>'+
+    '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>'+
+    '<div class="cal-grid" style="margin-top:4px">';
+  for(let i=0;i<startWd;i++) h += '<span></span>';
+  for(let d=1;d<=daysIn;d++){
+    const dk = S.homeCalY+'-'+pad2(S.homeCalM+1)+'-'+pad2(d);
+    const doc = Store.loadDay(dk);
+    const mood = doc ? doc.dayMood : null;
+    h += '<button class="cal-day'+(dk===today?' today':'')+(dk===sel?' sel':'')+(dayHasData(dk)?' has':'')+'" data-action="home-cal-day" data-dk="'+dk+'">'+
+           '<span class="cal-n">'+d+'</span>'+
+           (mood&&mood.emoji?'<span class="cal-e">'+mood.emoji+'</span>':'')+
+         '</button>';
+  }
+  h += '</div></div>';
+  return h;
+}
+/* 某天是否有任何数据（日历选择器里的圆点标记） */
+function dayHasData(dk){
+  const doc = Store.loadDay(dk);
+  if(doc){
+    if(doc.dayMood || (doc.rhythmEntries&&doc.rhythmEntries.length) || (doc.autoSchedules&&doc.autoSchedules.length)) return true;
+    for(const k in (doc.spaceRecords||{})){
+      const v = doc.spaceRecords[k];
+      if(v != null && (Array.isArray(v) ? v.length>0 : true)) return true;
+    }
+  }
+  return S.sessions.some(s=>s.day===dk);
+}
+/* 日历选择器：月网格（带全局情绪标记与数据点） */
+function calPickerGridHtml(){
+  const today = D.dateKey(Date.now());
+  const first = new Date(S.dpY, S.dpM, 1);
+  const startWd = first.getDay();
+  const daysIn = new Date(S.dpY, S.dpM+1, 0).getDate();
+  let h = '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>';
+  h += '<div class="cal-grid" style="margin-top:4px">';
+  for(let i=0;i<startWd;i++) h += '<span></span>';
+  for(let d=1;d<=daysIn;d++){
+    const dk = S.dpY+'-'+pad2(S.dpM+1)+'-'+pad2(d);
+    const doc = Store.loadDay(dk);
+    const mood = doc ? doc.dayMood : null;
+    h += '<button class="cal-day'+(dk===today?' today':'')+(dayHasData(dk)?' has':'')+'" data-action="dp-day" data-dk="'+dk+'">'+
+           '<span class="cal-n">'+d+'</span>'+
+           (mood&&mood.emoji?'<span class="cal-e">'+mood.emoji+'</span>':'')+
+         '</button>';
+  }
+  h += '</div>';
+  return h;
+}
+function openDatePickerModal(target){
+  S.dpTarget = target;
+  if(!S.dpY){ const d = new Date(); S.dpY = d.getFullYear(); S.dpM = d.getMonth(); }
+  UI.openModal(
+    '<div class="modal-title">选择日期<button class="x" data-action="modal-close">×</button></div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+      '<button class="icon-btn" data-action="dp-prev" aria-label="上个月">◀</button>'+
+      '<div id="dp-label" style="flex:1;text-align:center;font-weight:600">'+S.dpY+'年'+(S.dpM+1)+'月</div>'+
+      '<button class="icon-btn" data-action="dp-next" aria-label="下个月">▶</button>'+
+    '</div>'+
+    '<div id="dp-grid">'+calPickerGridHtml()+'</div>'+
+    '<div class="hint" style="font-size:11px;color:var(--text-2);margin-top:8px">蓝色格子=当天有记录 · 粗框=今天</div>'+
+    '<div class="modal-actions"><button class="btn" data-action="modal-close">取消</button></div>');
+}
+function refreshDp(){
+  const g = document.getElementById('dp-grid');
+  if(g) g.innerHTML = calPickerGridHtml();
+  const l = document.getElementById('dp-label');
+  if(l) l.textContent = S.dpY+'年'+(S.dpM+1)+'月';
+}
+/* 全局每日情绪弹窗（首页与节律表共享，与各空间互不影响） */
+function openMoodModal(target){
+  const dk = target==='home' ? (S.homeDay || D.dateKey(Date.now())) : (S.rhythmDay || D.dateKey(Date.now()));
+  const mood = dayDoc(dk).dayMood || {emoji:null, tags:[]};
+  S.form = { emoji:mood.emoji||null, tags:[...(mood.tags||[])], moodDk:dk };
+  UI.openModal(
+    '<div class="modal-title">'+D.fmtDateShort(dk)+' 的心情<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="hint" style="font-size:12px;color:var(--text-2);margin:-6px 0 12px">这一天的情绪与标签独立记录（首页与节律表共享），与各可能性空间互不影响</div>'+
+    '<div class="field"><label>情绪（点选一个，再点取消）</label>'+
+      '<div class="chip-row" id="dr-emoji">'+CONFIG.EMOJIS.map(e=>
+        '<button class="chip'+(S.form.emoji===e?' on':'')+'" data-action="emoji" data-e="'+e+'" style="font-size:16px">'+e+'</button>').join('')+'</div></div>'+
+    '<div class="field"><label>小标签（≤8个，每个≤12字）</label>'+
+      '<div class="chip-row" id="dr-tags" style="margin-bottom:8px">'+S.form.tags.map((t,i)=>
+        '<span class="chip">'+esc(t)+'<button class="x-btn" data-action="tag-del" data-i="'+i+'">×</button></span>').join('')+'</div>'+
+      '<div class="row"><input class="input" id="dr-tag-input" maxlength="12" placeholder="如：充实的一天">'+
+      '<button class="btn" data-action="tag-add" style="flex:none">添加</button></div></div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="mood-save">保存</button>'+
+    '</div>');
+}
+/* 当日额度弹窗（节律递归时间按天单独设定） */
+function openQuotaModal(){
+  const rd = S.rhythmDay || D.dateKey(Date.now());
+  const cur = Rhythm.quotaFor(rd);
+  const isOverride = !!(dayDoc(rd).quotaMinutes && dayDoc(rd).quotaMinutes > 0);
+  S.form = { quotaDk: rd };
+  UI.openModal(
+    '<div class="modal-title">'+(rd===D.dateKey(Date.now())?'今日':'当日')+'节律递归时间额度<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>额度（分钟）</label>'+
+      '<input type="number" class="input num" id="qt-min" min="30" max="1440" step="30" value="'+cur+'">'+
+      '<div class="hint">可选 30 ~ 1440 分钟（0.5 ~ 24 小时）。只影响 '+D.fmtDateShort(rd)+' 这一天，其他天仍用默认值。</div></div>'+
+    '<div class="modal-actions">'+
+      (isOverride?'<button class="btn" data-action="quota-reset">恢复默认（'+fmtMin(S.settings.rhythmQuotaMinutes||480)+'）</button>':'')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="quota-save">保存</button>'+
+    '</div>');
+}
+
+/* ══════════════════════════════════════════════════════════════
    8.7 节律表辅助（时间带/日记弹窗）
    ══════════════════════════════════════════════════════════════ */
 /* 递归时间带上的一个色段（active=进行中，宽度按墙钟实时） */
 function bandHtml(s, active){
   const dayStart = D.dkToTs(s.day);
   const startMin = Math.max(0, (s.start - dayStart) / 60000);
-  const endMin = Math.min(1440, (active ? Date.now() : s.end) - dayStart) / 60000;
+  /* 注意单位：ms 差要先除以 60000 转分钟再钳制（曾把 ms 与分钟混用，
+     导致进行中色段永远只有最小宽度，时间带看起来断断续续） */
+  const endMin = Math.min(1440, ((active ? Date.now() : s.end) - dayStart) / 60000);
   const left = startMin / 1440 * 100;
   const w = Math.max(0.6, (endMin - startMin) / 1440 * 100);
   const sp = spaceById(s.spaceId);
@@ -1858,16 +2204,21 @@ function bandHtml(s, active){
   const endTxt = active ? '进行中' : D.tsToHHMM(s.end);
   return '<div class="rh-band'+(active?' active':'')+'" style="left:'+left.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:'+color+'" title="'+esc(name)+' · '+modeTxt+' · '+D.tsToHHMM(s.start)+' ~ '+endTxt+'"></div>';
 }
-/* 时间轴日记弹窗（id 为空则新建） */
-function openRhythmEntryModal(id){
-  const doc = dayDoc(D.dateKey(Date.now()));
+/* 时间轴日记弹窗（dk=目标日期，id 为空则新建；支持文字+图片，纯图片也可以） */
+function openRhythmEntryModal(dk, id){
+  const doc = dayDoc(dk);
   const en = id ? (doc.rhythmEntries||[]).find(x=>x.id===id) : null;
-  const at = en ? en.at : D.tsToHHMM(Date.now());
+  const at = en ? en.at : (dk===D.dateKey(Date.now()) ? D.tsToHHMM(Date.now()) : '21:00');
+  S.form = { images: [...(en ? (en.images||[]) : [])] };
   UI.openModal(
-    '<div class="modal-title">时间轴日记<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="modal-title">时间轴日记 · '+D.fmtDateShort(dk)+'<button class="x" data-action="modal-close">×</button></div>'+
     '<div class="field"><label>时间点</label><input type="time" class="input num" id="re-time" value="'+esc(at)+'"></div>'+
     '<div class="field"><label>想法 / 记录</label>'+
       '<textarea class="textarea" id="re-text" style="min-height:110px" placeholder="此刻的想法、发生的事…">'+esc(en?en.text:'')+'</textarea></div>'+
+    '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
+      '<div id="re-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<div class="hint">图片会自动压缩后保存在本浏览器中，只发图片也可以保存</div></div>'+
     '<div class="modal-actions">'+
       (en?'<button class="btn btn--danger" data-action="rhythm-entry-del" data-id="'+en.id+'">删除</button>':'')+
       '<button class="btn" data-action="modal-close">取消</button>'+
@@ -1912,15 +2263,16 @@ function openSlotFormModal(id){
       '<button class="btn btn--primary" data-action="slot-save"'+(slot?' data-id="'+slot.id+'"':'')+'>保存</button>'+
     '</div>');
 }
-/* 今日自流转日程列表 */
-function slotListHtml(){
+/* 某天的自流转日程列表（editable=false 时隐藏添加与编辑入口，仅供回看） */
+function slotListHtml(dk, editable){
   const now = Date.now();
-  const dk = D.dateKey(now);
   const doc = dayDoc(dk);
   const slots = [...(doc.autoSchedules||[])].sort((a,b)=>a.start<b.start?-1:1);
-  let h = '<button class="btn btn--block" data-action="slot-form">＋ 添加自流转日程</button>';
+  let h = '';
+  if(editable) h += '<button class="btn btn--block" data-action="slot-form">＋ 添加自流转日程</button>';
   if(slots.length===0){
-    h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">课程表式：到点自动用指定空间消耗节律递归时间</div>';
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">'+
+      (editable ? '课程表式：到点自动用指定空间消耗节律递归时间' : '这一天没有设置日程')+'</div>';
   }else{
     h += '<div style="margin-top:12px">';
     for(const slot of slots){
@@ -1940,7 +2292,7 @@ function slotListHtml(){
                '<div style="font-size:12px;color:var(--text-2)">'+esc(sp?sp.name:'已删除空间')+(slot.note?' · '+esc(slot.note):'')+'</div>'+
              '</div>'+
              '<span class="slot-badge '+badgeCls+'">'+badge+'</span>'+
-             '<button class="icon-btn" data-action="slot-form" data-id="'+slot.id+'" style="width:26px;height:26px">✎</button>'+
+             (editable?'<button class="icon-btn" data-action="slot-form" data-id="'+slot.id+'" style="width:26px;height:26px">✎</button>':'')+
            '</div>';
     }
     h += '</div>';
@@ -1952,70 +2304,89 @@ function slotListHtml(){
    9. Views 视图渲染（首页/待办/空间/节律表/设置）
    ══════════════════════════════════════════════════════════════ */
 const Views = {
-  /* —— 首页 —— */
+  /* —— 首页（支持浏览任意一天） —— */
   home(){
     const now = Date.now();
     const dk = D.dateKey(now);
+    const hd = S.homeDay || dk;                       // 正在查看的日期
+    const isTodayView = hd === dk;
+    const vNow = D.dkToTs(hd) + 86400000 - 1;         // 该天 23:59:59（历史日按"当天视角"计算）
     const active = S.spaces.filter(x=>!x.archived);
     let h = '';
+    /* 日期时间 */
     h += '<div class="card card--mark home-hero">'+
            '<div class="hero-date" data-bind="bigdate"></div>'+
            '<div class="hero-clock num" data-bind="bigclock"></div>'+
          '</div>';
-    /* 今日待办收纳卡 */
-    const todayTodos = S.todos.filter(x=>!x.archived && isTodayTodo(x, now));
-    const doneCnt = todayTodos.filter(x=>todoStatus(x, now)==='done').length;
-    const pendingCnt = todayTodos.length - doneCnt;
+    /* 日历（独立板块：日期浏览条 + 内嵌月历，大月历可收起省空间） */
+    h += '<section class="sec"><h2 class="sec-title" data-action="home-cal-toggle" style="cursor:pointer">日历'+
+      '<span class="sec-extra" style="cursor:pointer">'+(S.homeCalOpen===false?'▼ 展开':'▲ 收起')+'</span></h2>';
+    h += dayNavHtml('home');
+    if(S.homeCalOpen !== false) h += homeCalHtml();
+    h += '</section>';
+    /* 待办收纳卡（所选日期） */
+    const dayTodos = S.todos.filter(x=>!x.archived && isTodayTodo(x, vNow));
+    const doneCnt = dayTodos.filter(x=>todoStatus(x, vNow)==='done').length;
+    const pendingCnt = dayTodos.length - doneCnt;
     let urgent = null;
-    for(const t of todayTodos){
-      if(todoStatus(t, now)==='done') continue;
-      const due = TodoLogic.dueAt(t, now);
+    for(const t of dayTodos){
+      if(todoStatus(t, vNow)==='done') continue;
+      const due = TodoLogic.dueAt(t, vNow);
       if(due == null) continue;
-      if(!urgent || due < TodoLogic.dueAt(urgent, now)) urgent = t;
+      if(!urgent || due < TodoLogic.dueAt(urgent, vNow)) urgent = t;
     }
-    h += '<section class="sec"><h2 class="sec-title">今日待办</h2>'+
-      '<div class="card pad home-todo-card" data-action="home-todo-toggle">'+
+    /* 摊开的待办列表收纳在收纳卡内部（游戏任务列表式），不溢出到节律板块 */
+    let openHtml = '';
+    if(S.homeTodoOpen){
+      const sorted = dayTodos.filter(x=>todoStatus(x, vNow)!=='done').sort((a,b)=>{
+        const da = TodoLogic.dueAt(a, vNow), db = TodoLogic.dueAt(b, vNow);
+        if(da==null) return 1; if(db==null) return -1; return da-db;
+      });
+      const doneOfDay = dayTodos.filter(x=>todoStatus(x, vNow)==='done');
+      openHtml = '<div class="home-todo-open">';
+      if(sorted.length===0 && doneOfDay.length===0){
+        openHtml += '<div class="empty" style="border:none;padding:8px 0">这一天没有待办</div>';
+      }else{
+        if(sorted.length===0){
+          openHtml += '<div class="empty" style="border:none;padding:8px 0">没有进行中的待办</div>';
+        }else{
+          for(const t of sorted) openHtml += todoCardHtml(t, vNow, isTodayView);
+        }
+        if(doneOfDay.length){
+          openHtml += '<div class="sec-sub">已完成<span class="cnt">'+doneOfDay.length+'</span></div>';
+          for(const t of doneOfDay) openHtml += todoCardHtml(t, vNow, isTodayView);
+        }
+      }
+      openHtml += '</div>';
+    }
+    h += '<section class="sec"><h2 class="sec-title">'+(isTodayView?'今日待办':'待办')+'</h2>'+
+      '<div class="card pad home-todo-card'+(pendingCnt===0 && dayTodos.length>0?' all-done':'')+'" data-action="home-todo-toggle">'+
         '<div style="display:flex;align-items:center;gap:12px">'+
           '<div class="home-todo-ico">📋</div>'+
           '<div style="flex:1;min-width:0">'+
-            '<div style="font-weight:700;font-size:15px">今日待办 · '+todayTodos.length+' 条</div>'+
-            '<div style="font-size:12px;color:var(--text-2);margin-top:2px">已完成 '+doneCnt+' · 未完成 '+pendingCnt+'</div>'+
+            '<div style="font-weight:700;font-size:15px">'+(isTodayView?'今日待办':'当日待办')+' · '+dayTodos.length+' 条</div>'+
+            '<div class="home-todo-count" style="font-size:12px;color:var(--text-2);margin-top:2px">已完成 '+doneCnt+' · 未完成 '+pendingCnt+'</div>'+
           '</div>'+
           '<div class="home-todo-arrow">'+(S.homeTodoOpen?'▲':'▼')+'</div>'+
         '</div>'+
         (urgent
-          ? '<div class="home-urgent" data-bind="urgent" data-id="'+urgent.id+'">最紧急：<b>'+esc(urgent.title)+'</b> · <span class="num" data-cd>'+fmtRemain(TodoLogic.dueAt(urgent, now)-now)+'</span></div>'
-          : '<div class="home-urgent" style="color:var(--text-2)">'+(pendingCnt===0 && todayTodos.length>0?'今天的事都完成啦 🎉':'今天没有待办')+'</div>')+
-      '</div>';
-    if(S.homeTodoOpen){
-      h += '<div style="margin-top:12px">';
-      const sorted = todayTodos.filter(x=>todoStatus(x, now)!=='done').sort((a,b)=>{
-        const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
-        if(da==null) return 1; if(db==null) return -1; return da-db;
-      });
-      if(sorted.length===0){
-        h += '<div class="empty">今天没有进行中的待办</div>';
-      }else{
-        for(const t of sorted) h += todoCardHtml(t, now);
-      }
-      const doneToday = todayTodos.filter(x=>todoStatus(x, now)==='done');
-      if(doneToday.length){
-        h += '<div class="sec-sub">已完成<span class="cnt">'+doneToday.length+'</span></div>';
-        for(const t of doneToday) h += todoCardHtml(t, now);
-      }
-      h += '</div>';
-    }
-    h += '</section>';
-    /* 节律摘要 */
-    const Q = Rhythm.quota();
-    const consumed = Rhythm.consumedMinutes(dk, now);
+          ? '<div class="home-urgent"'+(isTodayView?' data-bind="urgent"':'')+' data-id="'+urgent.id+'">最优先：<b>'+esc(urgent.title)+'</b> · <span class="num" data-cd>'+
+            /* 今天按实时倒计时；历史/未来日按「当日X截止」展示，不显示已超时 */
+            (isTodayView ? fmtRemain(TodoLogic.dueAt(urgent, now)-now) : '当日 '+D.tsToHHMM(TodoLogic.dueAt(urgent, vNow))+' 截止')+
+            '</span></div>'
+          : '<div class="home-urgent'+(pendingCnt===0 && dayTodos.length>0?' ok':'')+'"'+(pendingCnt===0?' style="color:var(--text-2)':'')+'>'+(pendingCnt===0 && dayTodos.length>0?'全部完成 🎉':'这一天没有待办')+'</div>')+
+        openHtml+
+      '</div></section>';
+    /* 节律（独立板块，所选日期的额度消耗摘要） */
+    const Q = Rhythm.quotaFor(hd);
+    const consumed = Rhythm.consumedMinutes(hd, now);
     const remain = Math.max(0, Q - consumed);
-    const act = Rhythm.activeManual();
+    const act = isTodayView ? Rhythm.activeManual() : null;
     h += '<section class="sec"><h2 class="sec-title">节律</h2>'+
-      '<div class="card pad" data-bind="quota" data-action="goto-rhythm">'+
+      '<div class="card pad"'+(isTodayView?' data-bind="quota"':'')+'>'+
         '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
           '<div style="font-weight:700;font-size:15px">节律递归时间</div>'+
-          '<div class="num" style="font-size:12.5px;color:var(--text-2)">额度 '+fmtMin(Q)+'</div>'+
+          '<div class="num" style="font-size:12.5px;color:var(--text-2)">'+(isTodayView?'今日':'当日')+'额度 '+fmtMin(Q)+'</div>'+
         '</div>'+
         '<div class="prog" style="height:8px"><div class="prog-bar" data-q-bar style="width:'+Math.min(100, consumed/Q*100).toFixed(1)+'%"></div></div>'+
         '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px">'+
@@ -2023,8 +2394,9 @@ const Views = {
           '<span>剩余 <b class="num" data-q-remain style="color:var(--accent)">'+fmtMin(remain)+'</b></span>'+
         '</div>'+
         (act ? '<div class="home-live" data-bind="rec" data-space="'+act.spaceId+'"><span class="pulse-dot"></span>正在递归：'+esc(spaceNameOf(act.spaceId))+' · <span class="num" data-rec-t>'+fmtDur(now-act.start)+'</span></div>' : '')+
+        '<button class="btn btn--small btn--block" data-action="goto-rhythm" style="margin-top:10px">进入节律表 →</button>'+
       '</div></section>';
-    /* 空间网格 */
+    /* 空间网格（所选日期） */
     h += '<section class="sec"><h2 class="sec-title">可能性空间</h2>';
     if(active.length===0){
       h += '<div class="empty"><span class="empty-ico">◆</span>还没有可能性空间<br>去「空间」页创建你的第一个兴趣空间吧</div>';
@@ -2034,7 +2406,7 @@ const Views = {
         h += '<div class="space-card" data-action="open-space" data-id="'+sp.id+'" style="--sc:'+sp.color+'">'+
                '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
                '<div class="space-name">'+esc(sp.name)+'</div>'+
-               '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+' · '+(sp.categories||[]).length+' 个确定</div>'+
+               '<div class="space-meta">'+(isTodayView?'今日':'当日')+' '+fmtMin(Rhythm.daySpaceMinutes(hd, sp.id))+' · '+(sp.categories||[]).length+' 个确定</div>'+
              '</div>';
       }
       h += '</div>';
@@ -2120,77 +2492,84 @@ const Views = {
     else if(S.spaceTab==='todos') h += spTodosHtml(sp);
     return h;
   },
-  /* —— 节律表 —— */
+  /* —— 节律表（支持浏览任意一天） —— */
   rhythm(){
     const now = Date.now();
     const dk = D.dateKey(now);
-    const doc = dayDoc(dk);
+    const rd = S.rhythmDay || dk;                       // 正在查看的日期
+    const isTodayView = rd === dk;
+    const doc = dayDoc(rd);
     const spaces = S.spaces.filter(x=>!x.archived);
-    const Q = Rhythm.quota();
-    const consumed = Rhythm.consumedMinutes(dk, now);
+    const Q = Rhythm.quotaFor(rd);
+    const consumed = Rhythm.consumedMinutes(rd, now);
     const remain = Math.max(0, Q - consumed);
     let h = '<section class="sec"><h2 class="sec-title">节律表</h2>';
+    /* 历史浏览条（含日历选择与全局情绪） */
+    h += dayNavHtml('rhythm');
     /* 统计卡 */
-    h += '<div class="card card--mark pad" data-bind="quota" style="margin-bottom:16px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
+    h += '<div class="card card--mark pad"'+(isTodayView?' data-bind="quota"':'')+' style="margin-bottom:16px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">'+
         '<div style="font-weight:700;font-size:15px">节律递归时间</div>'+
-        '<div class="num" style="font-size:12.5px;color:var(--text-2)">今日额度 '+fmtMin(Q)+'</div>'+
+        '<button class="btn btn--small num" data-action="quota-edit" style="flex:none">'+(isTodayView?'今日额度':'当日额度')+' '+fmtMin(Q)+' ✎</button>'+
       '</div>'+
       '<div class="prog" style="height:10px"><div class="prog-bar" data-q-bar style="width:'+Math.min(100, consumed/Q*100).toFixed(1)+'%"></div></div>'+
       '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px">'+
         '<span style="color:var(--text-2)">已消耗 <b class="num" data-q-used>'+fmtMin(consumed)+'</b></span>'+
         '<span>剩余 <b class="num" data-q-remain style="color:var(--accent)">'+fmtMin(remain)+'</b></span>'+
       '</div>';
-    const bySpace = spaces.map(sp=>({sp, min:Rhythm.todaySpaceMinutes(sp.id)})).filter(x=>x.min>0);
+    const bySpace = spaces.map(sp=>({sp, min:Rhythm.daySpaceMinutes(rd, sp.id)})).filter(x=>x.min>0);
     if(bySpace.length){
-      h += '<div class="sec-sub" style="margin:12px 0 4px">可能性递归时间 · 今日转化</div>';
+      h += '<div class="sec-sub" style="margin:12px 0 4px">可能性递归时间 · 当日转化</div>';
       for(const x of bySpace){
         h += '<div class="kv"><span class="k"><span class="dot" style="background:'+x.sp.color+'"></span>'+esc(x.sp.name)+'</span><span class="v num">'+fmtMin(x.min)+'</span></div>';
       }
     }else{
-      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:10px">今日还没有可能性递归消耗 — 在下方空间卡片点击「可能性递归」开始</div>';
+      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:10px">'+
+        (isTodayView ? '今日还没有可能性递归消耗 — 在下方空间卡片点击「可能性递归」开始' : '这一天没有可能性递归消耗记录')+'</div>';
     }
     h += '</div>';
     /* 24h 时间带 */
-    const slices = S.sessions.filter(s=>s.day===dk && s.end!=null).sort((a,b)=>a.start-b.start);
-    const activeSlices = Rhythm.activeSlices().filter(s=>s.day===dk);
-    h += '<div class="sec-sub">今日递归时间带</div>';
+    const slices = S.sessions.filter(s=>s.day===rd && s.end!=null).sort((a,b)=>a.start-b.start);
+    const activeSlices = isTodayView ? Rhythm.activeSlices().filter(s=>s.day===rd) : [];
+    h += '<div class="sec-sub">'+(isTodayView?'今日':'当日')+'递归时间带</div>';
     h += '<div class="rh-track">'+
            slices.map(s=>bandHtml(s, false)).join('')+
            activeSlices.map(s=>bandHtml(s, true)).join('')+
-           '<div class="rh-now" style="left:'+((now - D.dkToTs(dk)) / 86400000 * 100).toFixed(3)+'%"></div>'+
+           (isTodayView ? '<div class="rh-now" style="left:'+((now - D.dkToTs(rd)) / 86400000 * 100).toFixed(3)+'%"></div>' : '')+
          '</div>';
     if(slices.length===0 && activeSlices.length===0){
-      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">还没有递归记录，时间带会在开始递归后自动绘制</div>';
+      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">这一天还没有递归记录</div>';
     }
     /* 自流转日程 */
-    h += '<div class="sec-sub" style="margin-top:18px">自流转 · 今日日程</div>';
-    h += slotListHtml();
-    /* 手动递归：空间卡片双按钮 */
-    h += '<div class="sec-sub" style="margin-top:18px">可能性递归 · 手动</div>';
-    if(spaces.length===0){
-      h += '<div class="empty"><span class="empty-ico">◇</span>还没有可能性空间<br>创建空间后，即可用空间消耗节律递归时间</div>';
-    }else{
-      h += '<div class="grid-2">';
-      for(const sp of spaces){
-        const acts = Rhythm.activeForSpace(sp.id);
-        const isAct = acts.length>0;
-        h += '<div class="space-card rh-space'+(isAct?' on':'')+'" data-bind="rec" data-space="'+sp.id+'" style="--sc:'+sp.color+'">'+
-               '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
-               '<div class="space-name">'+esc(sp.name)+'</div>'+
-               '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div>'+
-               (isAct?'<div class="rec-live num" data-rec-t>'+fmtDur(now - acts[0].start)+'</div>':'')+
-               '<div style="display:flex;gap:8px;margin-top:4px">'+
-                 '<button class="btn btn--small" style="flex:1" data-action="rhythm-iter" data-id="'+sp.id+'">确定性迭代</button>'+
-                 '<button class="btn btn--small '+(isAct?'btn--danger':'btn--primary')+'" style="flex:1" data-action="rhythm-rec" data-id="'+sp.id+'">'+(isAct?'停止':'可能性递归')+'</button>'+
-               '</div>'+
-             '</div>';
+    h += '<div class="sec-sub" style="margin-top:18px">自流转 · '+(isTodayView?'今日':'当日')+'日程</div>';
+    h += slotListHtml(rd, isTodayView);
+    /* 手动递归（仅今天可用） */
+    if(isTodayView){
+      h += '<div class="sec-sub" style="margin-top:18px">可能性递归 · 手动</div>';
+      if(spaces.length===0){
+        h += '<div class="empty"><span class="empty-ico">◇</span>还没有可能性空间<br>创建空间后，即可用空间消耗节律递归时间</div>';
+      }else{
+        h += '<div class="grid-2">';
+        for(const sp of spaces){
+          const acts = Rhythm.activeForSpace(sp.id);
+          const isAct = acts.length>0;
+          h += '<div class="space-card rh-space'+(isAct?' on':'')+'" data-bind="rec" data-space="'+sp.id+'" style="--sc:'+sp.color+'">'+
+                 '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
+                 '<div class="space-name">'+esc(sp.name)+'</div>'+
+                 '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div>'+
+                 (isAct?'<div class="rec-live num" data-rec-t>'+fmtDur(now - acts[0].start)+'</div>':'')+
+                 '<div style="display:flex;gap:8px;margin-top:4px">'+
+                   '<button class="btn btn--small" style="flex:1" data-action="rhythm-iter" data-id="'+sp.id+'">确定性迭代</button>'+
+                   '<button class="btn btn--small '+(isAct?'btn--danger':'btn--primary')+'" style="flex:1" data-action="rhythm-rec" data-id="'+sp.id+'">'+(isAct?'停止':'可能性递归')+'</button>'+
+                 '</div>'+
+               '</div>';
+        }
+        h += '</div>';
       }
-      h += '</div>';
     }
-    /* 时间轴日记 */
+    /* 时间轴日记（任意一天都可以补记） */
     h += '<div class="sec-sub" style="margin-top:18px">时间轴日记</div>';
-    h += '<button class="btn btn--primary btn--block" data-action="rhythm-entry" style="margin-bottom:12px">＋ 记录此刻的想法</button>';
+    h += '<button class="btn btn--primary btn--block" data-action="rhythm-entry" style="margin-bottom:12px">＋ 记录想法'+(isTodayView?'（此刻）':'')+'</button>';
     const entries = [...(doc.rhythmEntries||[])].sort((a,b)=>a.at<b.at?-1:1);
     if(entries.length===0){
       h += '<div class="empty"><span class="empty-ico">📔</span>以时间为标签的日记<br>记录一天24小时的想法与活动</div>';
@@ -2269,7 +2648,14 @@ const VIEW_TITLES = {home:'首页', todos:'事务待办', spaces:'可能性空�
 function renderView(){
   const root = document.getElementById('view-root');
   const ae = document.activeElement;
-  if(ae && root.contains(ae)){ scheduleRender(); return; }  // 保护输入焦点
+  if(ae && root.contains(ae)){
+    // 只有正在输入的输入框才需要保护焦点（重渲染会打断输入）。
+    // 按钮被点击后保持焦点会无限推迟重渲染，表现为"点空白处才变化"——
+    // 非输入元素先失焦再重建。
+    const tag = ae.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT'){ scheduleRender(); return; }
+    try{ ae.blur(); }catch(e){}
+  }
   let html;
   if(S.view==='space'){
     const sp = spaceById(S.spaceId);
@@ -2285,7 +2671,7 @@ function renderView(){
   collectBindings();
 }
 
-/* 从存储重读全部实体（导入/多标签页同步用） */
+/* 从存储重读全部实体（导入/多标签页同步用），含旧数据迁移 */
 function refreshFromStorage(){
   S.meta = Store.get('meta', {});
   S.settings = {...CONFIG.DEFAULT_SETTINGS, ...Store.get('settings', {})};
@@ -2295,6 +2681,20 @@ function refreshFromStorage(){
   S.sessions = Store.get('sessions', []);
   S.days.clear();
   S.confirmMap.clear();
+  let todosChanged = false;
+  for(const t of S.todos){
+    /* 迁移1：旧版单条完成记录 lastCompletedKey → 按天集合 doneKeys */
+    if(!Array.isArray(t.doneKeys)){
+      t.doneKeys = t.lastCompletedKey != null ? [t.lastCompletedKey] : [];
+      todosChanged = true;
+    }
+    /* 迁移2：变红默认阈值 120→30 分钟（仅迁移从未自定义过的卡片） */
+    if(t.thresholdRedMin===120 && t.thresholdYellowMin===240){
+      t.thresholdRedMin = 30;
+      todosChanged = true;
+    }
+  }
+  if(todosChanged) Store.set('todos', S.todos);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2391,6 +2791,10 @@ const Debug = {
       {id:uid('cn_'), spaceId:sp1.id, categoryId:'cat_d1_0', title:'五十音图平假名速记', note:'あ 安 → 阿……用汉字来源联想记忆。', images:[], createdAt:now, updatedAt:now}
     );
     const today = D.dateKey(now), yest = D.dateKey(D.addDaysTs(now,-1));
+    const mkIter = (emoji, tags, note) => ({id:uid('di_'), emoji, tags, note, images:[], createdAt:now, updatedAt:now, catId:null});
+    dayDoc(today).spaceRecords[sp1.id] = [mkIter('😄', ['五十音复习','单词50个'], '状态不错，平假名基本记住了。')];
+    dayDoc(today).spaceRecords[sp2.id] = [mkIter('🙂', ['速写练习'], '画了两张人物速写，手有点生。')];
+    dayDoc(yest).spaceRecords[sp1.id] = [mkIter('😐', ['五十音'], '开始学五十音。')];
     if(S.sessions.length===0){
       const t1 = D.hhmmToTs(D.dkToTs(today),'08:00'), t2 = D.hhmmToTs(D.dkToTs(today),'09:30');
       if(t2 <= now) S.sessions.push({id:uid('rs_'), spaceId:sp1.id, mode:'manual', day:today, start:t1, end:t2, endedBy:'manual', note:'', scheduleId:null});
@@ -2398,10 +2802,7 @@ const Debug = {
       if(t4 <= now) S.sessions.push({id:uid('rs_'), spaceId:sp2.id, mode:'manual', day:today, start:t3, end:t4, endedBy:'manual', note:'', scheduleId:null});
       saveSessions();
     }
-    dayDoc(today).spaceRecords[sp1.id] = {emoji:'😄', tags:['五十音复习','单词50个'], note:'状态不错，平假名基本记住了。', images:[], updatedAt:now};
-    dayDoc(today).spaceRecords[sp2.id] = {emoji:'🙂', tags:['速写练习'], note:'画了两张人物速写，手有点生。', images:[], updatedAt:now};
     dayDoc(today).rhythmEntries.push({id:uid('re_'), at:'08:30', text:'晨间散步时想到的新点子', images:[], createdAt:now});
-    dayDoc(yest).spaceRecords[sp1.id] = {emoji:'😐', tags:['五十音'], note:'开始学五十音。', images:[], updatedAt:now};
     saveDay(today); saveDay(yest);
     saveSpaces(); saveTodos(); saveCatnotes();
     scheduleRender();
