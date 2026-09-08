@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<title>可能性空间</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   1. 设计变量与基础重置
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#F2F4F8; --card:#FFFFFF; --line:#D8DEE9; --line-strong:#C4CDDA;
+  --text:#232B38; --text-2:#6B7689; --accent:#2E6BE6; --accent-soft:#E8F0FD; --accent-dark:#1F4FAD;
+  --gold:#C77F1F; --gold-soft:#FCF3E2; --green:#1F8A57; --green-soft:#E6F4EC;
+  --red:#C94440; --red-soft:#FBE9E8; --blue-soft:#E9F1FE; --gray:#8A93A3; --gray-soft:#EEF0F4;
+  --radius:4px;
+  --shadow:0 1px 3px rgba(35,43,56,.06);
+  --shadow-lg:0 8px 24px rgba(35,43,56,.14);
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+img{max-width:100%;display:block}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:3px}
+.num{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+
+/* ══════════════════════════════════════════════════════════════
+   2. 应用框架：顶栏 / 视图容器 / 底部Tab
+   ══════════════════════════════════════════════════════════════ */
+#app-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+.hdr-left{display:flex;align-items:center;gap:4px;min-width:0}
+.hdr-title{font-weight:700;font-size:16px;letter-spacing:.5px;padding-left:10px;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:14px;background:var(--accent);border-radius:1px}
+.hdr-right{display:flex;align-items:center;gap:2px}
+.hdr-clock{font-size:13px;color:var(--text-2);margin-right:6px}
+.icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:none;background:none;border-radius:var(--radius);color:var(--text-2);font-size:15px;flex:none}
+.icon-btn:active{background:var(--gray-soft)}
+.icon-btn svg{width:20px;height:20px}
+#view-root{max-width:720px;margin:0 auto;padding:16px 14px 96px}
+#tabbar{position:fixed;bottom:0;left:0;right:0;z-index:20;background:#fff;border-top:1px solid var(--line);
+  display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 0 6px;color:var(--text-2);font-size:11px;background:none;border:none;position:relative}
+.tab svg{width:22px;height:22px}
+.tab::before{content:'';width:18px;height:2px;background:var(--accent);border-radius:1px;opacity:0;transform:translateY(-1px);transition:opacity .15s}
+.tab.on{color:var(--accent)}
+.tab.on::before{opacity:1}
+.warn-banner{background:var(--gold-soft);border:1px solid #EBD6AE;color:#8A6116;font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-bottom:14px}
+
+/* ══════════════════════════════════════════════════════════════
+   3. 卡片 / 区块 / 按钮 / 表单 / 标签
+   ══════════════════════════════════════════════════════════════ */
+.sec{margin-bottom:24px}
+.sec-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text-2);letter-spacing:2px;margin:0 0 10px}
+.sec-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:1px}
+.sec-title .sec-extra{margin-left:auto;letter-spacing:0;font-weight:400;font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);position:relative}
+.card.pad{padding:16px}
+.card--mark::before{content:'';position:absolute;left:-1px;top:-1px;width:12px;height:2px;background:var(--accent)}
+.card--mark::after{content:'';position:absolute;left:-1px;top:-1px;width:2px;height:12px;background:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-size:14px;
+  border-radius:var(--radius);border:1px solid var(--line-strong);background:#fff;color:var(--text);user-select:none}
+.btn:active{transform:translateY(1px)}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--danger{color:var(--red);border-color:var(--red)}
+.btn--ghost{background:transparent;border-color:transparent;color:var(--accent)}
+.btn--small{padding:5px 10px;font-size:12px}
+.btn--block{width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.input,.select,.textarea{width:100%;padding:9px 12px;border:1px solid var(--line-strong);border-radius:var(--radius);
+  font-size:14px;background:#fff;color:var(--text)}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+.textarea{resize:vertical;min-height:80px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:6px}
+.field .hint{font-size:12px;color:var(--text-2);margin-top:4px}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+.chip{display:inline-flex;align-items:center;padding:4px 11px;font-size:12px;border:1px solid var(--line-strong);
+  border-radius:2px;background:#fff;color:var(--text-2);user-select:none}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark)}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:2px;
+  background:var(--accent-soft);color:var(--accent-dark);border:1px solid #C9DCFA}
+.badge--space{background:var(--space-soft,#E8F0FD);color:var(--space-color,#1F4FAD);border-color:var(--space-line,#C9DCFA)}
+.empty{padding:28px 16px;text-align:center;color:var(--text-2);font-size:13px;border:1px dashed var(--line-strong);border-radius:var(--radius)}
+.empty .empty-ico{font-size:28px;margin-bottom:8px;display:block}
+.prog{height:8px;background:var(--gray-soft);border-radius:4px;overflow:hidden}
+.prog-bar{height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--text-2)}
+.kv .v{font-weight:600;text-align:right}
+
+/* ══════════════════════════════════════════════════════════════
+   4. 待办卡片状态（蓝/黄/红 → 确认绿+红问号 → 完成灰+绿勾）
+   ══════════════════════════════════════════════════════════════ */
+.todo-card{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;overflow:hidden;margin-bottom:10px;transition:background .2s,border-color .2s}
+.todo-card.t-yellow{border-left-color:var(--gold);background:var(--gold-soft);border-color:#F0DFC2}
+.todo-card.t-red{border-left-color:var(--red);background:var(--red-soft);border-color:#F0C6C4}
+.todo-card.t-confirm{border-left-color:var(--green);background:var(--green-soft);border-color:#BFE3D0}
+.todo-card.t-done{border-left-color:var(--gray);background:var(--gray-soft);border-color:var(--line)}
+.todo-main{flex:1;min-width:0;padding:12px 12px 12px 14px}
+.todo-title{font-weight:600;font-size:14.5px}
+.todo-card.t-done .todo-title{color:var(--text-2);text-decoration:line-through}
+.todo-sub{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.todo-cd{font-size:12px;color:var(--text-2)}
+.todo-card.t-yellow .todo-cd{color:var(--gold);font-weight:600}
+.todo-card.t-red .todo-cd{color:var(--red);font-weight:700}
+.todo-note{margin-top:5px;font-size:12px;color:var(--text-2);white-space:pre-wrap}
+.todo-hint{margin-top:5px;font-size:12px;color:var(--green);font-weight:600}
+.todo-edit{position:absolute;top:6px;right:6px;width:26px;height:26px;color:var(--text-2);background:rgba(255,255,255,.7);border-radius:3px}
+.todo-main{padding-right:38px}
+.sec-sub{margin:16px 0 8px;font-size:12px;font-weight:700;color:var(--text-2);letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.sec-sub .cnt{background:var(--gray-soft);color:var(--text-2);border-radius:8px;padding:0 8px;font-size:11px;font-weight:400}
+.todo-side{width:42px;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;background:rgba(255,255,255,.6)}
+.todo-side.q{color:var(--red);animation:popIn .2s ease}
+.todo-side.ok{color:var(--green);animation:popIn .2s ease}
+@keyframes popIn{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ══════════════════════════════════════════════════════════════
+   5. 弹窗 / 确认框 / Toast
+   ══════════════════════════════════════════════════════════════ */
+#modal-root:empty{display:none}
+.modal-mask{position:fixed;inset:0;background:rgba(20,26,36,.45);display:flex;align-items:flex-end;justify-content:center;z-index:100;animation:fadeIn .15s}
+.modal-panel{background:#fff;border-radius:8px 8px 0 0;width:100%;max-width:480px;max-height:86vh;overflow-y:auto;
+  padding:20px 18px calc(18px + env(safe-area-inset-bottom));animation:slideUp .18s}
+.modal-title{font-weight:700;font-size:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-title .x{background:none;border:none;color:var(--text-2);font-size:20px;line-height:1;padding:4px}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions .btn{flex:1}
+@media (min-width:520px){.modal-mask{align-items:center}.modal-panel{border-radius:8px;margin:24px}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+#toast-root{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom));z-index:200;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:rgba(35,43,56,.92);color:#fff;font-size:13px;padding:9px 16px;border-radius:var(--radius);max-width:82vw;animation:slideUp .18s}
+.toast.err{background:rgba(201,68,64,.95)}
+
+/* ══════════════════════════════════════════════════════════════
+   6. 首页 / 空间网格 / 设置页
+   ══════════════════════════════════════════════════════════════ */
+.home-hero{padding:26px 20px 22px;margin-bottom:24px;background:linear-gradient(135deg,#FFFFFF 0%,#EEF4FD 100%)}
+.hero-date{font-size:13px;color:var(--text-2);letter-spacing:1px;margin-bottom:6px}
+.hero-clock{font-size:42px;font-weight:700;line-height:1.1}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.space-card{background:#fff;border:1px solid var(--line);border-top:3px solid var(--sc,var(--accent));border-radius:var(--radius);
+  padding:14px 12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;box-shadow:var(--shadow);position:relative}
+.space-card:active{transform:translateY(1px)}
+.space-ico{font-size:26px;line-height:1.2}
+.space-name{font-weight:600;font-size:15px;word-break:break-all}
+.space-meta{font-size:12px;color:var(--text-2)}
+.grid-2 .add-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-2);
+  border:1px dashed var(--line-strong);background:transparent;box-shadow:none;min-height:104px;font-size:13px}
+.grid-2 .add-card .plus{font-size:22px;color:var(--accent)}
+
+/* ══════════════════════════════════════════════════════════════
+   7. 空间详情（统计/日历/分类/图片）
+   ══════════════════════════════════════════════════════════════ */
+.sp-ico{width:56px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none;border:1px solid var(--line)}
+.stat-row{display:flex;margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.stat{flex:1;text-align:center}
+.stat-v{font-weight:700;font-size:16px}
+.stat-k{font-size:11px;color:var(--text-2);margin-top:2px}
+.color-row{display:flex;gap:10px}
+.color-dot{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line-strong);cursor:pointer;transition:transform .12s}
+.color-dot.on{box-shadow:0 0 0 2px var(--accent);transform:scale(1.12)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wd span{text-align:center;font-size:11px;color:var(--text-2);padding:2px 0}
+.cal-day{display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 2px;border:1px solid var(--line);border-radius:3px;background:#fff;cursor:pointer;min-height:54px;overflow:hidden}
+.cal-day.has{background:var(--accent-soft);border-color:#B9D1F5}
+.cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.cal-n{font-size:13px;font-weight:600}
+.cal-day.today .cal-n{color:var(--accent)}
+.cal-e{font-size:15px;line-height:1.1}
+.cal-t{font-size:9px;color:var(--text-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.cat-ico{color:var(--accent);font-size:16px}
+.cat-name{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-cnt{font-size:12px;color:var(--text-2);flex:none}
+.cat-item .icon-btn{width:28px;height:28px;flex:none;font-size:14px}
+.chip .x-btn{background:none;border:none;color:inherit;font-size:13px;margin-left:6px;padding:0 2px;cursor:pointer;opacity:.7;line-height:1}
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.img-thumb{border:1px solid var(--line);border-radius:3px;overflow:hidden;aspect-ratio:1;background:var(--gray-soft);display:flex;align-items:center;justify-content:center}
+.img-thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ══════════════════════════════════════════════════════════════
+   8. 节律表（统计卡/时间带/递归卡片/日记）
+   ══════════════════════════════════════════════════════════════ */
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.rh-track{position:relative;height:30px;background:var(--gray-soft);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.rh-band{position:absolute;top:0;bottom:0;min-width:2px;border-radius:2px;opacity:.85}
+.rh-band.active{animation:pulse 1.6s ease infinite}
+@keyframes pulse{0%,100%{opacity:.95}50%{opacity:.5}}
+.rh-now{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--red);z-index:3;pointer-events:none}
+.rh-space.on{outline:2px solid var(--sc);outline-offset:1px}
+.rec-live{font-size:13px;font-weight:700;color:var(--sc,var(--accent));margin-top:2px}
+.rh-entry .rh-time{font-weight:700;color:var(--accent);font-size:14px}
+.slot-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px}
+.slot-info{flex:1;min-width:0}
+.slot-time{font-weight:600;font-size:14px}
+.slot-badge{font-size:11px;padding:2px 8px;border-radius:2px;flex:none}
+.sb-upcoming{background:var(--blue-soft);color:var(--accent-dark)}
+.sb-active{background:var(--green-soft);color:var(--green)}
+.sb-done{background:var(--gray-soft);color:var(--text-2)}
+.sb-missed{background:var(--red-soft);color:var(--red)}
+
+/* ══════════════════════════════════════════════════════════════
+   9. 首页（收纳卡/紧急行/进行中指示）与图片角标
+   ══════════════════════════════════════════════════════════════ */
+.home-todo-card{cursor:pointer}
+.home-todo-ico{width:42px;height:42px;border-radius:6px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+.home-todo-arrow{color:var(--text-2);font-size:12px}
+.home-urgent{margin-top:12px;padding:9px 12px;background:var(--red-soft);border:1px solid #F0C6C4;border-radius:3px;font-size:13px;color:var(--text)}
+.home-urgent.ok{background:var(--green-soft);border-color:#BFE3D0}
+.home-live{margin-top:10px;font-size:13px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:7px}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulseDot 1.2s ease infinite}
+@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.35}}
+.img-thumb{position:relative;cursor:pointer}
+.img-x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(20,26,36,.6);color:#fff;border:none;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <div class="hdr-left">
+      <button class="icon-btn hidden" id="back-btn" data-action="back" aria-label="返回">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg>
+      </button>
+      <div class="hdr-title" id="hdr-title">首页</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-clock num" data-bind="clock">--:--:--</div>
+      <button class="icon-btn" data-action="open-settings" aria-label="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+  <main id="view-root"></main>
+  <nav id="tabbar">
+    <button class="tab" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 L12 4 L21 11"/><path d="M5.5 9.5 V20 H18.5 V9.5"/></svg><span>首页</span></button>
+    <button class="tab" data-tab="todos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="3.5" height="3.5" rx="1"/><path d="M11 6.5 H20"/><rect x="4" y="12" width="3.5" height="3.5" rx="1"/><path d="M11 13.5 H20"/><rect x="4" y="19" width="3.5" height="3.5" rx="1"/><path d="M11 20.5 H20"/></svg><span>待办</span></button>
+    <button class="tab" data-tab="spaces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L21 12 L12 21 L3 12 Z"/><path d="M12 8 L16 12 L12 16 L8 12 Z"/></svg><span>空间</span></button>
+    <button class="tab" data-tab="rhythm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9 V13 L15 15"/><path d="M9 2.5 H15"/></svg><span>节律表</span></button>
+  </nav>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<input type="file" id="file-input" hidden>
+<script>
+'use strict';
+/* ══════════════════════════════════════════════════════════════
+   0. CONFIG 常量与默认值
+   ══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  APP_NAME:'可能性空间', VERSION:'1.0.0', SCHEMA:1,
+  PREFIX:'ps1:',
+  DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:120, confirmSeconds:10},
+  SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
+  PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
+  EMOJIS:['😄','🙂','😌','😐','😔','😢','😡','🤩','😴','😮','🤔','🥰','😅','🥳'],
+  SPACE_ICONS:['📚','🎨','💻','🎬','🎧','📷','✍️','🎮','🏃','🍳','🗣️','🎹','📖','🧪'],
+  HEARTBEAT_CUTOFF_MS:2*60*60*1000,
+  MAX_IMG_PER_RECORD:9,
+  T:{cancel:'取消',ok:'确定',save:'保存',delete:'删除',edit:'编辑',back:'返回'}
+};
+
+/* ══════════════════════════════════════════════════════════════
+   1. Utils 工具函数
+   ══════════════════════════════════════════════════════════════ */
+const uid = p => p + Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-2);
+const clamp = (v,lo,hi) => Math.min(hi, Math.max(lo, v));
+const pad2 = n => String(n).padStart(2,'0');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escLn = s => esc(s).replace(/\n/g,'<br>');
+
+/* 时长格式化：ms → 「X小时Y分」/「M:SS」/「S秒」 */
+function fmtDur(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), ss = s%60;
+  if(h>0) return h+'小时'+(m>0?m+'分':'');
+  if(m>0) return m+':'+pad2(ss);
+  return ss+'秒';
+}
+/* 剩余时间格式化：正=还剩，负=已超时 */
+function fmtRemain(ms){
+  if(ms>=0) return '还剩 '+fmtDur(ms);
+  return '已超时 '+fmtDur(-ms);
+}
+/* 分钟 → 「8小时」/「1小时30分」 */
+function fmtMin(min){
+  min = Math.round(min);
+  if(min<=0) return '0分钟';
+  if(min%60===0) return (min/60)+'小时';
+  return Math.floor(min/60)>0 ? Math.floor(min/60)+'小时'+(min%60)+'分' : min+'分钟';
+}
+function download(filename, text){
+  const blob = new Blob([text], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. Dates 日期时间（全部基于本地时区）
+   ══════════════════════════════════════════════════════════════ */
+const D = {
+  WEEKDAYS:['日','一','二','三','四','五','六'],
+  dateKey(ts){ const d = new Date(ts); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); },
+  dayStart(ts){ const d = new Date(ts); d.setHours(0,0,0,0); return d.getTime(); },
+  hhmmToTs(dayTs, hhmm){ const [h,m] = String(hhmm).split(':').map(Number); const d = new Date(dayTs); d.setHours(h||0, m||0, 0, 0); return d.getTime(); },
+  tsToHHMM(ts){ const d = new Date(ts); return pad2(d.getHours())+':'+pad2(d.getMinutes()); },
+  tsToClock(ts){ const d = new Date(ts); return pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); },
+  addDaysTs(ts, n){ const d = new Date(ts); d.setDate(d.getDate()+n); return d.getTime(); },
+  dkToTs(dk){ return new Date(dk+'T00:00:00').getTime(); },
+  fmtDateCN(ts){ const d = new Date(ts); return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 周'+this.WEEKDAYS[d.getDay()]; },
+  fmtDateShort(dk){ const [y,m,dd] = dk.split('-').map(Number); return m+'月'+dd+'日'; },
+  weekdayOf(dk){ const [y,m,dd] = dk.split('-').map(Number); return new Date(y, m-1, dd).getDay(); }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   3. Store 存储层（localStorage，ps1: 前缀）
+   ══════════════════════════════════════════════════════════════ */
+const Store = {
+  ok:true,
+  test(){
+    try{ const k = CONFIG.PREFIX+'test'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }
+    catch(e){ return false; }
+  },
+  key(k){ return CONFIG.PREFIX+k; },
+  get(k, fb){
+    try{ const v = localStorage.getItem(this.key(k)); return v==null ? fb : JSON.parse(v); }
+    catch(e){ return fb; }
+  },
+  set(k, val){
+    try{ localStorage.setItem(this.key(k), JSON.stringify(val)); return true; }
+    catch(e){
+      if(!S.quotaWarned){ S.quotaWarned = true; UI.quotaAlert(); }
+      return false;
+    }
+  },
+  del(k){ try{ localStorage.removeItem(this.key(k)); }catch(e){} },
+  dayKey(dk){ return 'day:'+dk; },
+  imgKey(id){ return 'img:'+id; },
+  loadDay(dk){ return this.get(this.dayKey(dk), null); },
+  saveDay(dk, doc){ return this.set(this.dayKey(dk), doc); },
+  getImage(id){ return this.get(this.imgKey(id), null); },
+  saveImage(id, dataURL){ return this.set(this.imgKey(id), dataURL); },
+  /* 全部存储键（不含前缀） */
+  allKeys(){
+    const out = [];
+    try{ for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k && k.startsWith(CONFIG.PREFIX)) out.push(k.slice(CONFIG.PREFIX.length)); } }catch(e){}
+    return out;
+  },
+  usageBytes(){
+    let b = 0;
+    try{ for(const k of this.allKeys()){ b += (k.length + (localStorage.getItem(CONFIG.PREFIX+k)||'').length) * 2; } }catch(e){}
+    return b;
+  },
+  usageText(){
+    const b = this.usageBytes();
+    return b > 1048576 ? (b/1048576).toFixed(2)+' MB' : Math.round(b/1024)+' KB';
+  },
+  clearAll(){
+    for(const k of this.allKeys()){ this.del(k); }
+  },
+  /* 导出：全部数据合并为一个 JSON（未来原生App的兼容契约） */
+  exportJSON(){
+    const days = [];
+    for(const k of this.allKeys()){
+      if(k.startsWith('day:')){ days.push({date:k.slice(4), record:this.get(k,null)}); }
+    }
+    const images = {};
+    for(const k of this.allKeys()){
+      if(k.startsWith('img:')){ images[k.slice(4)] = this.get(k,null); }
+    }
+    return {
+      app:'possibility-space', schemaVersion:CONFIG.SCHEMA, appVersion:CONFIG.VERSION,
+      exportedAt:Date.now(),
+      settings:this.get('settings', CONFIG.DEFAULT_SETTINGS),
+      spaces:this.get('spaces', []),
+      todos:this.get('todos', []),
+      catnotes:this.get('catnotes', []),
+      sessions:this.get('sessions', []),
+      days, images
+    };
+  },
+  /* 导入：校验后覆盖写入，返回提示文案；失败抛错 */
+  importJSON(obj){
+    if(!obj || typeof obj !== 'object' || obj.app !== 'possibility-space') throw new Error('不是可能性空间的备份文件');
+    if(obj.schemaVersion !== CONFIG.SCHEMA) throw new Error('备份版本('+(obj.schemaVersion||'未知')+')与当前版本('+CONFIG.SCHEMA+')不兼容');
+    this.set('settings', obj.settings || CONFIG.DEFAULT_SETTINGS);
+    this.set('spaces', Array.isArray(obj.spaces)?obj.spaces:[]);
+    this.set('todos', Array.isArray(obj.todos)?obj.todos:[]);
+    this.set('catnotes', Array.isArray(obj.catnotes)?obj.catnotes:[]);
+    this.set('sessions', Array.isArray(obj.sessions)?obj.sessions:[]);
+    if(Array.isArray(obj.days)) for(const d of obj.days){ if(d && d.date) this.set('day:'+d.date, d.record); }
+    if(obj.images && typeof obj.images==='object') for(const id in obj.images){ this.set('img:'+id, obj.images[id]); }
+    const meta = this.get('meta', {}); meta.lastSavedAt = Date.now(); this.set('meta', meta);
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   4. State 内存镜像 + 渲染调度
+   ══════════════════════════════════════════════════════════════ */
+const S = {
+  view:'home', spaceId:null, backTarget:'home', dayFilter:null,
+  meta:{}, settings:{}, spaces:[], todos:[], catnotes:[], sessions:[],
+  days:new Map(),          // dk → day doc（已加载的每日文档）
+  confirmMap:new Map(),    // todoId → 确认截止时间戳（纯内存瞬态）
+  activeTimer:null,        // {tickFn} 弹窗内自增计时用
+  lastDay:null, lastHb:0, quotaWarned:false, renderPending:false,
+  pendingFileCb:null
+};
+/* 数据变更入口：执行 fn 后重渲染当前视图 */
+function mutate(fn){ fn(); scheduleRender(); }
+function scheduleRender(){
+  if(S.renderPending) return;
+  S.renderPending = true;
+  requestAnimationFrame(()=>{ S.renderPending = false; renderView(); });
+}
+function dayDoc(dk){
+  if(!S.days.has(dk)) S.days.set(dk, Store.loadDay(dk) || {spaceRecords:{},rhythmEntries:[],autoSchedules:[],updatedAt:Date.now()});
+  return S.days.get(dk);
+}
+function saveSpaces(){ Store.set('spaces', S.spaces); }
+function saveTodos(){ Store.set('todos', S.todos); }
+function saveCatnotes(){ Store.set('catnotes', S.catnotes); }
+function saveSessions(){ Store.set('sessions', S.sessions); }
+function saveSettings(){ Store.set('settings', S.settings); }
+function saveDay(dk){ Store.saveDay(dk, dayDoc(dk)); }
+const spaceById = id => S.spaces.find(x=>x.id===id) || null;
+const spaceNameOf = id => { const sp = spaceById(id); return sp ? sp.name : (id?'已删除空间':'—'); };
+
+/* ══════════════════════════════════════════════════════════════
+   5. TodoLogic 待办纯逻辑（状态机/到期计算，视图见阶段2）
+   ══════════════════════════════════════════════════════════════ */
+const TodoLogic = {
+  /* 当前这期到期的时间戳（可能已过=超时） */
+  currentDueAt(t, now){
+    if(t.repeat==='once') return t.dueAt;
+    if(t.repeat==='daily') return D.hhmmToTs(D.dayStart(now), t.dailyTime);
+    if(t.repeat==='weekly'){
+      const dk = D.dateKey(now), wd = D.weekdayOf(dk);
+      if((t.weekdays||[]).includes(wd)) return D.hhmmToTs(D.dayStart(now), t.weeklyTime);
+      let ts = D.dayStart(now);
+      for(let i=1;i<=7;i++){ ts = D.addDaysTs(ts,-1); if((t.weekdays||[]).includes(D.weekdayOf(D.dateKey(ts)))) return D.hhmmToTs(ts, t.weeklyTime); }
+      return null;
+    }
+    return null;
+  },
+  /* 完成后的「下一次」到期（用于展示） */
+  nextDueAt(t, now){
+    if(t.repeat==='once') return t.dueAt;
+    if(t.repeat==='daily'){ const today = D.hhmmToTs(D.dayStart(now), t.dailyTime); return now < today ? today : D.addDaysTs(today,1); }
+    if(t.repeat==='weekly'){
+      let ts = D.addDaysTs(D.dayStart(now),1);
+      for(let i=0;i<7;i++){ if((t.weekdays||[]).includes(D.weekdayOf(D.dateKey(ts)))) return D.hhmmToTs(ts, t.weeklyTime); ts = D.addDaysTs(ts,1); }
+      return null;
+    }
+    return null;
+  },
+  /* 完成归属键：本次完成记在哪一次到期上 */
+  occKey(t, now){
+    if(t.repeat==='once') return 'once';
+    if(t.repeat==='daily') return D.dateKey(now);
+    if(t.repeat==='weekly'){ const due = this.currentDueAt(t, now); return due ? D.dateKey(due) : null; }
+    return null;
+  },
+  /* 有效状态（派生值，不入库） */
+  effStatus(t, now){
+    if(t.lastCompletedKey == null) return 'pending';
+    return t.lastCompletedKey === this.occKey(t, now) ? 'done' : 'pending';
+  },
+  /* 到期时间（无期限备忘返回 null） */
+  dueAt(t, now){
+    if(t.repeat==='once' && !t.dueAt) return null;
+    return this.currentDueAt(t, now);
+  },
+  /* pending 态的颜色等级 */
+  color(t, now){
+    const due = this.dueAt(t, now);
+    if(due == null) return 'blue';
+    const remainMs = due - now;
+    if(remainMs <= (t.thresholdRedMin??120)*60000) return 'red';
+    if(remainMs <= (t.thresholdYellowMin??240)*60000) return 'yellow';
+    return 'blue';
+  },
+  /* 点击待办卡片：pending→确认中(内存态) / 确认中→完成 / 完成→恢复 */
+  tap(t, now){
+    if(S.confirmMap.has(t.id)){  // 确认中 → 完成
+      t.lastCompletedKey = this.occKey(t, now);
+      t.completedAt = now;
+      S.confirmMap.delete(t.id);
+      saveTodos();
+      return;
+    }
+    const st = this.effStatus(t, now);
+    if(st==='pending'){          // 未完成 → 确认中（10秒内不确认则回退）
+      S.confirmMap.set(t.id, now + S.settings.confirmSeconds*1000);
+      return;
+    }
+    if(st==='done'){             // 已完成 → 恢复未完成
+      t.lastCompletedKey = null; t.completedAt = null;
+      saveTodos();
+      return;
+    }
+  },
+  /* ticker：确认窗口到期回退 */
+  confirmTick(now){
+    let changed = false;
+    for(const [id, dl] of S.confirmMap){
+      if(now > dl){ S.confirmMap.delete(id); changed = true; }
+    }
+    if(changed){
+      // 到期卡片定向换回 pending 配色（绑定的元素由 ticker 统一刷新）
+      const els = document.querySelectorAll('.todo-card.t-confirm');
+      els.forEach(el=>{
+        const id = el.dataset.id;
+        const t = S.todos.find(x=>x.id===id);
+        if(t && !S.confirmMap.has(id)){
+          el.classList.remove('t-confirm');
+          el.classList.add('t-'+TodoLogic.color(t, now));
+          const side = el.querySelector('.todo-side'); if(side) side.innerHTML='';
+          const cf = el.querySelector('.todo-hint'); if(cf) cf.remove();
+        }
+      });
+    }
+    return changed;
+  },
+  /* 每张卡片每秒的定向刷新（状态类/侧边标记/倒计时文本/确认提示） */
+  tickEl(el, now){
+    const id = el.dataset.id;
+    const t = S.todos.find(x=>x.id===id);
+    if(!t) return;
+    const st = todoStatus(t, now);
+    const cls = st==='confirming' ? 't-confirm' : st==='done' ? 't-done' : 't-'+this.color(t, now);
+    if(!el.classList.contains(cls)){
+      el.classList.remove('t-blue','t-yellow','t-red','t-confirm','t-done');
+      el.classList.add(cls);
+    }
+    const side = el.querySelector('.todo-side');
+    if(side){
+      const want = st==='confirming' ? '<span class="q">?</span>' : st==='done' ? '<span class="ok">✓</span>' : '';
+      if(side.dataset.st !== st){ side.dataset.st = st; side.innerHTML = want; }
+    }
+    const cd = el.querySelector('[data-cd]');
+    if(cd){
+      const due = this.dueAt(t, now);
+      let txt;
+      if(st==='done'){
+        const nx = this.nextDueAt(t, now);
+        txt = nx ? '已完成 · 下次 '+this.fmtNextShort(nx, now) : '已完成';
+      }else if(due==null){
+        txt = '无期限';
+      }else{
+        txt = fmtRemain(due - now);
+      }
+      setText(cd, txt);
+    }
+    const main = el.querySelector('.todo-main');
+    let hint = el.querySelector('.todo-hint');
+    if(st==='confirming'){
+      const dl = S.confirmMap.get(id) || now;
+      const left = Math.max(0, Math.ceil((dl-now)/1000));
+      if(!hint && main){ hint = document.createElement('div'); hint.className = 'todo-hint'; main.appendChild(hint); }
+      if(hint) setText(hint, '再点一次确认完成 · '+left+'s');
+    }else if(hint){
+      hint.remove();
+    }
+  },
+  /* 「下一次到期」的简短展示：明天 20:00 / 9月21日 12:00 */
+  fmtNextShort(ts, now){
+    if(ts==null) return '—';
+    const tdk = D.dateKey(ts), tmk = D.dateKey(D.addDaysTs(now,1));
+    const hm = D.tsToHHMM(ts);
+    if(tdk===tmk) return '明天 '+hm;
+    return D.fmtDateShort(tdk)+' '+hm;
+  },
+  /* 卡片上的重复规则简述 */
+  repeatLabel(t){
+    if(t.repeat==='once') return t.dueAt ? D.fmtDateShort(D.dateKey(t.dueAt))+' '+D.tsToHHMM(t.dueAt) : '无期限';
+    if(t.repeat==='daily') return '每日 '+(t.dailyTime||'');
+    if(t.repeat==='weekly') return '每周'+(t.weekdays||[]).map(w=>'一二三四五六日'[w-1]).join('')+' '+(t.weeklyTime||'');
+    return '';
+  },
+  /* 首页「最紧急」行的倒计时刷新 */
+  tickUrgentEl(el, now){
+    const t = S.todos.find(x=>x.id===el.dataset.id);
+    const cd = el.querySelector('[data-cd]');
+    if(!t || !cd) return;
+    const due = this.dueAt(t, now);
+    if(todoStatus(t, now)==='done') setText(cd, '已完成');
+    else if(due==null) setText(cd, '无期限');
+    else setText(cd, fmtRemain(due - now));
+  }
+};
+/* 便捷状态查询（confirming 为内存态） */
+function todoStatus(t, now){
+  if(S.confirmMap.has(t.id)) return 'confirming';
+  return TodoLogic.effStatus(t, now);
+}
+function todoColorOf(t, now){
+  const st = todoStatus(t, now);
+  if(st==='confirming') return 'confirm';
+  if(st==='done') return 'done';
+  return TodoLogic.color(t, now);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6. Rhythm 节律引擎（额度核算/自流转/补算）
+   ══════════════════════════════════════════════════════════════ */
+/* 递归会话模型：S.sessions 里的每条 = 一天的切片 {id,spaceId,mode,day,start,end,endedBy,note,scheduleId}
+   已终结切片 end!=null；活跃切片 end=null（同一天内并行消耗额度，速率=并行数）。
+   时间核算单一事实来源 = 切片求和；额度的截断/跨午夜/补算全部收敛到 finalizeSessionsOnDay。 */
+const Rhythm = {
+  activeSlices(){ return S.sessions.filter(x=>x.end==null); },
+  activeManual(){ return S.sessions.find(x=>x.end==null && x.mode==='manual') || null; },
+  activeForSpace(spId){ return S.sessions.filter(x=>x.end==null && x.spaceId===spId); },
+  quota(){ return S.settings.rhythmQuotaMinutes || 480; },
+  dayStartMin(dk){ return D.dkToTs(dk); },
+  /* —— 统计 —— */
+  finalizedMs(dk, spaceId){
+    let sum = 0;
+    for(const s of S.sessions){
+      if(s.day===dk && s.end!=null && (!spaceId || s.spaceId===spaceId)) sum += s.end - s.start;
+    }
+    return sum;
+  },
+  activeMs(dk, spaceId, now){
+    let sum = 0;
+    for(const s of S.sessions){
+      if(s.end==null && (!dk || s.day===dk) && (!spaceId || s.spaceId===spaceId)) sum += Math.max(0, now - s.start);
+    }
+    return sum;
+  },
+  consumedMinutes(dk, now){ return (this.finalizedMs(dk) + this.activeMs(dk, null, now)) / 60000; },
+  remainingMinutes(now){ return Math.max(0, this.quota() - this.consumedMinutes(D.dateKey(now), now)); },
+  todaySpaceMinutes(spId){
+    const now = Date.now(), dk = D.dateKey(now);
+    return (this.finalizedMs(dk, spId) + this.activeMs(dk, spId, now)) / 60000;
+  },
+  totalSpaceMinutes(spId){
+    let sum = 0;
+    for(const s of S.sessions){ if(s.spaceId===spId && s.end!=null) sum += s.end - s.start; }
+    return (sum + this.activeMs(null, spId, Date.now())) / 60000;
+  },
+  /* 某天某空间的已终结时段（含进行中的今天，end 用 now 虚拟展示） */
+  sessionsOfDay(dk, spaceId){
+    const now = Date.now();
+    const out = S.sessions.filter(s=>s.day===dk && s.end!=null && (!spaceId || s.spaceId===spaceId))
+      .map(s=>({start:s.start, end:s.end, active:false}));
+    if(dk===D.dateKey(now)){
+      for(const s of S.sessions){
+        if(s.end==null && s.day===dk && (!spaceId || s.spaceId===spaceId)) out.push({start:s.start, end:now, active:true});
+      }
+    }
+    return out.sort((a,b)=>a.start-b.start);
+  },
+  /* —— 核心：在 day 上把指定活跃切片终结在 endTs（额度截断全局生效，返回 T*=额度耗尽时刻） ——
+     sweep：把该日全部区间（已终结+活跃裁剪到 horizon）按时间积分，找累积消耗达到额度 Qms 的最早时刻 */
+  finalizeSessionsOnDay(day, ids, endTs, reason){
+    const dayStart = this.dayStartMin(day);
+    const dayEnd = dayStart + 86400000;
+    const horizon = Math.min(endTs, dayEnd);
+    const active = S.sessions.filter(s=>s.end==null && s.day===day);
+    if(active.length===0) return Infinity;
+    const Qms = this.quota() * 60000;
+    const ints = [];
+    for(const s of S.sessions){
+      if(s.day!==day) continue;
+      if(s.end!=null){
+        if(s.end > s.start) ints.push({s:Math.max(s.start, dayStart), e:Math.min(s.end, dayEnd)});
+      }else{
+        const s0 = Math.max(s.start, dayStart), e0 = Math.min(horizon, dayEnd);
+        if(e0 > s0) ints.push({s:s0, e:e0});
+      }
+    }
+    const ev = [];
+    for(const iv of ints){ ev.push([iv.s, 1], [iv.e, -1]); }
+    ev.sort((a,b)=>a[0]-b[0]);
+    let rate = 0, prev = dayStart, acc = 0, Tstar = Infinity;
+    for(const [t, d] of ev){
+      if(rate > 0 && t > prev){
+        const need = Qms - acc;
+        if(rate * (t - prev) >= need){ Tstar = prev + need / rate; break; }
+        acc += rate * (t - prev);
+      }
+      prev = t; rate += d;
+    }
+    let changed = false;
+    for(const a of active){
+      const newEnd = Math.min(horizon, Tstar);
+      if(newEnd <= Math.max(a.start, dayStart)){
+        S.sessions = S.sessions.filter(s=>s.id!==a.id);   // 未消耗到额度，丢弃
+        changed = true;
+      }else if(ids.includes(a.id) || Tstar < horizon){
+        a.end = newEnd;
+        a.endedBy = (Tstar < horizon && newEnd < horizon) ? 'quota' : reason;
+        changed = true;
+      }
+    }
+    if(changed) saveSessions();
+    return Tstar;
+  },
+  /* 手动会话跨午夜切片：把 day<today 的部分逐日终结，续到今日 00:00。
+     旧切片在 finalize 后已封存（保留为历史记录），续片必须是新对象，否则会覆盖昨日记录。 */
+  sliceManualAcrossDays(m, today){
+    while(m && m.day < today){
+      const prevDay = m.day;
+      const dayEnd = this.dayStartMin(prevDay) + 86400000;
+      const {id, spaceId, mode, note, scheduleId} = m;
+      this.finalizeSessionsOnDay(prevDay, [id], dayEnd, 'midnight');
+      const old = S.sessions.find(s=>s.id===id);
+      if(!old || old.end !== dayEnd || old.endedBy !== 'midnight') return null;  // 被额度截断或未消耗 → 会话已结束
+      const next = D.dateKey(dayEnd);
+      m = {id:uid('rs_'), spaceId, mode, day:next, start:this.dayStartMin(next), end:null, endedBy:null, note, scheduleId};
+      S.sessions.push(m);
+      saveSessions();
+    }
+    return m;
+  },
+  /* 跨午夜（App开着时由 ticker 触发） */
+  onDayChange(now){
+    const today = D.dateKey(now);
+    const m = this.activeManual();
+    if(m) this.sliceManualAcrossDays(m, today);
+  },
+  /* —— 自流转槽位 —— */
+  remainingMinutesOn(dk, now){ return Math.max(0, this.quota() - this.consumedMinutes(dk, now)); },
+  /* 某槽位从 s 起的已覆盖终点（含进行中的活跃切片，按墙钟实时） */
+  slotCoverage(dk, scheduleId, s){
+    const now = Date.now();
+    const segs = S.sessions.filter(x=>x.day===dk && x.scheduleId===scheduleId)
+      .map(x=>({s:x.start, e:x.end!=null?x.end:now})).sort((a,b)=>a.s-b.s);
+    let cov = s;
+    for(const seg of segs){
+      if(seg.e <= cov) continue;
+      if(seg.s > cov + 1000) break;
+      cov = seg.e;
+    }
+    return cov;
+  },
+  /* 某天槽位的惰性核算：把 [s, min(now,槽位结束)] 的未覆盖段按额度截断补上（进行中的剩余段由 ticker 接手） */
+  reconcileDay(dk){
+    const now = Date.now();
+    if(this.remainingMinutesOn(dk, now) <= 0) return;   // 该日额度已尽
+    const doc = dayDoc(dk);
+    for(const slot of doc.autoSchedules||[]){
+      const s = D.hhmmToTs(D.dkToTs(dk), slot.start);
+      const e = D.hhmmToTs(D.dkToTs(dk), slot.end);
+      const horizon = Math.min(now, e);
+      if(horizon <= s) continue;                          // 还没开始
+      const cov = this.slotCoverage(dk, slot.id, s);
+      if(cov >= horizon) continue;                        // 已覆盖到现在
+      const slice = {id:uid('rs_'), spaceId:slot.spaceId, mode:'auto', day:dk, start:cov, end:null, endedBy:null, note:slot.note||'', scheduleId:slot.id};
+      S.sessions.push(slice);
+      this.finalizeSessionsOnDay(dk, [slice.id], horizon, horizon>=e ? 'slotEnd' : 'reconcile');
+    }
+  },
+  /* 到点自动开始/结束槽位（ticker 每秒调用） */
+  slotTick(now){
+    const dk = D.dateKey(now);
+    const doc = dayDoc(dk);
+    let changed = false;
+    for(const slot of doc.autoSchedules||[]){
+      const s = D.hhmmToTs(D.dkToTs(dk), slot.start);
+      const e = D.hhmmToTs(D.dkToTs(dk), slot.end);
+      const active = S.sessions.find(x=>x.end==null && x.scheduleId===slot.id);
+      if(s <= now && now < e){
+        if(!active){
+          const sp = spaceById(slot.spaceId);
+          if(!sp || sp.archived) continue;
+          if(this.remainingMinutes(now) > 0){
+            S.sessions.push({id:uid('rs_'), spaceId:slot.spaceId, mode:'auto', day:dk, start:now, end:null, endedBy:null, note:slot.note||'', scheduleId:slot.id});
+            saveSessions(); changed = true;
+            UI.toast('自流转：「'+sp.name+'」已开始');
+          }
+        }
+      }else if(now >= e && active){
+        this.finalizeSessionsOnDay(dk, [active.id], e, 'slotEnd');
+        changed = true;
+      }
+    }
+    if(changed) scheduleRender();
+  },
+  /* 启动/回到前台补算：心跳熔断 + 跨天切片 + 自流转惰性核算 */
+  reconcile(){
+    const now = Date.now();
+    const today = D.dateKey(now);
+    const hb = Store.get('heartbeat', {lastActiveAt: now});
+    let m = this.activeManual();
+    if(m){
+      if(now - hb.lastActiveAt > CONFIG.HEARTBEAT_CUTOFF_MS){
+        // 熔断：结束在最后活跃时刻（防忘关白耗额度）
+        const t = hb.lastActiveAt;
+        m = this.sliceManualAcrossDays(m, D.dateKey(t));
+        if(m) this.finalizeSessionsOnDay(m.day, [m.id], t, 'heartbeat');
+        UI.toast('检测到长时间未打开，递归会话已自动结束');
+        scheduleRender();
+      }else{
+        this.sliceManualAcrossDays(m, today);
+      }
+    }
+    // 过去各天的自流转活跃切片一律封存（最多到槽位结束）
+    for(const a of [...S.sessions.filter(x=>x.end==null && x.day < today)]){
+      if(a.mode!=='auto') continue;
+      let endTs = this.dayStartMin(a.day) + 86400000;
+      const doc = Store.loadDay(a.day);
+      const slot = doc && doc.autoSchedules ? doc.autoSchedules.find(sl=>sl.id===a.scheduleId) : null;
+      if(slot) endTs = Math.min(endTs, D.hhmmToTs(D.dkToTs(a.day), slot.end));
+      this.finalizeSessionsOnDay(a.day, [a.id], endTs, 'slotEnd');
+    }
+    // 今日活跃切片在关闭期间的额度截断补查
+    if(S.sessions.some(x=>x.end==null)) this.finalizeSessionsOnDay(today, [], now, 'reconcile');
+    // 各天（含今日）槽位惰性核算
+    for(const k of Store.allKeys()){
+      if(!k.startsWith('day:')) continue;
+      const dk = k.slice(4);
+      if(dk > today) continue;
+      const doc = Store.loadDay(dk);
+      if(!doc || !doc.autoSchedules || doc.autoSchedules.length===0) continue;
+      this.reconcileDay(dk);
+    }
+  },
+  /* 每秒心跳：自流转槽位判定 + 额度耗尽判定 */
+  tick(now){
+    this.slotTick(now);
+    const active = this.activeSlices();
+    if(active.length===0) return;
+    const today = D.dateKey(now);
+    const Qms = this.quota() * 60000;
+    const fin = this.finalizedMs(today);
+    const ongoing = this.activeMs(today, null, now);
+    if(fin + ongoing >= Qms){
+      // 精确求耗尽时刻：rate=并行数（所有活跃切片已过起点，且耗尽时刻≥最晚起点）
+      const starts = active.reduce((a, s)=>a + Math.max(s.start, this.dayStartMin(today)), 0);
+      const Tstar = Math.min(now, (Qms - fin + starts) / active.length);
+      this.finalizeSessionsOnDay(today, active.map(s=>s.id), Tstar, 'quota');
+      UI.toast('今日节律递归时间已用完，递归已结束');
+      scheduleRender();
+    }
+  },
+  /* 手动开始递归（同时只允许一个；已有则先终结） */
+  manualStart(spId){
+    const now = Date.now();
+    const today = D.dateKey(now);
+    const sp = spaceById(spId);
+    if(!sp || sp.archived){ UI.toast('空间不存在或已归档', 'err'); return false; }
+    if(this.remainingMinutes(now) <= 0){ UI.toast('今日节律递归时间已用完，无法开始', 'err'); return false; }
+    const m = this.activeManual();
+    if(m){
+      if(m.spaceId===spId){ this.manualStop(); return false; }
+      this.finalizeSessionsOnDay(today, [m.id], now, 'manual');
+      UI.toast('已切换到「'+sp.name+'」的递归');
+    }
+    S.sessions.push({id:uid('rs_'), spaceId:spId, mode:'manual', day:today, start:now, end:null, endedBy:null, note:'', scheduleId:null});
+    saveSessions();
+    scheduleRender();
+    UI.toast('「'+sp.name+'」可能性递归已开始');
+    return true;
+  },
+  manualStop(){
+    const m = this.activeManual();
+    if(!m) return false;
+    this.finalizeSessionsOnDay(m.day, [m.id], Date.now(), 'manual');
+    scheduleRender();
+    UI.toast('递归已停止');
+    return true;
+  },
+  /* —— 每秒定向刷新 —— */
+  tickEl(el, now){
+    const spId = el.dataset.space;
+    const acts = this.activeForSpace(spId);
+    if(acts.length===0) return;
+    const live = el.querySelector('[data-rec-t]');
+    if(live) setText(live, fmtDur(now - acts[0].start));
+  },
+  tickQuotaEl(el, now){
+    const dk = D.dateKey(now);
+    const Q = this.quota();
+    const consumed = this.consumedMinutes(dk, now);
+    const remain = Math.max(0, Q - consumed);
+    const used = el.querySelector('[data-q-used]'); if(used) setText(used, fmtMin(consumed));
+    const rem = el.querySelector('[data-q-remain]'); if(rem) setText(rem, fmtMin(remain));
+    const bar = el.querySelector('[data-q-bar]');
+    if(bar) bar.style.width = Math.min(100, consumed/Q*100).toFixed(1)+'%';
+  },
+  stats(){
+    const now = Date.now(), dk = D.dateKey(now);
+    return {
+      remainingMinutes:this.remainingMinutes(now),
+      consumedMinutes:this.consumedMinutes(dk, now),
+      bySpace:S.spaces.map(sp=>({sp, min:this.todaySpaceMinutes(sp.id)}))
+    };
+  },
+  currentActive(){ return this.activeManual(); }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   7. Ticker 每秒心跳
+   ══════════════════════════════════════════════════════════════ */
+const bindings = [];
+function collectBindings(){
+  bindings.length = 0;
+  document.querySelectorAll('[data-bind]').forEach(el=>bindings.push(el));
+}
+function setText(el, txt){ if(el.textContent !== txt) el.textContent = txt; }
+function updateBinding(el, now){
+  switch(el.dataset.bind){
+    case 'clock': setText(el, D.tsToClock(now)); break;
+    case 'bigclock': setText(el, D.tsToClock(now)); break;
+    case 'bigdate': setText(el, D.fmtDateCN(now)); break;
+    case 'todo': TodoLogic.tickEl && TodoLogic.tickEl(el, now); break;
+    case 'urgent': TodoLogic.tickUrgentEl && TodoLogic.tickUrgentEl(el, now); break;
+    case 'rec': Rhythm.tickEl && Rhythm.tickEl(el, now); break;          // 阶段4
+    case 'quota': Rhythm.tickQuotaEl && Rhythm.tickQuotaEl(el, now); break; // 阶段4
+    case 'quota-all': Rhythm.tickQuotaAllEl && Rhythm.tickQuotaAllEl(el, now); break; // 阶段4
+  }
+}
+function tick(){
+  const now = Date.now();
+  TodoLogic.confirmTick(now);   // 先处理确认过期回退，再刷新绑定元素
+  for(const el of bindings){ if(el.isConnected) updateBinding(el, now); }
+  Rhythm.tick(now);
+  checkRollover(now);
+  if(now - S.lastHb > 30000){ S.lastHb = now; Store.set('heartbeat', {lastActiveAt: now}); }
+}
+function checkRollover(now){
+  const dk = D.dateKey(now);
+  if(S.lastDay && dk !== S.lastDay){
+    S.lastDay = dk;
+    S.confirmMap.clear();
+    Rhythm.onDayChange(now);
+    scheduleRender();
+    UI.toast('新的一天开始了');
+  }
+}
+/* 换日/开关页补算 */
+function reconcileNow(){
+  S.lastDay = D.dateKey(Date.now());
+  Rhythm.reconcile();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8. UI 弹窗 / Toast / 事件分发
+   ══════════════════════════════════════════════════════════════ */
+const UI = {
+  toast(msg, type){
+    const el = document.createElement('div');
+    el.className = 'toast'+(type==='err'?' err':'');
+    el.textContent = msg;
+    document.getElementById('toast-root').appendChild(el);
+    setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),320); }, 2400);
+  },
+  openModal(html){
+    document.getElementById('modal-root').innerHTML =
+      '<div class="modal-mask" data-action="modal-close"><div class="modal-panel">'+html+'</div></div>';
+  },
+  closeModal(){ document.getElementById('modal-root').innerHTML = ''; },
+  confirmDialog(title, msg, danger, onOk){
+    this.openModal(
+      '<div class="modal-title">'+esc(title)+'</div>'+
+      '<div style="font-size:14px;color:var(--text)">'+escLn(msg)+'</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn" data-action="modal-close">'+CONFIG.T.cancel+'</button>'+
+        '<button class="btn '+(danger?'btn--danger':'btn--primary')+'" data-action="dialog-ok">'+CONFIG.T.ok+'</button>'+
+      '</div>');
+    const el = document.getElementById('modal-root');
+    el.querySelector('[data-action="dialog-ok"]').onclick = ()=>{ UI.closeModal(); onOk(); };
+  },
+  quotaAlert(){
+    UI.confirmDialog('存储空间不足',
+      '浏览器本地存储已满，图片可能无法继续保存。\n建议：点击「去备份」导出数据，再删除一些不用的图片。',
+      true, ()=>goView('settings'));
+  }
+};
+/* 视图导航 */
+function goView(v){ S.view = v; if(v!=='space'){ S.spaceId = null; S.dayFilter = null; } scheduleRender(); window.scrollTo(0,0); }
+function goSpace(id){ S.spaceId = id; S.backTarget = 'spaces'; S.view = 'space'; S.spaceTab = 'day'; S.catId = null; S.dayFilter = null; scheduleRender(); window.scrollTo(0,0); }
+function openSettings(){ S.backTarget = S.view==='settings' ? 'home' : S.view; S.view = 'settings'; scheduleRender(); window.scrollTo(0,0); }
+
+/* 事件动作分发表（视图渲染函数可通过 data-action 挂接） */
+const Actions = {
+  'back'(){ if(S.view==='settings') goView(S.backTarget); else if(S.view==='space') goView('spaces'); },
+  'open-settings'(){ openSettings(); },
+  'modal-close'(){ UI.closeModal(); },
+  'export'(){
+    const obj = Store.exportJSON();
+    download('可能性空间备份-'+D.dateKey(Date.now())+'.json', JSON.stringify(obj, null, 2));
+    UI.toast('备份已导出');
+  },
+  'import'(){
+    const fi = document.getElementById('file-input');
+    fi.accept = '.json,application/json';
+    S.pendingFileCb = handleImportFile;
+    fi.value=''; fi.click();
+  },
+  'seed'(){
+    if(S.spaces.length || S.todos.length){
+      UI.confirmDialog('生成示例数据','当前已有内容，示例数据会追加进去（可稍后在设置中整体清空）。继续吗？',false,()=>{ Debug.doSeed(); UI.toast('已生成示例数据'); });
+    }else{ Debug.doSeed(); UI.toast('已生成示例数据'); }
+  },
+  'wipe'(){
+    UI.confirmDialog('清空全部数据','此操作会删除本浏览器中「可能性空间」的全部数据（空间/待办/日记/图片）。\n第一步：先自动下载一份备份文件到你的电脑。',true,()=>{
+      download('可能性空间备份-清空前-'+D.dateKey(Date.now())+'.json', JSON.stringify(Store.exportJSON(), null, 2));
+      setTimeout(()=>{
+        UI.confirmDialog('最后确认','备份已下载。确认要清空全部数据吗？此操作无法撤销。',true,()=>{
+          Store.clearAll(); location.reload();
+        });
+      }, 400);
+    });
+  },
+  'save-settings'(){
+    const g = id => document.getElementById(id)?.value;
+    S.settings.rhythmQuotaMinutes = clamp(parseInt(g('set-quota'))||0, 30, 1440);
+    S.settings.defaultYellowMinutes = clamp(parseInt(g('set-yellow'))||0, 0, 1440);
+    S.settings.defaultRedMinutes = clamp(parseInt(g('set-red'))||0, 0, 1440);
+    S.settings.confirmSeconds = clamp(parseInt(g('set-confirm'))||10, 3, 60);
+    saveSettings();
+    UI.toast('设置已保存');
+    scheduleRender();
+  },
+  /* —— 待办 —— */
+  'tap-todo'(btn){
+    const id = btn.dataset.id;
+    const t = S.todos.find(x=>x.id===id);
+    if(!t) return;
+    const before = todoStatus(t, Date.now());
+    TodoLogic.tap(t, Date.now());
+    const after = todoStatus(t, Date.now());
+    if(after!==before){
+      if(after==='confirming'){ TodoLogic.tickEl(btn, Date.now()); UI.toast('10秒内再点一次确认完成'); }
+      else if(after==='done'){ scheduleRender(); UI.toast('已完成 ✓'); }
+      else { scheduleRender(); UI.toast('已恢复为未完成'); }
+    }
+  },
+  'todo-form'(btn){ openTodoForm(btn.dataset.id || null, btn.dataset.space || null); },
+  'seg'(btn){
+    const g = btn.dataset.group, v = btn.dataset.val;
+    if(g==='weekday' || g==='slotwd'){ const n = +v; S.form[g].has(n) ? S.form[g].delete(n) : S.form[g].add(n); }
+    else if(g==='slotday'){ const n = +v; const i = S.form.slotDays.indexOf(n); i>=0 ? S.form.slotDays.splice(i,1) : S.form.slotDays.push(n); }
+    else S.form[g] = v;
+    const panel = document.querySelector('.modal-panel');
+    if(panel){
+      panel.querySelectorAll('[data-group="'+g+'"]').forEach(c=>{
+        let on;
+        if(g==='weekday' || g==='slotwd') on = S.form[g].has(+c.dataset.val);
+        else if(g==='slotday') on = S.form.slotDays.includes(+c.dataset.val);
+        else on = c.dataset.val === S.form[g];
+        c.classList.toggle('on', on);
+      });
+    }
+    if(g==='repeat'){
+      ['once','daily','weekly'].forEach(r=>{
+        const f = document.getElementById('tf-'+r);
+        if(f) f.style.display = (r===S.form.repeat) ? '' : 'none';
+      });
+    }
+    if(g==='slotrep'){
+      ['days','weekdays'].forEach(r=>{
+        const f = document.getElementById('sl-'+r);
+        if(f) f.style.display = (r===S.form.slotRep) ? '' : 'none';
+      });
+    }
+  },
+  'save-todo'(btn){
+    const id = btn.dataset.id || null;
+    const isNew = !id;
+    const t = id ? S.todos.find(x=>x.id===id) : {id:uid('td_'), createdAt:Date.now(), archived:false, lastCompletedKey:null, completedAt:null};
+    if(!t) return;
+    const title = document.getElementById('tf-title').value.trim();
+    if(!title){ UI.toast('请填写标题', 'err'); return; }
+    const oldRepeat = t.repeat, oldWd = (t.weekdays||[]).join(','), oldDaily = t.dailyTime, oldWeekly = t.weeklyTime;
+    t.title = title;
+    t.type = S.form.type;
+    t.repeat = S.form.repeat;
+    t.note = document.getElementById('tf-note').value.trim();
+    t.spaceId = document.getElementById('tf-space').value || null;
+    t.thresholdYellowMin = clamp(parseInt(document.getElementById('tf-yellow').value)||0, 0, 1440);
+    t.thresholdRedMin = clamp(parseInt(document.getElementById('tf-red').value)||0, 0, 1440);
+    const dateV = document.getElementById('tf-date').value, timeV = document.getElementById('tf-time').value;
+    if(t.repeat==='once'){
+      t.dueAt = (dateV && timeV) ? D.hhmmToTs(new Date(dateV+'T00:00:00').getTime(), timeV)
+              : (dateV ? D.hhmmToTs(new Date(dateV+'T00:00:00').getTime(), '23:59') : null);
+      t.dailyTime = null; t.weekdays = []; t.weeklyTime = null;
+    }else if(t.repeat==='daily'){
+      t.dailyTime = document.getElementById('tf-daily-time').value || '20:00';
+      t.dueAt = null; t.weekdays = []; t.weeklyTime = null;
+    }else{
+      t.weekdays = [...S.form.weekdays].sort((a,b)=>a-b);
+      if(t.weekdays.length===0){ UI.toast('请至少选择一个星期几', 'err'); return; }
+      t.weeklyTime = document.getElementById('tf-weekly-time').value || '20:00';
+      t.dueAt = null; t.dailyTime = null;
+    }
+    const repeatChanged = (oldRepeat!==t.repeat) || (t.repeat==='daily' && oldDaily!==t.dailyTime) || (t.repeat==='weekly' && (oldWd!==t.weekdays.join(',') || oldWeekly!==t.weeklyTime));
+    if(!isNew && repeatChanged && t.lastCompletedKey!=null){
+      t.lastCompletedKey = null; t.completedAt = null;
+      UI.toast('重复规则已变更，完成状态已重置');
+    }
+    if(isNew) S.todos.push(t);
+    saveTodos();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast(isNew ? '待办已创建' : '已保存');
+  },
+  'del-todo'(btn){
+    const t = S.todos.find(x=>x.id===btn.dataset.id);
+    if(!t) return;
+    UI.confirmDialog('删除待办', '删除「'+t.title+'」？历史完成记录会保留，列表中不再显示。', true, ()=>{
+      t.archived = true;
+      saveTodos();
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
+  /* —— 可能性空间 —— */
+  'add-space'(){ openSpaceForm(null); },
+  'space-form'(btn){ openSpaceForm(btn.dataset.id || null); },
+  'space-icon'(btn){
+    S.form.icon = btn.dataset.e;
+    document.querySelectorAll('[data-action="space-icon"]').forEach(c=>c.classList.toggle('on', c.dataset.e===S.form.icon));
+  },
+  'space-color'(btn){
+    S.form.color = btn.dataset.c;
+    document.querySelectorAll('[data-action="space-color"]').forEach(c=>c.classList.toggle('on', c.dataset.c===S.form.color));
+  },
+  'save-space'(btn){
+    const id = btn?.dataset?.id || null;
+    const sp = id ? spaceById(id) : null;
+    const name = document.getElementById('sf-name').value.trim();
+    if(!name){ UI.toast('请填写空间名称', 'err'); return; }
+    const icon = document.getElementById('sf-icon').value.trim() || S.form.icon;
+    const note = document.getElementById('sf-note').value.trim();
+    if(sp){
+      sp.name = name; sp.icon = icon; sp.note = note; sp.color = S.form.color;
+    }else{
+      S.spaces.push({
+        id:uid('sp_'), name, icon, color:S.form.color, note,
+        createdAt:Date.now(), archived:false,
+        categories:CONFIG.PRESET_CATEGORIES.map((n,i)=>({id:uid('cat_'), name:n, order:i}))
+      });
+    }
+    saveSpaces();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast(sp ? '空间已更新' : '可能性空间「'+name+'」已创建');
+  },
+  'archive-space'(btn){
+    const sp = spaceById(btn.dataset.id);
+    if(!sp) return;
+    UI.confirmDialog('归档空间', '归档「'+sp.name+'」后将不在列表显示，但该空间的所有记录、统计、待办数据都会完整保留。确认归档？', true, ()=>{
+      sp.archived = true;
+      saveSpaces();
+      UI.closeModal();
+      goView('spaces');
+      UI.toast('已归档（数据已保留）');
+    });
+  },
+  'space-tab'(btn){
+    S.spaceTab = btn.dataset.tab;
+    if(S.spaceTab!=='cat') S.catId = null;
+    scheduleRender();
+  },
+  'day-prev'(){
+    const dk = S.dayFilter || D.dateKey(Date.now());
+    S.dayFilter = D.dateKey(D.addDaysTs(D.dkToTs(dk), -1));
+    scheduleRender();
+  },
+  'day-next'(){
+    const dk = S.dayFilter || D.dateKey(Date.now());
+    S.dayFilter = D.dateKey(D.addDaysTs(D.dkToTs(dk), 1));
+    scheduleRender();
+  },
+  'cal-prev'(){ S.calM--; if(S.calM<0){ S.calM=11; S.calY--; } scheduleRender(); },
+  'cal-next'(){ S.calM++; if(S.calM>11){ S.calM=0; S.calY++; } scheduleRender(); },
+  'cal-day'(btn){ S.dayFilter = btn.dataset.dk; S.spaceTab = 'day'; scheduleRender(); },
+  'day-edit'(){ openDayRecordModal(S.dayFilter || D.dateKey(Date.now())); },
+  'emoji'(btn){
+    S.form.emoji = S.form.emoji===btn.dataset.e ? null : btn.dataset.e;
+    document.querySelectorAll('#dr-emoji .chip').forEach(c=>c.classList.toggle('on', c.dataset.e===S.form.emoji));
+  },
+  'tag-add'(){
+    const inp = document.getElementById('dr-tag-input');
+    const v = (inp.value||'').trim();
+    if(!v) return;
+    if(S.form.tags.length>=8){ UI.toast('最多8个标签', 'err'); return; }
+    S.form.tags.push(v);
+    inp.value = '';
+    document.getElementById('dr-tags').innerHTML = S.form.tags.map((t,i)=>
+      '<span class="chip">'+esc(t)+'<button class="x-btn" data-action="tag-del" data-i="'+i+'">×</button></span>').join('');
+  },
+  'tag-del'(btn){
+    S.form.tags.splice(+btn.dataset.i, 1);
+    document.getElementById('dr-tags').innerHTML = S.form.tags.map((t,i)=>
+      '<span class="chip">'+esc(t)+'<button class="x-btn" data-action="tag-del" data-i="'+i+'">×</button></span>').join('');
+  },
+  'save-dayrecord'(){
+    const sp = spaceById(S.spaceId);
+    if(!sp) return;
+    const dk = S.dayFilter || D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    doc.spaceRecords[sp.id] = {
+      emoji:S.form.emoji, tags:S.form.tags,
+      note:document.getElementById('dr-note').value.trim(),
+      images:S.form.images, updatedAt:Date.now()
+    };
+    saveDay(dk);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('确定性迭代已记录 ✓');
+  },
+  'img-add'(){
+    if(!S.form || !S.form.images){ UI.toast('当前表单不支持图片', 'err'); return; }
+    if(S.form.images.length >= CONFIG.MAX_IMG_PER_RECORD){ UI.toast('最多'+CONFIG.MAX_IMG_PER_RECORD+'张图片', 'err'); return; }
+    const fi = document.getElementById('file-input');
+    fi.accept = 'image/*';
+    S.pendingFileCb = handleImageFile;
+    fi.value = ''; fi.click();
+  },
+  'img-del'(btn){
+    if(!S.form || !S.form.images) return;
+    const i = +btn.dataset.i;
+    const id = S.form.images[i];
+    if(id == null) return;
+    S.form.images.splice(i, 1);
+    Store.del('img:'+id);
+    refreshImgUI();
+  },
+  'img-view'(btn){
+    const src = Store.getImage(btn.dataset.id);
+    if(!src) return;
+    UI.openModal('<div class="modal-title">图片<button class="x" data-action="modal-close">×</button></div>'+
+      '<div style="text-align:center"><img src="'+src+'" alt="" style="max-width:100%;max-height:60vh;border-radius:4px"></div>'+
+      '<div class="modal-actions"><button class="btn" data-action="modal-close">关闭</button></div>');
+  },
+  'cat-open'(btn){ S.catId = btn.dataset.id; scheduleRender(); },
+  'cat-back'(){ S.catId = null; scheduleRender(); },
+  'cat-add'(){ openCatNameModal(null); },
+  'cat-rename'(btn){ openCatNameModal(btn.dataset.id); },
+  'cat-save'(btn){
+    const sp = spaceById(S.spaceId);
+    if(!sp) return;
+    const name = document.getElementById('cat-name').value.trim();
+    if(!name){ UI.toast('请填写分类名', 'err'); return; }
+    const id = btn.dataset.id || null;
+    if(id){
+      const c = (sp.categories||[]).find(x=>x.id===id);
+      if(c) c.name = name;
+    }else{
+      sp.categories = sp.categories || [];
+      sp.categories.push({id:uid('cat_'), name, order:sp.categories.length});
+    }
+    saveSpaces();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('已保存');
+  },
+  'cat-del'(btn){
+    const sp = spaceById(S.spaceId);
+    if(!sp) return;
+    const c = (sp.categories||[]).find(x=>x.id===btn.dataset.id);
+    if(!c) return;
+    const cnt = S.catnotes.filter(n=>n.spaceId===sp.id && n.categoryId===c.id).length;
+    UI.confirmDialog('删除分类', '删除「'+c.name+'」？分类下的 '+cnt+' 篇笔记将一并删除。', true, ()=>{
+      sp.categories = (sp.categories||[]).filter(x=>x.id!==c.id);
+      S.catnotes = S.catnotes.filter(n=>!(n.spaceId===sp.id && n.categoryId===c.id));
+      if(S.catId===c.id) S.catId = null;
+      saveSpaces(); saveCatnotes();
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('分类已删除');
+    });
+  },
+  'note-form'(btn){ openNoteForm(btn.dataset.id || null); },
+  'save-note'(btn){
+    const sp = spaceById(S.spaceId);
+    if(!sp || !S.catId) return;
+    const title = document.getElementById('nf-title').value.trim();
+    if(!title){ UI.toast('请填写标题', 'err'); return; }
+    const note = document.getElementById('nf-note').value.trim();
+    const id = btn?.dataset?.id || null;
+    const images = (S.form && S.form.images) ? S.form.images : [];
+    if(id){
+      const n = S.catnotes.find(x=>x.id===id);
+      if(n){ n.title = title; n.note = note; n.images = images; n.updatedAt = Date.now(); }
+    }else{
+      S.catnotes.push({id:uid('cn_'), spaceId:sp.id, categoryId:S.catId, title, note, images, createdAt:Date.now(), updatedAt:Date.now()});
+    }
+    saveCatnotes();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('笔记已保存');
+  },
+  'note-del'(btn){
+    const n = S.catnotes.find(x=>x.id===btn.dataset.id);
+    if(!n) return;
+    UI.confirmDialog('删除笔记', '删除「'+n.title+'」？', true, ()=>{
+      S.catnotes = S.catnotes.filter(x=>x.id!==n.id);
+      saveCatnotes();
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
+  /* —— 节律表 —— */
+  'rhythm-iter'(btn){
+    const sp = spaceById(btn.dataset.id);
+    if(sp) goSpace(sp.id);
+  },
+  'rhythm-rec'(btn){
+    const spId = btn.dataset.id;
+    const m = Rhythm.activeManual();
+    if(m && m.spaceId===spId){ Rhythm.manualStop(); }
+    else Rhythm.manualStart(spId);
+  },
+  'rhythm-entry'(btn){ openRhythmEntryModal(btn.dataset.id || null); },
+  'rhythm-entry-save'(btn){
+    const dk = D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const text = document.getElementById('re-text').value.trim();
+    if(!text){ UI.toast('写点内容再保存吧', 'err'); return; }
+    const at = document.getElementById('re-time').value || D.tsToHHMM(Date.now());
+    const id = btn?.dataset?.id || null;
+    if(id){
+      const en = (doc.rhythmEntries||[]).find(x=>x.id===id);
+      if(en){ en.text = text; en.at = at; }
+    }else{
+      doc.rhythmEntries = doc.rhythmEntries || [];
+      doc.rhythmEntries.push({id:uid('re_'), at, text, images:[], createdAt:Date.now()});
+    }
+    saveDay(dk);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('已记录');
+  },
+  'rhythm-entry-del'(btn){
+    const dk = D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const en = (doc.rhythmEntries||[]).find(x=>x.id===btn.dataset.id);
+    if(!en) return;
+    UI.confirmDialog('删除日记', '删除 '+en.at+' 的这条记录？', true, ()=>{
+      doc.rhythmEntries = doc.rhythmEntries.filter(x=>x.id!==en.id);
+      saveDay(dk);
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
+  /* —— 自流转日程 —— */
+  'slot-form'(btn){ openSlotFormModal(btn.dataset.id || null); },
+  'slot-save'(btn){
+    const dk = D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const id = btn?.dataset?.id || null;
+    const spaceId = document.getElementById('sl-space').value || null;
+    if(!spaceId){ UI.toast('请选择可能性空间', 'err'); return; }
+    const start = document.getElementById('sl-start').value;
+    const end = document.getElementById('sl-end').value;
+    if(!start || !end){ UI.toast('请填写开始与结束时间', 'err'); return; }
+    if(end <= start){ UI.toast('结束时间需晚于开始时间（同一自然日内）', 'err'); return; }
+    const note = document.getElementById('sl-note').value.trim();
+    const base = {spaceId, start, end, note};
+    let slot;
+    if(id){
+      slot = (doc.autoSchedules||[]).find(x=>x.id===id);
+      if(!slot) return;
+      Object.assign(slot, base);
+    }else{
+      slot = {id:uid('as_'), createdAt:Date.now(), sourceId:null, ...base};
+      doc.autoSchedules = doc.autoSchedules || [];
+      doc.autoSchedules.push(slot);
+      /* 重复副本 */
+      const copies = [];
+      if(S.form && S.form.slotRep==='days'){
+        for(const n of S.form.slotDays) copies.push(D.dateKey(D.addDaysTs(Date.now(), n)));
+      }else if(S.form && S.form.slotRep==='weekdays'){
+        for(let n=1;n<=28;n++){
+          const dk2 = D.dateKey(D.addDaysTs(Date.now(), n));
+          if(S.form.slotWeekdays.has(D.weekdayOf(dk2))) copies.push(dk2);
+        }
+      }
+      for(const dk2 of copies){
+        const dd = dayDoc(dk2);
+        dd.autoSchedules = dd.autoSchedules || [];
+        dd.autoSchedules.push({id:uid('as_'), createdAt:Date.now(), sourceId:slot.id, ...base});
+        saveDay(dk2);
+      }
+      if(copies.length) UI.toast('已复制到 '+copies.length+' 天');
+    }
+    /* 重叠提示（今天） */
+    const s0 = D.hhmmToTs(D.dkToTs(dk), start), e0 = D.hhmmToTs(D.dkToTs(dk), end);
+    for(const other of doc.autoSchedules){
+      if(other.id===slot.id) continue;
+      const a = D.hhmmToTs(D.dkToTs(dk), other.start), b = D.hhmmToTs(D.dkToTs(dk), other.end);
+      if(s0 < b && a < e0){ UI.toast('与「'+other.start+'~'+other.end+'」日程重叠：重叠时段将双倍消耗额度'); break; }
+    }
+    saveDay(dk);
+    Rhythm.reconcileDay(dk);   // 立即补算今天已过去的时段
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('日程已保存');
+  },
+  'slot-del'(btn){
+    const dk = D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const slot = (doc.autoSchedules||[]).find(x=>x.id===btn.dataset.id);
+    if(!slot) return;
+    UI.confirmDialog('删除日程', '删除 '+slot.start+'~'+slot.end+' 的日程？已消耗的时间记录会保留。', true, ()=>{
+      doc.autoSchedules = doc.autoSchedules.filter(x=>x.id!==slot.id);
+      saveDay(dk);
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
+  /* —— 首页 —— */
+  'home-todo-toggle'(){ S.homeTodoOpen = !S.homeTodoOpen; scheduleRender(); },
+  'goto-rhythm'(){ goView('rhythm'); }
+};
+function handleImportFile(file){
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const obj = JSON.parse(fr.result);
+      Store.importJSON(obj);
+      refreshFromStorage();
+      scheduleRender();
+      UI.toast('导入成功');
+    }catch(e){ UI.toast('导入失败：'+e.message, 'err'); }
+  };
+  fr.readAsText(file, 'utf-8');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8.5 待办视图辅助（卡片渲染 / 表单弹窗）
+   ══════════════════════════════════════════════════════════════ */
+function todoCardHtml(t, now){
+  const st = todoStatus(t, now);
+  const cls = st==='confirming' ? 't-confirm' : st==='done' ? 't-done' : 't-'+TodoLogic.color(t, now);
+  const side = st==='confirming' ? '<span class="q">?</span>' : st==='done' ? '<span class="ok">✓</span>' : '';
+  const due = TodoLogic.dueAt(t, now);
+  let cd;
+  if(st==='done'){
+    const nx = TodoLogic.nextDueAt(t, now);
+    cd = nx ? '已完成 · 下次 '+TodoLogic.fmtNextShort(nx, now) : '已完成';
+  }else if(due==null){
+    cd = '无期限';
+  }else{
+    cd = fmtRemain(due - now);
+  }
+  let meta = '';
+  if(t.type==='habit') meta += '<span class="badge">习惯</span>';
+  if(t.type==='memo') meta += '<span class="badge">备忘</span>';
+  meta += '<span class="badge">'+TodoLogic.repeatLabel(t)+'</span>';
+  if(t.spaceId){
+    const sp = spaceById(t.spaceId);
+    const c = sp ? sp.color : '#8A93A3';
+    meta += '<span class="badge badge--space" style="--space-color:'+c+';--space-soft:'+c+'22;--space-line:'+c+'55">来自'+esc(spaceNameOf(t.spaceId))+'</span>';
+  }
+  return '<div class="todo-card '+cls+'" data-bind="todo" data-id="'+t.id+'" data-action="tap-todo">'+
+    '<div class="todo-main">'+
+      '<div class="todo-title">'+esc(t.title)+'</div>'+
+      '<div class="todo-sub">'+meta+'</div>'+
+      (t.note ? '<div class="todo-note">'+esc(t.note)+'</div>' : '')+
+      '<div class="todo-sub"><span class="todo-cd" data-cd>'+cd+'</span></div>'+
+    '</div>'+
+    '<div class="todo-side">'+side+'</div>'+
+    '<button class="icon-btn todo-edit" data-action="todo-form" data-id="'+t.id+'" aria-label="编辑">✎</button>'+
+  '</div>';
+}
+function segChips(group, vals, labels, cur){
+  return vals.map((v,i)=>'<button class="chip'+(String(v)===String(cur)?' on':'')+'" data-action="seg" data-group="'+group+'" data-val="'+v+'">'+labels[i]+'</button>').join('');
+}
+function weekdayChips(sel){
+  return ['一','二','三','四','五','六','日'].map((n,i)=>
+    '<button class="chip'+(sel.has(i+1)?' on':'')+'" data-action="seg" data-group="weekday" data-val="'+(i+1)+'">'+n+'</button>').join('');
+}
+function spaceOptions(cur){
+  const act = S.spaces.filter(x=>!x.archived);
+  return '<option value="">（无）</option>'+
+    act.map(sp=>'<option value="'+sp.id+'"'+(sp.id===cur?' selected':'')+'>'+esc(sp.name)+'</option>').join('');
+}
+/* 新建/编辑待办弹窗。id 为空则新建；presetSpaceId 用于在空间内新建时预填归属 */
+function openTodoForm(id, presetSpaceId){
+  const t = id ? S.todos.find(x=>x.id===id) : null;
+  S.form = {
+    type: t ? t.type : 'task',
+    repeat: t ? t.repeat : 'daily',
+    weekdays: new Set(t ? (t.weekdays||[1,2,3,4,5]) : [1,2,3,4,5])
+  };
+  const dueD = t && t.dueAt ? D.dateKey(t.dueAt) : '';
+  const dueT = t && t.dueAt ? D.tsToHHMM(t.dueAt) : '';
+  const vis = r => r===S.form.repeat ? '' : ' style="display:none"';
+  UI.openModal(
+    '<div class="modal-title">'+(t?'编辑待办':'新建待办')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>标题 *</label>'+
+      '<input class="input" id="tf-title" maxlength="50" value="'+esc(t?t.title:'')+'" placeholder="例如：接妹妹放学"></div>'+
+    '<div class="field"><label>类型</label><div class="chip-row">'+
+      segChips('type',['task','habit','memo'],['待办','习惯','备忘'],S.form.type)+'</div></div>'+
+    '<div class="field"><label>重复</label><div class="chip-row">'+
+      segChips('repeat',['once','daily','weekly'],['单次','每日','每周'],S.form.repeat)+'</div></div>'+
+    '<div class="field" id="tf-once"'+vis('once')+'><label>截止日期与时间（留空=无期限，不参与倒计时）</label>'+
+      '<div class="row"><input type="date" class="input" id="tf-date" value="'+dueD+'"><input type="time" class="input" id="tf-time" value="'+dueT+'"></div></div>'+
+    '<div class="field" id="tf-daily"'+vis('daily')+'><label>每日截止时刻</label>'+
+      '<input type="time" class="input" id="tf-daily-time" value="'+esc(t&&t.dailyTime?t.dailyTime:'20:00')+'"></div>'+
+    '<div class="field" id="tf-weekly"'+vis('weekly')+'><label>每周哪几天（可多选）</label>'+
+      '<div class="chip-row">'+weekdayChips(S.form.weekdays)+'</div>'+
+      '<label style="margin-top:12px">截止时刻</label>'+
+      '<input type="time" class="input" id="tf-weekly-time" value="'+esc(t&&t.weeklyTime?t.weeklyTime:'20:00')+'"></div>'+
+    '<div class="field"><label>所属可能性空间（可选）</label>'+
+      '<select class="select" id="tf-space">'+spaceOptions(t ? t.spaceId : (presetSpaceId||null))+'</select>'+
+      '<div class="hint">选择后，卡片会标注「来自XX空间」</div></div>'+
+    '<div class="field"><label>备注</label>'+
+      '<textarea class="textarea" id="tf-note" placeholder="卡片上的备注说明">'+esc(t?t.note:'')+'</textarea></div>'+
+    '<div class="field"><label>变色阈值（分钟，仅本卡生效）</label><div class="row">'+
+      '<div><input type="number" class="input num" id="tf-yellow" min="0" step="15" value="'+(t?t.thresholdYellowMin:S.settings.defaultYellowMinutes)+'"><div class="hint">剩余≤此值变黄</div></div>'+
+      '<div><input type="number" class="input num" id="tf-red" min="0" step="15" value="'+(t?t.thresholdRedMin:S.settings.defaultRedMinutes)+'"><div class="hint">剩余≤此值变红</div></div>'+
+    '</div></div>'+
+    '<div class="modal-actions">'+
+      (t ? '<button class="btn btn--danger" data-action="del-todo" data-id="'+t.id+'">删除</button>' : '')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="save-todo"'+(t?' data-id="'+t.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8.6 可能性空间辅助（空间表单/确定性迭代/日历/可能性确定）
+   ══════════════════════════════════════════════════════════════ */
+/* 图片缩略图网格（editable=true 时带删除角标，点击查看大图） */
+function imgsHtml(imgIds, editable){
+  if(!imgIds || imgIds.length===0) return '';
+  return '<div class="img-grid" data-img-grid>'+imgIds.map((id,i)=>{
+    const src = Store.getImage(id);
+    return '<div class="img-thumb" data-action="img-view" data-id="'+id+'">'+
+      (src ? '<img src="'+src+'" alt="">' : '<span style="font-size:20px">🖼</span>')+
+      (editable ? '<button class="img-x" data-action="img-del" data-i="'+i+'" title="删除">×</button>' : '')+
+    '</div>';
+  }).join('')+'</div>';
+}
+/* 图片压缩：最长边 ≤1000px，JPEG 质量 0.75 → dataURL */
+function compressImage(file, cb){
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = ()=>{
+    const MAX = 1000;
+    const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    cb(canvas.toDataURL('image/jpeg', 0.75));
+  };
+  img.onerror = ()=>{ URL.revokeObjectURL(url); UI.toast('图片读取失败', 'err'); };
+  img.src = url;
+}
+/* 图片选择回调：压缩 → 存入 S.form.images → 刷新弹窗内网格与计数 */
+function handleImageFile(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
+  UI.toast('压缩处理中…');
+  compressImage(file, dataURL=>{
+    const id = uid('img_');
+    if(!Store.saveImage(id, dataURL)){ UI.toast('存储空间不足，图片保存失败', 'err'); return; }
+    S.form.images = S.form.images || [];
+    S.form.images.push(id);
+    refreshImgUI();
+    UI.toast('图片已保存');
+  });
+}
+function refreshImgUI(){
+  document.querySelectorAll('[data-img-grid]').forEach(g=>{ g.innerHTML = imgsHtml(S.form.images, true); });
+  document.querySelectorAll('[data-img-count]').forEach(el=>{ el.textContent = S.form.images.length+'/'+CONFIG.MAX_IMG_PER_RECORD; });
+}
+/* 无引用图片回收（启动时执行一次） */
+function gcImages(){
+  const refs = new Set();
+  for(const k of Store.allKeys()){
+    if(k.startsWith('day:')){
+      const doc = Store.loadDay(k.slice(4));
+      if(!doc) continue;
+      for(const spId in (doc.spaceRecords||{})){ (doc.spaceRecords[spId].images||[]).forEach(id=>refs.add(id)); }
+      (doc.rhythmEntries||[]).forEach(en=>(en.images||[]).forEach(id=>refs.add(id)));
+    }
+  }
+  for(const n of S.catnotes){ (n.images||[]).forEach(id=>refs.add(id)); }
+  let removed = 0;
+  for(const k of Store.allKeys()){
+    if(k.startsWith('img:') && !refs.has(k.slice(4))){ Store.del(k); removed++; }
+  }
+  return removed;
+}
+/* 是否属于「今日待办」（首页收纳卡口径）：今日到期/已超时/无期限，或今天完成的 */
+function isTodayTodo(t, now){
+  const dk = D.dateKey(now);
+  if(todoStatus(t, now)==='done') return t.completedAt != null && D.dateKey(t.completedAt) === dk;
+  const due = TodoLogic.dueAt(t, now);
+  if(due == null) return true;
+  return due <= D.dkToTs(dk) + 86400000;
+}
+/* 该空间做过确定性迭代的天数 */
+function iterDays(spId){
+  let n = 0;
+  for(const k of Store.allKeys()){
+    if(k.startsWith('day:')){
+      const doc = Store.loadDay(k.slice(4));
+      if(doc && doc.spaceRecords && doc.spaceRecords[spId]) n++;
+    }
+  }
+  return n;
+}
+/* 新建/编辑空间弹窗 */
+function openSpaceForm(id){
+  const sp = id ? spaceById(id) : null;
+  S.form = { icon: sp ? sp.icon : '📚', color: sp ? sp.color : CONFIG.SPACE_COLORS[0] };
+  UI.openModal(
+    '<div class="modal-title">'+(sp?'编辑空间':'新建可能性空间')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>空间代号（名称）*</label>'+
+      '<input class="input" id="sf-name" maxlength="20" value="'+esc(sp?sp.name:'')+'" placeholder="例如：学日语"></div>'+
+    '<div class="field"><label>图标</label>'+
+      '<div class="chip-row" style="margin-bottom:8px">'+CONFIG.SPACE_ICONS.map(e=>
+        '<button class="chip'+(S.form.icon===e?' on':'')+'" data-action="space-icon" data-e="'+e+'">'+e+'</button>').join('')+'</div>'+
+      '<input class="input" id="sf-icon" maxlength="4" value="'+esc(sp&&sp.icon&&!CONFIG.SPACE_ICONS.includes(sp.icon)?sp.icon:'')+'" style="max-width:90px" placeholder="或自填"></div>'+
+    '<div class="field"><label>主题色</label><div class="color-row">'+CONFIG.SPACE_COLORS.map(c=>
+      '<button class="color-dot'+(S.form.color===c?' on':'')+'" data-action="space-color" data-c="'+c+'" style="background:'+c+'"></button>').join('')+'</div></div>'+
+    '<div class="field"><label>空间简介（可选）</label>'+
+      '<input class="input" id="sf-note" maxlength="60" value="'+esc(sp?sp.note:'')+'" placeholder="一句话描述这个兴趣"></div>'+
+    '<div class="modal-actions">'+
+      (sp?'<button class="btn btn--danger" data-action="archive-space" data-id="'+sp.id+'">归档</button>':'')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="save-space"'+(sp?' data-id="'+sp.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+/* 分类名编辑弹窗（id 为空则新建） */
+function openCatNameModal(id){
+  const sp = spaceById(S.spaceId);
+  if(!sp) return;
+  const c = id ? (sp.categories||[]).find(x=>x.id===id) : null;
+  UI.openModal(
+    '<div class="modal-title">'+(c?'重命名分类':'新建可能性确定')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>分类名 *</label>'+
+      '<input class="input" id="cat-name" maxlength="20" value="'+esc(c?c.name:'')+'" placeholder="例如：五十音图笔记"></div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="cat-save"'+(c?' data-id="'+c.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+/* 确定性迭代弹窗（某空间某天的情绪/标签/笔记/图片） */
+function openDayRecordModal(dk){
+  const sp = spaceById(S.spaceId);
+  if(!sp) return;
+  const rec = dayDoc(dk).spaceRecords[sp.id] || {emoji:null, tags:[], note:'', images:[], updatedAt:Date.now()};
+  S.form = { emoji: rec.emoji||null, tags:[...(rec.tags||[])], images:[...(rec.images||[])] };
+  UI.openModal(
+    '<div class="modal-title">确定性迭代<button class="x" data-action="modal-close">×</button></div>'+
+    '<div style="font-size:12px;color:var(--text-2);margin:-6px 0 14px">'+esc(sp.name)+' · '+D.fmtDateCN(D.dkToTs(dk))+'</div>'+
+    '<div class="field"><label>今日情绪（点选一个，再点取消）</label>'+
+      '<div class="chip-row" id="dr-emoji">'+CONFIG.EMOJIS.map(e=>
+        '<button class="chip'+(S.form.emoji===e?' on':'')+'" data-action="emoji" data-e="'+e+'" style="font-size:16px">'+e+'</button>').join('')+'</div></div>'+
+    '<div class="field"><label>小标签（≤8个，每个≤12字）</label>'+
+      '<div class="chip-row" id="dr-tags" style="margin-bottom:8px">'+S.form.tags.map((t,i)=>
+        '<span class="chip">'+esc(t)+'<button class="x-btn" data-action="tag-del" data-i="'+i+'">×</button></span>').join('')+'</div>'+
+      '<div class="row"><input class="input" id="dr-tag-input" maxlength="12" placeholder="输入标签，如：背了50词">'+
+      '<button class="btn" data-action="tag-add" style="flex:none">添加</button></div></div>'+
+    '<div class="field"><label>笔记 / 心得</label>'+
+      '<textarea class="textarea" id="dr-note" style="min-height:110px" placeholder="今天做了什么、有什么收获…">'+esc(rec.note||'')+'</textarea></div>'+
+    '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
+      '<div id="dr-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<div class="hint">图片会自动压缩后保存在本浏览器中</div></div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="save-dayrecord">保存记录</button>'+
+    '</div>');
+}
+/* 可能性确定：分类列表 */
+function catListHtml(){
+  const sp = spaceById(S.spaceId);
+  if(!sp) return '';
+  const cats = (sp.categories||[]).slice().sort((a,b)=>(a.order??0)-(b.order??0));
+  let h = '<button class="btn btn--primary btn--block" data-action="cat-add">＋ 新建可能性确定</button>';
+  if(cats.length===0){
+    h += '<div class="empty" style="margin-top:12px"><span class="empty-ico">◇</span>还没有可能性确定<br>用它分类收纳值得留存的笔记，就像图库、歌单一样</div>';
+  }else{
+    h += '<div style="margin-top:12px">';
+    for(const c of cats){
+      const cnt = S.catnotes.filter(n=>n.spaceId===sp.id && n.categoryId===c.id).length;
+      h += '<div class="cat-item card" data-action="cat-open" data-id="'+c.id+'">'+
+             '<div class="cat-ico">◇</div>'+
+             '<div class="cat-name">'+esc(c.name)+'</div>'+
+             '<div class="cat-cnt">'+cnt+' 篇</div>'+
+             '<button class="icon-btn" data-action="cat-rename" data-id="'+c.id+'" aria-label="重命名">✎</button>'+
+             '<button class="icon-btn" data-action="cat-del" data-id="'+c.id+'" aria-label="删除">🗑</button>'+
+           '</div>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
+/* 可能性确定：某分类下的笔记列表 */
+function catNotesHtml(){
+  const sp = spaceById(S.spaceId);
+  if(!sp) return '';
+  const cat = (sp.categories||[]).find(c=>c.id===S.catId);
+  if(!cat) return '<div class="empty">分类不存在</div>';
+  const notes = S.catnotes.filter(n=>n.spaceId===sp.id && n.categoryId===S.catId).sort((a,b)=>b.updatedAt-a.updatedAt);
+  let h = '<button class="btn btn--ghost btn--small" data-action="cat-back">← 返回分类列表</button>';
+  h += '<div class="sec-sub" style="margin-top:10px">'+esc(cat.name)+'<span class="cnt">'+notes.length+' 篇</span></div>';
+  h += '<button class="btn btn--primary btn--block" data-action="note-form">＋ 新笔记</button>';
+  if(notes.length===0){
+    h += '<div class="empty" style="margin-top:12px"><span class="empty-ico">📝</span>还没有笔记<br>把值得长期留存的记录放进这里</div>';
+  }else{
+    for(const n of notes){
+      h += '<div class="card pad" style="margin-top:12px">'+
+             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+               '<div style="font-weight:600;font-size:14.5px;word-break:break-all">'+esc(n.title)+'</div>'+
+               '<div style="flex:none;display:flex">'+
+                 '<button class="icon-btn" data-action="note-form" data-id="'+n.id+'" style="width:26px;height:26px">✎</button>'+
+                 '<button class="icon-btn" data-action="note-del" data-id="'+n.id+'" style="width:26px;height:26px">🗑</button>'+
+               '</div>'+
+             '</div>'+
+             (n.note?'<div class="todo-note" style="margin-top:6px">'+esc(n.note)+'</div>':'')+
+             imgsHtml(n.images)+
+             '<div class="hint" style="font-size:11px;color:var(--text-2);margin-top:6px">更新于 '+D.fmtDateShort(D.dateKey(n.updatedAt))+'</div>'+
+           '</div>';
+    }
+  }
+  return h;
+}
+/* 分类笔记编辑弹窗 */
+function openNoteForm(id){
+  const n = id ? S.catnotes.find(x=>x.id===id) : null;
+  S.form = { images: [...(n ? (n.images||[]) : [])] };
+  UI.openModal(
+    '<div class="modal-title">'+(n?'编辑笔记':'新笔记')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>标题 *</label>'+
+      '<input class="input" id="nf-title" maxlength="50" value="'+esc(n?n.title:'')+'" placeholder="例如：五十音图总结"></div>'+
+    '<div class="field"><label>内容</label>'+
+      '<textarea class="textarea" id="nf-note" style="min-height:120px" placeholder="知识点、心得、过程记录…">'+esc(n?n.note:'')+'</textarea></div>'+
+    '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'）</label>'+
+      '<div id="nf-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<div class="hint">图片会自动压缩后保存在本浏览器中</div></div>'+
+    '<div class="modal-actions">'+
+      (n?'<button class="btn btn--danger" data-action="note-del" data-id="'+n.id+'">删除</button>':'')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="save-note"'+(n?' data-id="'+n.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+/* 空间详情 · 确定性迭代页（某一天的记录） */
+function spDayHtml(sp){
+  const dk = S.dayFilter || D.dateKey(Date.now());
+  const rec = dayDoc(dk).spaceRecords[sp.id];
+  let h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<button class="icon-btn" data-action="day-prev" aria-label="前一天">◀</button>'+
+    '<div style="flex:1;text-align:center;font-weight:600">'+D.fmtDateCN(D.dkToTs(dk))+
+      (dk===D.dateKey(Date.now())?' · <span style="color:var(--accent)">今天</span>':'')+'</div>'+
+    '<button class="icon-btn" data-action="day-next" aria-label="后一天">▶</button>'+
+  '</div>';
+  h += '<div class="card pad">';
+  if(rec && (rec.emoji || (rec.tags||[]).length || rec.note || (rec.images||[]).length)){
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+           (rec.emoji?'<span style="font-size:28px;line-height:1">'+rec.emoji+'</span>':'')+
+           (rec.tags||[]).map(t=>'<span class="badge">'+esc(t)+'</span>').join('')+
+         '</div>';
+    if(rec.note) h += '<div style="font-size:13.5px;white-space:pre-wrap">'+esc(rec.note)+'</div>';
+    h += imgsHtml(rec.images);
+    const sess = Rhythm.sessionsOfDay(dk, sp.id);
+    if(sess.length){
+      h += '<div class="sec-sub" style="margin:14px 0 6px">该日递归时段</div>';
+      for(const s of sess){
+        h += '<div class="kv"><span class="k">'+D.tsToHHMM(s.start)+' ~ '+D.tsToHHMM(s.end)+'</span><span class="v">'+fmtDur(s.end-s.start)+'</span></div>';
+      }
+    }
+  }else{
+    h += '<div class="empty" style="border:none;padding:16px 0">这一天还没有记录<br><span style="font-size:12px">点下方按钮写下第一条确定性迭代</span></div>';
+  }
+  h += '<button class="btn btn--primary btn--block" data-action="day-edit" style="margin-top:12px">'+
+         (rec && (rec.note||(rec.tags||[]).length||rec.emoji) ? '✎ 编辑记录' : '✎ 确定性迭代 · 记录这一天')+'</button>';
+  h += '</div>';
+  return h;
+}
+/* 空间详情 · 日历页 */
+function calMonthHtml(y, m){
+  const first = new Date(y, m, 1);
+  const startWd = first.getDay();
+  const daysIn = new Date(y, m+1, 0).getDate();
+  const today = D.dateKey(Date.now());
+  let h = '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>';
+  h += '<div class="cal-grid" style="margin-top:4px">';
+  for(let i=0;i<startWd;i++) h += '<span></span>';
+  for(let d=1;d<=daysIn;d++){
+    const dk = y+'-'+pad2(m+1)+'-'+pad2(d);
+    const rec = dayDoc(dk).spaceRecords[S.spaceId];
+    h += '<button class="cal-day'+(dk===today?' today':'')+(rec?' has':'')+'" data-action="cal-day" data-dk="'+dk+'">'+
+           '<span class="cal-n">'+d+'</span>'+
+           (rec&&rec.emoji?'<span class="cal-e">'+rec.emoji+'</span>':'')+
+           (rec&&rec.tags&&rec.tags.length?'<span class="cal-t">'+esc(rec.tags[0])+'</span>':'')+
+         '</button>';
+  }
+  h += '</div>';
+  return h;
+}
+function spCalHtml(){
+  if(!S.calY){ const d = new Date(); S.calY = d.getFullYear(); S.calM = d.getMonth(); }
+  return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<button class="icon-btn" data-action="cal-prev" aria-label="上个月">◀</button>'+
+    '<div style="flex:1;text-align:center;font-weight:600">'+S.calY+'年'+(S.calM+1)+'月</div>'+
+    '<button class="icon-btn" data-action="cal-next" aria-label="下个月">▶</button>'+
+  '</div>'+calMonthHtml(S.calY, S.calM);
+}
+/* 空间详情 · 待办页 */
+function spTodosHtml(sp){
+  const now = Date.now();
+  const list = S.todos.filter(x=>!x.archived && x.spaceId===sp.id);
+  const pending = [], done = [];
+  for(const t of list){ (todoStatus(t, now)==='done' ? done : pending).push(t); }
+  pending.sort((a,b)=>{
+    const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
+    if(da==null) return 1; if(db==null) return -1; return da-db;
+  });
+  done.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  let h = '<button class="btn btn--primary btn--block" data-action="todo-form" data-space="'+sp.id+'">＋ 在此空间新建待办</button>';
+  h += '<div class="sec-sub">进行中<span class="cnt">'+pending.length+'</span></div>';
+  if(pending.length===0) h += '<div class="empty"><span class="empty-ico">☀</span>该空间没有进行中的待办</div>';
+  else for(const t of pending) h += todoCardHtml(t, now);
+  if(done.length>0){
+    h += '<div class="sec-sub">已完成<span class="cnt">'+done.length+'</span></div>';
+    for(const t of done) h += todoCardHtml(t, now);
+  }
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8.7 节律表辅助（时间带/日记弹窗）
+   ══════════════════════════════════════════════════════════════ */
+/* 递归时间带上的一个色段（active=进行中，宽度按墙钟实时） */
+function bandHtml(s, active){
+  const dayStart = D.dkToTs(s.day);
+  const startMin = Math.max(0, (s.start - dayStart) / 60000);
+  const endMin = Math.min(1440, (active ? Date.now() : s.end) - dayStart) / 60000;
+  const left = startMin / 1440 * 100;
+  const w = Math.max(0.6, (endMin - startMin) / 1440 * 100);
+  const sp = spaceById(s.spaceId);
+  const color = sp ? sp.color : '#8A93A3';
+  const name = sp ? sp.name : '已删除空间';
+  const modeTxt = s.mode==='auto' ? '自流转' : '手动递归';
+  const endTxt = active ? '进行中' : D.tsToHHMM(s.end);
+  return '<div class="rh-band'+(active?' active':'')+'" style="left:'+left.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:'+color+'" title="'+esc(name)+' · '+modeTxt+' · '+D.tsToHHMM(s.start)+' ~ '+endTxt+'"></div>';
+}
+/* 时间轴日记弹窗（id 为空则新建） */
+function openRhythmEntryModal(id){
+  const doc = dayDoc(D.dateKey(Date.now()));
+  const en = id ? (doc.rhythmEntries||[]).find(x=>x.id===id) : null;
+  const at = en ? en.at : D.tsToHHMM(Date.now());
+  UI.openModal(
+    '<div class="modal-title">时间轴日记<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>时间点</label><input type="time" class="input num" id="re-time" value="'+esc(at)+'"></div>'+
+    '<div class="field"><label>想法 / 记录</label>'+
+      '<textarea class="textarea" id="re-text" style="min-height:110px" placeholder="此刻的想法、发生的事…">'+esc(en?en.text:'')+'</textarea></div>'+
+    '<div class="modal-actions">'+
+      (en?'<button class="btn btn--danger" data-action="rhythm-entry-del" data-id="'+en.id+'">删除</button>':'')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="rhythm-entry-save"'+(en?' data-id="'+en.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+/* 自流转日程弹窗（id 为空则新建） */
+function openSlotFormModal(id){
+  const dk = D.dateKey(Date.now());
+  const doc = dayDoc(dk);
+  const slot = id ? (doc.autoSchedules||[]).find(x=>x.id===id) : null;
+  S.form = { slotRep:'today', slotDays:[], slotWeekdays:new Set() };
+  const vis = r => r===S.form.slotRep ? '' : ' style="display:none"';
+  UI.openModal(
+    '<div class="modal-title">'+(slot?'编辑自流转日程':'添加自流转日程')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>可能性空间</label>'+
+      '<select class="select" id="sl-space">'+spaceOptions(slot?slot.spaceId:null)+'</select></div>'+
+    '<div class="field"><label>时间段（同一自然日内）</label>'+
+      '<div class="row" style="align-items:center"><input type="time" class="input num" id="sl-start" value="'+esc(slot?slot.start:'09:00')+'">'+
+      '<span style="color:var(--text-2);flex:none">~</span>'+
+      '<input type="time" class="input num" id="sl-end" value="'+esc(slot?slot.end:'11:00')+'"></div></div>'+
+    '<div class="field"><label>备注（可选）</label>'+
+      '<input class="input" id="sl-note" maxlength="40" value="'+esc(slot?slot.note:'')+'" placeholder="如：到点自动开始消耗节律递归时间"></div>'+
+    (!slot ? (
+    '<div class="field"><label>重复方式</label><div class="chip-row">'+
+      segChips('slotrep',['today','days','weekdays'],['仅今天','未来几天','每周重复'],S.form.slotRep)+
+    '</div></div>'+
+    '<div class="field" id="sl-days"'+vis('days')+'><label>复制到未来哪些天（可多选）</label><div class="chip-row">'+
+      [1,2,3,4,5,6,7].map(n=>{
+        const dk2 = D.dateKey(D.addDaysTs(Date.now(), n));
+        return '<button class="chip'+(S.form.slotDays.includes(n)?' on':'')+'" data-action="seg" data-group="slotday" data-val="'+n+'">'+D.fmtDateShort(dk2)+'</button>';
+      }).join('')+
+    '</div></div>'+
+    '<div class="field" id="sl-weekdays"'+vis('weekdays')+'><label>每周哪几天（可多选）</label><div class="chip-row">'+
+      ['一','二','三','四','五','六','日'].map((n,i)=>
+        '<button class="chip'+(S.form.slotWeekdays.has(i+1)?' on':'')+'" data-action="seg" data-group="slotwd" data-val="'+(i+1)+'">'+n+'</button>').join('')+
+      '</div><div class="hint">生成未来28天内的对应副本（课程表式）</div></div>'
+    ) : '')+
+    '<div class="modal-actions">'+
+      (slot?'<button class="btn btn--danger" data-action="slot-del" data-id="'+slot.id+'">删除</button>':'')+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="slot-save"'+(slot?' data-id="'+slot.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+/* 今日自流转日程列表 */
+function slotListHtml(){
+  const now = Date.now();
+  const dk = D.dateKey(now);
+  const doc = dayDoc(dk);
+  const slots = [...(doc.autoSchedules||[])].sort((a,b)=>a.start<b.start?-1:1);
+  let h = '<button class="btn btn--block" data-action="slot-form">＋ 添加自流转日程</button>';
+  if(slots.length===0){
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">课程表式：到点自动用指定空间消耗节律递归时间</div>';
+  }else{
+    h += '<div style="margin-top:12px">';
+    for(const slot of slots){
+      const sp = spaceById(slot.spaceId);
+      const s = D.hhmmToTs(D.dkToTs(dk), slot.start);
+      const e = D.hhmmToTs(D.dkToTs(dk), slot.end);
+      const cov = Rhythm.slotCoverage(dk, slot.id, s);
+      let badge, badgeCls;
+      if(S.sessions.some(x=>x.end==null && x.scheduleId===slot.id)){ badge='进行中'; badgeCls='sb-active'; }
+      else if(now < s){ badge='未开始'; badgeCls='sb-upcoming'; }
+      else if(now >= e){ badge = cov >= e-1000 ? '已结束' : (cov > s ? '部分未生效' : '未生效'); badgeCls = cov >= e-1000 ? 'sb-done' : 'sb-missed'; }
+      else { badge='额度不足'; badgeCls='sb-missed'; }
+      h += '<div class="card slot-item">'+
+             '<span class="dot" style="background:'+(sp?sp.color:'#8A93A3')+'"></span>'+
+             '<div class="slot-info">'+
+               '<div class="slot-time num">'+esc(slot.start)+' ~ '+esc(slot.end)+'</div>'+
+               '<div style="font-size:12px;color:var(--text-2)">'+esc(sp?sp.name:'已删除空间')+(slot.note?' · '+esc(slot.note):'')+'</div>'+
+             '</div>'+
+             '<span class="slot-badge '+badgeCls+'">'+badge+'</span>'+
+             '<button class="icon-btn" data-action="slot-form" data-id="'+slot.id+'" style="width:26px;height:26px">✎</button>'+
+           '</div>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9. Views 视图渲染（首页/待办/空间/节律表/设置）
+   ══════════════════════════════════════════════════════════════ */
+const Views = {
+  /* —— 首页 —— */
+  home(){
+    const now = Date.now();
+    const dk = D.dateKey(now);
+    const active = S.spaces.filter(x=>!x.archived);
+    let h = '';
+    h += '<div class="card card--mark home-hero">'+
+           '<div class="hero-date" data-bind="bigdate"></div>'+
+           '<div class="hero-clock num" data-bind="bigclock"></div>'+
+         '</div>';
+    /* 今日待办收纳卡 */
+    const todayTodos = S.todos.filter(x=>!x.archived && isTodayTodo(x, now));
+    const doneCnt = todayTodos.filter(x=>todoStatus(x, now)==='done').length;
+    const pendingCnt = todayTodos.length - doneCnt;
+    let urgent = null;
+    for(const t of todayTodos){
+      if(todoStatus(t, now)==='done') continue;
+      const due = TodoLogic.dueAt(t, now);
+      if(due == null) continue;
+      if(!urgent || due < TodoLogic.dueAt(urgent, now)) urgent = t;
+    }
+    h += '<section class="sec"><h2 class="sec-title">今日待办</h2>'+
+      '<div class="card pad home-todo-card" data-action="home-todo-toggle">'+
+        '<div style="display:flex;align-items:center;gap:12px">'+
+          '<div class="home-todo-ico">📋</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-weight:700;font-size:15px">今日待办 · '+todayTodos.length+' 条</div>'+
+            '<div style="font-size:12px;color:var(--text-2);margin-top:2px">已完成 '+doneCnt+' · 未完成 '+pendingCnt+'</div>'+
+          '</div>'+
+          '<div class="home-todo-arrow">'+(S.homeTodoOpen?'▲':'▼')+'</div>'+
+        '</div>'+
+        (urgent
+          ? '<div class="home-urgent" data-bind="urgent" data-id="'+urgent.id+'">最紧急：<b>'+esc(urgent.title)+'</b> · <span class="num" data-cd>'+fmtRemain(TodoLogic.dueAt(urgent, now)-now)+'</span></div>'
+          : '<div class="home-urgent" style="color:var(--text-2)">'+(pendingCnt===0 && todayTodos.length>0?'今天的事都完成啦 🎉':'今天没有待办')+'</div>')+
+      '</div>';
+    if(S.homeTodoOpen){
+      h += '<div style="margin-top:12px">';
+      const sorted = todayTodos.filter(x=>todoStatus(x, now)!=='done').sort((a,b)=>{
+        const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
+        if(da==null) return 1; if(db==null) return -1; return da-db;
+      });
+      if(sorted.length===0){
+        h += '<div class="empty">今天没有进行中的待办</div>';
+      }else{
+        for(const t of sorted) h += todoCardHtml(t, now);
+      }
+      const doneToday = todayTodos.filter(x=>todoStatus(x, now)==='done');
+      if(doneToday.length){
+        h += '<div class="sec-sub">已完成<span class="cnt">'+doneToday.length+'</span></div>';
+        for(const t of doneToday) h += todoCardHtml(t, now);
+      }
+      h += '</div>';
+    }
+    h += '</section>';
+    /* 节律摘要 */
+    const Q = Rhythm.quota();
+    const consumed = Rhythm.consumedMinutes(dk, now);
+    const remain = Math.max(0, Q - consumed);
+    const act = Rhythm.activeManual();
+    h += '<section class="sec"><h2 class="sec-title">节律</h2>'+
+      '<div class="card pad" data-bind="quota" data-action="goto-rhythm">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
+          '<div style="font-weight:700;font-size:15px">节律递归时间</div>'+
+          '<div class="num" style="font-size:12.5px;color:var(--text-2)">额度 '+fmtMin(Q)+'</div>'+
+        '</div>'+
+        '<div class="prog" style="height:8px"><div class="prog-bar" data-q-bar style="width:'+Math.min(100, consumed/Q*100).toFixed(1)+'%"></div></div>'+
+        '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px">'+
+          '<span style="color:var(--text-2)">已消耗 <b class="num" data-q-used>'+fmtMin(consumed)+'</b></span>'+
+          '<span>剩余 <b class="num" data-q-remain style="color:var(--accent)">'+fmtMin(remain)+'</b></span>'+
+        '</div>'+
+        (act ? '<div class="home-live" data-bind="rec" data-space="'+act.spaceId+'"><span class="pulse-dot"></span>正在递归：'+esc(spaceNameOf(act.spaceId))+' · <span class="num" data-rec-t>'+fmtDur(now-act.start)+'</span></div>' : '')+
+      '</div></section>';
+    /* 空间网格 */
+    h += '<section class="sec"><h2 class="sec-title">可能性空间</h2>';
+    if(active.length===0){
+      h += '<div class="empty"><span class="empty-ico">◆</span>还没有可能性空间<br>去「空间」页创建你的第一个兴趣空间吧</div>';
+    }else{
+      h += '<div class="grid-2">';
+      for(const sp of active){
+        h += '<div class="space-card" data-action="open-space" data-id="'+sp.id+'" style="--sc:'+sp.color+'">'+
+               '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
+               '<div class="space-name">'+esc(sp.name)+'</div>'+
+               '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+' · '+(sp.categories||[]).length+' 个确定</div>'+
+             '</div>';
+      }
+      h += '</div>';
+    }
+    h += '</section>';
+    return h;
+  },
+  /* —— 事务待办 —— */
+  todos(){
+    const now = Date.now();
+    const list = S.todos.filter(x=>!x.archived);
+    const pending = [], done = [];
+    for(const t of list){ (todoStatus(t, now)==='done' ? done : pending).push(t); }
+    pending.sort((a,b)=>{
+      const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
+      if(da==null) return 1; if(db==null) return -1; return da-db;
+    });
+    done.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+    let h = '<section class="sec"><h2 class="sec-title">事务待办</h2>';
+    h += '<button class="btn btn--primary btn--block" data-action="todo-form" style="margin-bottom:6px">＋ 新建待办</button>';
+    h += '<div class="sec-sub">进行中<span class="cnt">'+pending.length+'</span></div>';
+    if(pending.length===0){
+      h += '<div class="empty"><span class="empty-ico">☀</span>没有进行中的待办<br><span style="font-size:12px">点上方「新建待办」开始记录</span></div>';
+    }else{
+      for(const t of pending) h += todoCardHtml(t, now);
+    }
+    if(done.length>0){
+      h += '<div class="sec-sub">已完成<span class="cnt">'+done.length+'</span><span style="font-weight:400;letter-spacing:0">点击灰色卡片可恢复为未完成</span></div>';
+      for(const t of done) h += todoCardHtml(t, now);
+    }
+    h += '</section>';
+    return h;
+  },
+  /* —— 可能性空间列表 —— */
+  spaces(){
+    const active = S.spaces.filter(x=>!x.archived);
+    let h = '<section class="sec"><h2 class="sec-title">可能性空间<span class="sec-extra">每个兴趣，像一本书</span></h2>';
+    if(active.length===0){
+      h += '<div class="empty"><span class="empty-ico">◇</span>创建你的第一个可能性空间<br>比如：学日语 · 拍视频 · 画画 · cos</div>';
+    }else{
+      h += '<div class="grid-2">';
+      for(const sp of active){
+        h += '<div class="space-card" data-action="open-space" data-id="'+sp.id+'" style="--sc:'+sp.color+'">'+
+               '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
+               '<div class="space-name">'+esc(sp.name)+'</div>'+
+               '<div class="space-meta">'+(sp.categories||[]).length+' 个可能性确定</div>'+
+             '</div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="grid-2" style="margin-top:12px"><div class="space-card add-card" data-action="add-space">'+
+           '<span class="plus">＋</span>新建可能性空间</div></div>';
+    h += '</section>';
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2)">空间详情（每日记录 · 情绪 · 标签 · 可能性确定）将在空间阶段完成</div>';
+    return h;
+  },
+  /* —— 空间详情 —— */
+  spaceDetail(){
+    const sp = spaceById(S.spaceId);
+    if(!sp) return '<div class="empty">该空间不存在或已删除</div>';
+    if(!S.spaceTab) S.spaceTab = 'day';
+    let h = '<div class="card pad">'+
+      '<div style="display:flex;gap:12px;align-items:center">'+
+        '<div class="sp-ico" style="background:'+sp.color+'1A">'+esc(sp.icon||'✦')+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:700;font-size:17px">'+esc(sp.name)+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2)">'+esc(sp.note||'这个空间正在生长')+'</div>'+
+        '</div>'+
+        '<button class="icon-btn" data-action="space-form" data-id="'+sp.id+'" style="flex:none" aria-label="编辑空间">✎</button>'+
+      '</div>'+
+      '<div class="stat-row">'+
+        '<div class="stat"><div class="stat-v num">'+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div><div class="stat-k">今日递归</div></div>'+
+        '<div class="stat"><div class="stat-v num">'+fmtMin(Rhythm.totalSpaceMinutes(sp.id))+'</div><div class="stat-k">累计递归</div></div>'+
+        '<div class="stat"><div class="stat-v num">'+iterDays(sp.id)+'</div><div class="stat-k">迭代天数</div></div>'+
+      '</div>'+
+    '</div>';
+    const tabs = {day:'确定性迭代', cal:'日历', cat:'可能性确定', todos:'待办'};
+    h += '<div class="chip-row" style="margin:14px 0 16px">'+Object.keys(tabs).map(k=>
+      '<button class="chip'+(S.spaceTab===k?' on':'')+'" data-action="space-tab" data-tab="'+k+'">'+tabs[k]+'</button>').join('')+'</div>';
+    if(S.spaceTab==='day') h += spDayHtml(sp);
+    else if(S.spaceTab==='cal') h += spCalHtml();
+    else if(S.spaceTab==='cat') h += S.catId ? catNotesHtml() : catListHtml();
+    else if(S.spaceTab==='todos') h += spTodosHtml(sp);
+    return h;
+  },
+  /* —— 节律表 —— */
+  rhythm(){
+    const now = Date.now();
+    const dk = D.dateKey(now);
+    const doc = dayDoc(dk);
+    const spaces = S.spaces.filter(x=>!x.archived);
+    const Q = Rhythm.quota();
+    const consumed = Rhythm.consumedMinutes(dk, now);
+    const remain = Math.max(0, Q - consumed);
+    let h = '<section class="sec"><h2 class="sec-title">节律表</h2>';
+    /* 统计卡 */
+    h += '<div class="card card--mark pad" data-bind="quota" style="margin-bottom:16px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
+        '<div style="font-weight:700;font-size:15px">节律递归时间</div>'+
+        '<div class="num" style="font-size:12.5px;color:var(--text-2)">今日额度 '+fmtMin(Q)+'</div>'+
+      '</div>'+
+      '<div class="prog" style="height:10px"><div class="prog-bar" data-q-bar style="width:'+Math.min(100, consumed/Q*100).toFixed(1)+'%"></div></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px">'+
+        '<span style="color:var(--text-2)">已消耗 <b class="num" data-q-used>'+fmtMin(consumed)+'</b></span>'+
+        '<span>剩余 <b class="num" data-q-remain style="color:var(--accent)">'+fmtMin(remain)+'</b></span>'+
+      '</div>';
+    const bySpace = spaces.map(sp=>({sp, min:Rhythm.todaySpaceMinutes(sp.id)})).filter(x=>x.min>0);
+    if(bySpace.length){
+      h += '<div class="sec-sub" style="margin:12px 0 4px">可能性递归时间 · 今日转化</div>';
+      for(const x of bySpace){
+        h += '<div class="kv"><span class="k"><span class="dot" style="background:'+x.sp.color+'"></span>'+esc(x.sp.name)+'</span><span class="v num">'+fmtMin(x.min)+'</span></div>';
+      }
+    }else{
+      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:10px">今日还没有可能性递归消耗 — 在下方空间卡片点击「可能性递归」开始</div>';
+    }
+    h += '</div>';
+    /* 24h 时间带 */
+    const slices = S.sessions.filter(s=>s.day===dk && s.end!=null).sort((a,b)=>a.start-b.start);
+    const activeSlices = Rhythm.activeSlices().filter(s=>s.day===dk);
+    h += '<div class="sec-sub">今日递归时间带</div>';
+    h += '<div class="rh-track">'+
+           slices.map(s=>bandHtml(s, false)).join('')+
+           activeSlices.map(s=>bandHtml(s, true)).join('')+
+           '<div class="rh-now" style="left:'+((now - D.dkToTs(dk)) / 86400000 * 100).toFixed(3)+'%"></div>'+
+         '</div>';
+    if(slices.length===0 && activeSlices.length===0){
+      h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:8px">还没有递归记录，时间带会在开始递归后自动绘制</div>';
+    }
+    /* 自流转日程 */
+    h += '<div class="sec-sub" style="margin-top:18px">自流转 · 今日日程</div>';
+    h += slotListHtml();
+    /* 手动递归：空间卡片双按钮 */
+    h += '<div class="sec-sub" style="margin-top:18px">可能性递归 · 手动</div>';
+    if(spaces.length===0){
+      h += '<div class="empty"><span class="empty-ico">◇</span>还没有可能性空间<br>创建空间后，即可用空间消耗节律递归时间</div>';
+    }else{
+      h += '<div class="grid-2">';
+      for(const sp of spaces){
+        const acts = Rhythm.activeForSpace(sp.id);
+        const isAct = acts.length>0;
+        h += '<div class="space-card rh-space'+(isAct?' on':'')+'" data-bind="rec" data-space="'+sp.id+'" style="--sc:'+sp.color+'">'+
+               '<div class="space-ico">'+esc(sp.icon||'✦')+'</div>'+
+               '<div class="space-name">'+esc(sp.name)+'</div>'+
+               '<div class="space-meta">今日 '+fmtMin(Rhythm.todaySpaceMinutes(sp.id))+'</div>'+
+               (isAct?'<div class="rec-live num" data-rec-t>'+fmtDur(now - acts[0].start)+'</div>':'')+
+               '<div style="display:flex;gap:8px;margin-top:4px">'+
+                 '<button class="btn btn--small" style="flex:1" data-action="rhythm-iter" data-id="'+sp.id+'">确定性迭代</button>'+
+                 '<button class="btn btn--small '+(isAct?'btn--danger':'btn--primary')+'" style="flex:1" data-action="rhythm-rec" data-id="'+sp.id+'">'+(isAct?'停止':'可能性递归')+'</button>'+
+               '</div>'+
+             '</div>';
+      }
+      h += '</div>';
+    }
+    /* 时间轴日记 */
+    h += '<div class="sec-sub" style="margin-top:18px">时间轴日记</div>';
+    h += '<button class="btn btn--primary btn--block" data-action="rhythm-entry" style="margin-bottom:12px">＋ 记录此刻的想法</button>';
+    const entries = [...(doc.rhythmEntries||[])].sort((a,b)=>a.at<b.at?-1:1);
+    if(entries.length===0){
+      h += '<div class="empty"><span class="empty-ico">📔</span>以时间为标签的日记<br>记录一天24小时的想法与活动</div>';
+    }else{
+      for(const en of entries){
+        h += '<div class="card pad rh-entry" style="margin-bottom:10px">'+
+               '<div style="display:flex;justify-content:space-between;align-items:center">'+
+                 '<span class="rh-time num">'+esc(en.at)+'</span>'+
+                 '<span style="display:flex">'+
+                   '<button class="icon-btn" data-action="rhythm-entry" data-id="'+en.id+'" style="width:26px;height:26px">✎</button>'+
+                   '<button class="icon-btn" data-action="rhythm-entry-del" data-id="'+en.id+'" style="width:26px;height:26px">🗑</button>'+
+                 '</span>'+
+               '</div>'+
+               (en.text?'<div style="font-size:13px;white-space:pre-wrap;margin-top:6px">'+esc(en.text)+'</div>':'')+
+               imgsHtml(en.images)+
+             '</div>';
+      }
+    }
+    h += '</section>';
+    return h;
+  },
+  /* —— 设置 —— */
+  settings(){
+    let h = '';
+    if(S.memoryMode){
+      h += '<div class="warn-banner">⚠️ 当前浏览器无法持久保存数据（可能处于隐私模式或浏览器限制）。请改用 Chrome / Edge 打开本文件，并及时导出备份。</div>';
+    }
+    h += '<section class="sec"><h2 class="sec-title">节律设置</h2><div class="card pad">'+
+      '<div class="field"><label>每日「节律递归时间」额度（分钟）</label>'+
+        '<input type="number" class="input num" id="set-quota" min="30" max="1440" step="30" value="'+S.settings.rhythmQuotaMinutes+'">'+
+        '<div class="hint">当前：'+fmtMin(S.settings.rhythmQuotaMinutes)+'。可选 30 ~ 1440 分钟（0.5 ~ 24 小时）</div></div>'+
+      '<div class="field"><label>待办默认「变黄」阈值（剩余多少分钟内变黄）</label>'+
+        '<input type="number" class="input num" id="set-yellow" min="0" max="1440" step="15" value="'+S.settings.defaultYellowMinutes+'">'+
+        '<div class="hint">新建待办卡片会复制此默认值，之后可在卡片上单独调整</div></div>'+
+      '<div class="field"><label>待办默认「变红」阈值（分钟）</label>'+
+        '<input type="number" class="input num" id="set-red" min="0" max="1440" step="15" value="'+S.settings.defaultRedMinutes+'"></div>'+
+      '<div class="field"><label>待办确认回退秒数（点击后多久不确认就恢复）</label>'+
+        '<input type="number" class="input num" id="set-confirm" min="3" max="60" step="1" value="'+S.settings.confirmSeconds+'"></div>'+
+      '<button class="btn btn--primary btn--block" data-action="save-settings">'+CONFIG.T.save+'设置</button>'+
+    '</div></section>';
+    h += '<section class="sec"><h2 class="sec-title">数据与备份</h2><div class="card pad">'+
+      '<div class="field"><label>存储用量（当前浏览器内）</label>'+
+        '<div class="prog"><div class="prog-bar" style="width:'+Math.min(100, Store.usageBytes()/5242880*100).toFixed(1)+'%"></div></div>'+
+        '<div class="hint">已用 '+Store.usageText()+'（浏览器约 5MB 上限，图片会压缩后保存）</div></div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px">'+
+        '<button class="btn btn--primary" data-action="export">导出备份（JSON 文件）</button>'+
+        '<button class="btn" data-action="import">导入备份</button>'+
+        '<button class="btn" data-action="seed">生成示例数据（先体验界面）</button>'+
+        '<button class="btn btn--danger" data-action="wipe">清空全部数据</button>'+
+      '</div>'+
+    '</div></section>';
+    h += '<section class="sec"><h2 class="sec-title">关于</h2><div class="card pad">'+
+      '<div class="kv"><span class="k">应用</span><span class="v">'+CONFIG.APP_NAME+' v'+CONFIG.VERSION+'</span></div>'+
+      '<div class="kv"><span class="k">数据格式版本</span><span class="v">'+CONFIG.SCHEMA+'</span></div>'+
+      '<div class="kv"><span class="k">当前浏览器</span><span class="v">'+esc(browserName())+'</span></div>'+
+      '<div class="kv"><span class="k">创建时间</span><span class="v">'+(S.meta.createdAt?D.fmtDateCN(S.meta.createdAt):'—')+'</span></div>'+
+      '<p style="font-size:12px;color:var(--text-2);margin-top:10px">你的所有数据只保存在当前浏览器的本地存储中，不会上传到任何服务器。换浏览器、换电脑或清除浏览器数据会导致数据丢失，请养成定期导出备份的习惯。</p>'+
+    '</div></section>';
+    return h;
+  }
+};
+/* 当前浏览器名（用于设置页展示） */
+function browserName(){
+  try{
+    const ua = navigator.userAgent || '';
+    if(ua.includes('Edg')) return 'Edge';
+    if(ua.includes('Chrome')) return 'Chrome';
+    if(ua.includes('Firefox')) return 'Firefox';
+    if(ua.includes('Safari')) return 'Safari';
+    return '浏览器';
+  }catch(e){ return '未知'; }
+}
+
+/* 渲染入口 */
+const VIEW_TITLES = {home:'首页', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', space:''};
+function renderView(){
+  const root = document.getElementById('view-root');
+  const ae = document.activeElement;
+  if(ae && root.contains(ae)){ scheduleRender(); return; }  // 保护输入焦点
+  let html;
+  if(S.view==='space'){
+    const sp = spaceById(S.spaceId);
+    html = Views.spaceDetail();
+    document.getElementById('hdr-title').textContent = sp ? sp.name : '空间';
+  }else{
+    html = Views[S.view] ? Views[S.view]() : '';
+    document.getElementById('hdr-title').textContent = VIEW_TITLES[S.view]||'';
+  }
+  root.innerHTML = html;
+  document.getElementById('back-btn').classList.toggle('hidden', !(S.view==='settings' || S.view==='space'));
+  document.querySelectorAll('#tabbar .tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===S.view));
+  collectBindings();
+}
+
+/* 从存储重读全部实体（导入/多标签页同步用） */
+function refreshFromStorage(){
+  S.meta = Store.get('meta', {});
+  S.settings = {...CONFIG.DEFAULT_SETTINGS, ...Store.get('settings', {})};
+  S.spaces = Store.get('spaces', []);
+  S.todos = Store.get('todos', []);
+  S.catnotes = Store.get('catnotes', []);
+  S.sessions = Store.get('sessions', []);
+  S.days.clear();
+  S.confirmMap.clear();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   10. Boot 启动
+   ══════════════════════════════════════════════════════════════ */
+function boot(){
+  Store.ok = Store.test();
+  S.memoryMode = !Store.ok;
+  refreshFromStorage();
+  if(!S.meta.createdAt){ S.meta = {schemaVersion:CONFIG.SCHEMA, appVersion:CONFIG.VERSION, createdAt:Date.now(), lastSavedAt:Date.now()}; Store.set('meta', S.meta); }
+  S.lastDay = D.dateKey(Date.now());
+  S.lastHb = Date.now();
+  Store.set('heartbeat', {lastActiveAt:S.lastHb});
+  gcImages();               // 回收无引用图片
+  reconcileNow();
+  renderView();
+  setInterval(tick, 1000);
+
+  /* 事件绑定 */
+  const viewRoot = document.getElementById('view-root');
+  viewRoot.addEventListener('click', e=>{
+    const t = e.target.closest('[data-action]');
+    if(!t) return;
+    if(t.dataset.action==='open-space'){ goSpace(t.dataset.id); return; }
+    Actions[t.dataset.action] && Actions[t.dataset.action](t, e);
+  });
+  viewRoot.addEventListener('input', e=>{
+    const t = e.target.closest('[data-oninput]');
+    if(t && Actions[t.dataset.oninput]) Actions[t.dataset.oninput](t, e);
+  });
+  viewRoot.addEventListener('change', e=>{
+    const t = e.target.closest('[data-onchange]');
+    if(t && Actions[t.dataset.onchange]) Actions[t.dataset.onchange](t, e);
+  });
+  document.getElementById('tabbar').addEventListener('click', e=>{
+    const t = e.target.closest('[data-tab]');
+    if(t && t.dataset.tab !== S.view){ UI.closeModal(); goView(t.dataset.tab); }
+  });
+  const modalRoot = document.getElementById('modal-root');
+  modalRoot.addEventListener('click', e=>{
+    const t = e.target.closest('[data-action]');
+    if(!t) return;
+    if(t.dataset.action==='modal-close'){ UI.closeModal(); return; }
+    if(Actions[t.dataset.action]) Actions[t.dataset.action](t, e);
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape') UI.closeModal();
+  });
+  document.getElementById('file-input').addEventListener('change', e=>{
+    const cb = S.pendingFileCb; S.pendingFileCb = null;
+    if(cb && e.target.files && e.target.files[0]) cb(e.target.files[0]);
+  });
+  window.addEventListener('beforeunload', ()=>{ Store.set('heartbeat', {lastActiveAt:Date.now()}); });
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden){
+      Store.set('heartbeat', {lastActiveAt:Date.now()});
+      reconcileNow();
+      scheduleRender();
+    }
+  });
+  window.addEventListener('storage', e=>{
+    if(e.key && e.key.startsWith(CONFIG.PREFIX)){
+      refreshFromStorage();
+      scheduleRender();
+      UI.toast('检测到数据在另一个标签页被修改，已同步');
+    }
+  });
+  UI.toast('欢迎来到'+CONFIG.APP_NAME);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   11. Debug 调试与示例数据
+   ══════════════════════════════════════════════════════════════ */
+const Debug = {
+  debug(){ console.log('【可能性空间 状态】', S); console.log('【存储】', Store.exportJSON()); },
+  doSeed(){
+    const now = Date.now();
+    const mkCat = (p,i)=>({id:p+i, name:CONFIG.PRESET_CATEGORIES[i], order:i});
+    const sp1 = {id:'sp_demo1', name:'学日语', icon:'📚', color:CONFIG.SPACE_COLORS[0], note:'五十音 → N3 → N2', createdAt:now, archived:false, categories:[mkCat('cat_d1_',0),mkCat('cat_d1_',1),mkCat('cat_d1_',2),mkCat('cat_d1_',3)]};
+    const sp2 = {id:'sp_demo2', name:'练画画', icon:'🎨', color:CONFIG.SPACE_COLORS[1], note:'每天一张速写', createdAt:now, archived:false, categories:[mkCat('cat_d2_',0),mkCat('cat_d2_',1),mkCat('cat_d2_',2),mkCat('cat_d2_',3)]};
+    const sp3 = {id:'sp_demo3', name:'软件开发', icon:'💻', color:CONFIG.SPACE_COLORS[4], note:'做出自己的App', createdAt:now, archived:false, categories:[mkCat('cat_d3_',0),mkCat('cat_d3_',1),mkCat('cat_d3_',2),mkCat('cat_d3_',3)]};
+    S.spaces.push(sp1, sp2, sp3);
+    const mkTodo = o => ({id:uid('td_'), type:'task', title:'', note:'', repeat:'daily', dueAt:null, dailyTime:null, weekdays:[], weeklyTime:null,
+      spaceId:null, thresholdYellowMin:S.settings.defaultYellowMinutes, thresholdRedMin:S.settings.defaultRedMinutes,
+      lastCompletedKey:null, completedAt:null, createdAt:now, archived:false, ...o});
+    S.todos.push(
+      mkTodo({title:'接妹妹放学', type:'task', repeat:'weekly', weekdays:[1,2,3,4,5], weeklyTime:'20:00', note:'学校南门'}),
+      mkTodo({title:'办签证', type:'task', repeat:'once', dueAt:D.hhmmToTs(D.addDaysTs(now,2),'12:00'), note:'带齐材料'}),
+      mkTodo({title:'背50个日语单词', type:'task', repeat:'daily', dailyTime:'21:00', spaceId:sp1.id}),
+      mkTodo({title:'喝水8杯', type:'habit', repeat:'daily', dailyTime:'22:00'}),
+      mkTodo({title:'买洗衣液', type:'memo', repeat:'once', dueAt:null})
+    );
+    S.catnotes.push(
+      {id:uid('cn_'), spaceId:sp1.id, categoryId:'cat_d1_0', title:'五十音图平假名速记', note:'あ 安 → 阿……用汉字来源联想记忆。', images:[], createdAt:now, updatedAt:now}
+    );
+    const today = D.dateKey(now), yest = D.dateKey(D.addDaysTs(now,-1));
+    if(S.sessions.length===0){
+      const t1 = D.hhmmToTs(D.dkToTs(today),'08:00'), t2 = D.hhmmToTs(D.dkToTs(today),'09:30');
+      if(t2 <= now) S.sessions.push({id:uid('rs_'), spaceId:sp1.id, mode:'manual', day:today, start:t1, end:t2, endedBy:'manual', note:'', scheduleId:null});
+      const t3 = D.hhmmToTs(D.dkToTs(today),'19:00'), t4 = D.hhmmToTs(D.dkToTs(today),'20:00');
+      if(t4 <= now) S.sessions.push({id:uid('rs_'), spaceId:sp2.id, mode:'manual', day:today, start:t3, end:t4, endedBy:'manual', note:'', scheduleId:null});
+      saveSessions();
+    }
+    dayDoc(today).spaceRecords[sp1.id] = {emoji:'😄', tags:['五十音复习','单词50个'], note:'状态不错，平假名基本记住了。', images:[], updatedAt:now};
+    dayDoc(today).spaceRecords[sp2.id] = {emoji:'🙂', tags:['速写练习'], note:'画了两张人物速写，手有点生。', images:[], updatedAt:now};
+    dayDoc(today).rhythmEntries.push({id:uid('re_'), at:'08:30', text:'晨间散步时想到的新点子', images:[], createdAt:now});
+    dayDoc(yest).spaceRecords[sp1.id] = {emoji:'😐', tags:['五十音'], note:'开始学五十音。', images:[], updatedAt:now};
+    saveDay(today); saveDay(yest);
+    saveSpaces(); saveTodos(); saveCatnotes();
+    scheduleRender();
+  }
+};
+window.PS = Debug;  // 控制台可输入 PS.debug() / PS.seed()
+
+boot();
+</script>
+</body>
+</html>
