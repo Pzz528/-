@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
 <title>可能性空间</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="favicon.png">
 <style>
 /* ══════════════════════════════════════════════════════════════
    1. 设计变量与基础重置
@@ -234,6 +236,28 @@ img{max-width:100%;display:block}
 .img-thumb{position:relative;cursor:pointer}
 .img-x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(20,26,36,.6);color:#fff;border:none;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .iter-item{border:1px dashed var(--line-strong);border-radius:4px;padding:10px 12px;margin-bottom:10px;position:relative;background:#FBFCFE}
+.alarm-item.off{opacity:.55}
+.alarm-time{font-size:24px;font-weight:700;flex:none;font-variant-numeric:tabular-nums}
+.alarm-switch{width:44px;height:24px;border-radius:12px;background:var(--gray-soft);border:1px solid var(--line-strong);position:relative;cursor:pointer;flex:none;transition:background .2s;padding:0}
+.alarm-switch span{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .2s}
+.alarm-switch.on{background:var(--accent);border-color:var(--accent)}
+.alarm-switch.on span{left:22px}
+
+/* ══════════════════════════════════════════════════════════════
+   10. 自定义背景与覆盖模式
+   ══════════════════════════════════════════════════════════════ */
+#bg-layer{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;background-repeat:no-repeat}
+#bg-overlay{position:fixed;inset:0;z-index:150;background-size:cover;background-position:center;background-repeat:no-repeat}
+#bg-overlay.hidden{display:none}
+.boi-exit{position:absolute;top:calc(10px + env(safe-area-inset-top));left:10px;z-index:2;background:rgba(20,26,36,.55);color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:12px;cursor:pointer}
+.boi-tr{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;text-align:right;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.65);font-size:12px;z-index:1}
+.boi-clock{font-size:22px;font-weight:700}
+.boi-bl,.boi-br{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.65);font-size:12px;max-width:58%;z-index:1;background:rgba(20,26,36,.38);padding:6px 10px;border-radius:4px}
+.boi-bl{left:12px}
+.boi-br{right:12px}
+/* 双指手势需要接管：内容区只允许纵向滚动，覆盖层禁止默认手势 */
+#view-root{touch-action:pan-y}
+#bg-overlay{touch-action:none}
 .daynav{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:16px}
 .daynav .nav-date{flex:1;text-align:center;font-weight:600;font-size:14px;min-width:0}
 </style>
@@ -242,6 +266,7 @@ img{max-width:100%;display:block}
 <div id="app">
   <header id="app-header">
     <div class="hdr-left">
+      <button class="icon-btn hidden" id="bg-btn" data-action="bg-overlay-enter" aria-label="进入背景覆盖">🖼</button>
       <button class="icon-btn hidden" id="back-btn" data-action="back" aria-label="返回">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg>
       </button>
@@ -264,6 +289,16 @@ img{max-width:100%;display:block}
 </div>
 <div id="modal-root"></div>
 <div id="toast-root"></div>
+<div id="bg-layer" class="hidden"></div>
+<div id="bg-overlay" class="hidden">
+  <button class="boi-exit" data-action="bg-overlay-exit">✕ 退出覆盖</button>
+  <div class="boi-tr">
+    <div class="boi-date" data-bind="bigdate"></div>
+    <div class="boi-clock num" data-bind="bigclock"></div>
+  </div>
+  <div class="boi-bl" id="boi-todo" data-bind="urgent"><span data-cd></span></div>
+  <div class="boi-br" id="boi-rec" data-bind="rec"><span data-rec-t></span></div>
+</div>
 <input type="file" id="file-input" hidden>
 <script>
 'use strict';
@@ -424,6 +459,7 @@ const Store = {
    ══════════════════════════════════════════════════════════════ */
 const S = {
   view:'home', spaceId:null, backTarget:'home', dayFilter:null, homeDay:null, rhythmDay:null,
+  alarms:[], alarmFired:{},
   meta:{}, settings:{}, spaces:[], todos:[], catnotes:[], sessions:[],
   days:new Map(),          // dk → day doc（已加载的每日文档）
   confirmMap:new Map(),    // todoId → 确认截止时间戳（纯内存瞬态）
@@ -945,6 +981,83 @@ const Rhythm = {
 };
 
 /* ══════════════════════════════════════════════════════════════
+   6.5 Alarms 闹钟（隐藏页面功能：仅页面打开期间响铃）
+   ══════════════════════════════════════════════════════════════ */
+const Alarms = {
+  list(){ return S.alarms || []; },
+  /* 每秒钟：到点且当天该分钟未响过 → 响铃 */
+  tick(now){
+    if(!S.alarms || S.alarms.length===0) return;
+    const dk = D.dateKey(now);
+    const hm = D.tsToHHMM(now);
+    const wd = D.weekdayOf(dk);
+    for(const a of S.alarms){
+      if(!a.enabled || a.time !== hm) continue;
+      if(a.repeat==='daily' || (a.weekdays||[]).includes(wd)){
+        const key = a.id+'_'+dk+'_'+hm;
+        if(S.alarmFired[key]) continue;
+        S.alarmFired[key] = true;
+        this.ring(a);
+      }
+    }
+  },
+  ring(a){
+    UI.toast('⏰ 闹钟：'+(a.label||'闹钟')+' · '+a.time);
+    this.beep();
+  },
+  /* 浏览器音频需要一次用户交互解锁 */
+  unlockAudio(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      if(!this._ctx) this._ctx = new AC();
+      if(this._ctx.state==='suspended') this._ctx.resume();
+    }catch(e){}
+  },
+  beep(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      if(!this._ctx) this._ctx = new AC();
+      const ctx = this._ctx;
+      if(ctx.state==='suspended') return;
+      const t0 = ctx.currentTime;
+      for(let i=0;i<3;i++){
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = 880;
+        g.gain.setValueAtTime(0.001, t0+i*0.35);
+        g.gain.exponentialRampToValueAtTime(0.4, t0+i*0.35+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t0+i*0.35+0.3);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t0+i*0.35); osc.stop(t0+i*0.35+0.32);
+      }
+    }catch(e){}
+  }
+};
+/* 闹钟弹窗（id 为空则新建） */
+function openAlarmFormModal(id){
+  const a = id ? (S.alarms||[]).find(x=>x.id===id) : null;
+  S.form = { alrep: a ? a.repeat : 'daily', weekdays: new Set(a ? (a.weekdays||[]) : []) };
+  UI.openModal(
+    '<div class="modal-title">'+(a?'编辑闹钟':'添加闹钟')+'<button class="x" data-action="modal-close">×</button></div>'+
+    '<div class="field"><label>响铃时刻</label><input type="time" class="input num" id="al-time" value="'+esc(a?a.time:'08:00')+'"></div>'+
+    '<div class="field"><label>备注（可选）</label><input class="input" id="al-label" maxlength="20" value="'+esc(a?a.label:'')+'" placeholder="如：起床 / 背单词"></div>'+
+    '<div class="field"><label>重复</label><div class="chip-row">'+
+      segChips('alrep',['daily','weekly'],['每天','每周'],S.form.alrep)+
+    '</div></div>'+
+    '<div class="field" id="al-wds"'+(S.form.alrep==='weekly'?'':' style="display:none"')+'><label>每周哪几天（可多选）</label><div class="chip-row">'+
+      ['一','二','三','四','五','六','日'].map((n,i)=>
+        '<button class="chip'+(S.form.weekdays.has(i+1)?' on':'')+'" data-action="seg" data-group="alwd" data-val="'+(i+1)+'">'+n+'</button>').join('')+
+    '</div></div>'+
+    '<div class="hint" style="font-size:12px;color:var(--text-2)">闹钟只在本页面打开时响铃（浏览器限制）</div>'+
+    '<div class="modal-actions">'+
+      '<button class="btn" data-action="modal-close">取消</button>'+
+      '<button class="btn btn--primary" data-action="alarm-save"'+(a?' data-id="'+a.id+'"':'')+'>保存</button>'+
+    '</div>');
+}
+
+/* ══════════════════════════════════════════════════════════════
    7. Ticker 每秒心跳
    ══════════════════════════════════════════════════════════════ */
 const bindings = [];
@@ -970,6 +1083,7 @@ function tick(){
   TodoLogic.confirmTick(now);   // 先处理确认过期回退，再刷新绑定元素
   for(const el of bindings){ if(el.isConnected) updateBinding(el, now); }
   Rhythm.tick(now);
+  Alarms.tick(now);
   checkRollover(now);
   if(now - S.lastHb > 30000){ S.lastHb = now; Store.set('heartbeat', {lastActiveAt: now}); }
 }
@@ -1034,7 +1148,7 @@ function openSettings(){ S.backTarget = S.view==='settings' ? 'home' : S.view; S
 
 /* 事件动作分发表（视图渲染函数可通过 data-action 挂接） */
 const Actions = {
-  'back'(){ if(S.view==='settings') goView(S.backTarget); else if(S.view==='space') goView('spaces'); },
+  'back'(){ if(S.view==='settings') goView(S.backTarget); else if(S.view==='space') goView('spaces'); else if(S.view==='alarm') goView('home'); },
   'open-settings'(){ openSettings(); },
   'modal-close'(){ UI.closeModal(); },
   'export'(){
@@ -1092,14 +1206,14 @@ const Actions = {
   'todo-form'(btn){ openTodoForm(btn.dataset.id || null, btn.dataset.space || null); },
   'seg'(btn){
     const g = btn.dataset.group, v = btn.dataset.val;
-    if(g==='weekday' || g==='slotwd'){ const n = +v; S.form[g].has(n) ? S.form[g].delete(n) : S.form[g].add(n); }
+    if(g==='weekday' || g==='slotwd' || g==='alwd'){ const n = +v; S.form[g].has(n) ? S.form[g].delete(n) : S.form[g].add(n); }
     else if(g==='slotday'){ const n = +v; const i = S.form.slotDays.indexOf(n); i>=0 ? S.form.slotDays.splice(i,1) : S.form.slotDays.push(n); }
     else S.form[g] = v;
     const panel = document.querySelector('.modal-panel');
     if(panel){
       panel.querySelectorAll('[data-group="'+g+'"]').forEach(c=>{
         let on;
-        if(g==='weekday' || g==='slotwd') on = S.form[g].has(+c.dataset.val);
+        if(g==='weekday' || g==='slotwd' || g==='alwd') on = S.form[g].has(+c.dataset.val);
         else if(g==='slotday') on = S.form.slotDays.includes(+c.dataset.val);
         else on = c.dataset.val === S.form[g];
         c.classList.toggle('on', on);
@@ -1116,6 +1230,10 @@ const Actions = {
         const f = document.getElementById('sl-'+r);
         if(f) f.style.display = (r===S.form.slotRep) ? '' : 'none';
       });
+    }
+    if(g==='alrep'){
+      const f = document.getElementById('al-wds');
+      if(f) f.style.display = (S.form.alrep==='weekly') ? '' : 'none';
     }
   },
   'save-todo'(btn){
@@ -1559,6 +1677,47 @@ const Actions = {
     saveDay(dk);
     scheduleRender();
   },
+  /* —— 闹钟（隐藏页面） —— */
+  'open-alarm'(){ S.backTarget = 'home'; S.view = 'alarm'; scheduleRender(); window.scrollTo(0,0); },
+  'alarm-form'(btn){ openAlarmFormModal(btn.dataset.id || null); },
+  'alarm-save'(btn){
+    const time = document.getElementById('al-time').value;
+    if(!time){ UI.toast('请设置响铃时刻', 'err'); return; }
+    const label = document.getElementById('al-label').value.trim();
+    const id = btn?.dataset?.id || null;
+    S.alarms = S.alarms || [];
+    const wds = [...S.form.weekdays].sort((a,b)=>a-b);
+    if(S.form.alrep==='weekly' && wds.length===0){ UI.toast('请至少选择一个星期几', 'err'); return; }
+    if(id){
+      const a = S.alarms.find(x=>x.id===id);
+      if(a){ a.time = time; a.label = label; a.repeat = S.form.alrep; a.weekdays = wds; }
+    }else{
+      S.alarms.push({id:uid('al_'), time, label, repeat:S.form.alrep, weekdays:wds, enabled:true, createdAt:Date.now()});
+    }
+    Store.set('alarms', S.alarms);
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('闹钟已保存');
+  },
+  'alarm-toggle'(btn){
+    const a = (S.alarms||[]).find(x=>x.id===btn.dataset.id);
+    if(!a) return;
+    a.enabled = !a.enabled;
+    Store.set('alarms', S.alarms);
+    scheduleRender();
+    UI.toast(a.enabled ? '闹钟已开启' : '闹钟已关闭');
+  },
+  'alarm-del'(btn){
+    const a = (S.alarms||[]).find(x=>x.id===btn.dataset.id);
+    if(!a) return;
+    UI.confirmDialog('删除闹钟', '删除 '+a.time+(a.label?' · '+a.label:'')+' 的闹钟？', true, ()=>{
+      S.alarms = S.alarms.filter(x=>x.id!==a.id);
+      Store.set('alarms', S.alarms);
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
   /* —— 当日节律递归时间额度 —— */
   'quota-edit'(){ openQuotaModal(); },
   'quota-save'(){
@@ -1577,7 +1736,38 @@ const Actions = {
     UI.closeModal();
     scheduleRender();
     UI.toast('已恢复默认额度');
-  }
+  },
+  /* —— 自定义背景 —— */
+  'bg-set'(){
+    const fi = document.getElementById('file-input');
+    fi.accept = 'image/*';
+    S.pendingFileCb = handleBgImageFile;
+    fi.value = ''; fi.click();
+  },
+  'bg-clear'(){
+    S.settings.bgImageId = null;
+    Store.del('img:bg');
+    saveSettings();
+    applyBg();
+    scheduleRender();
+    UI.toast('已恢复默认背景');
+  },
+  'bg-opacity'(el){
+    S.settings.bgOpacity = +el.value;
+    saveSettings();
+    applyBg();
+    const v = document.getElementById('bg-op-val');
+    if(v) v.textContent = el.value+'%';
+  },
+  'bg-blur'(el){
+    S.settings.bgBlur = +el.value;
+    saveSettings();
+    applyBg();
+    const v = document.getElementById('bg-blur-val');
+    if(v) v.textContent = el.value+'px';
+  },
+  'bg-overlay-enter'(){ enterOverlay(); },
+  'bg-overlay-exit'(){ exitOverlay(); }
 };
 function handleImportFile(file){
   const fr = new FileReader();
@@ -1705,12 +1895,12 @@ function imgsHtml(imgIds, editable){
     '</div>';
   }).join('')+'</div>';
 }
-/* 图片压缩：最长边 ≤1000px，JPEG 质量 0.75 → dataURL */
-function compressImage(file, cb){
+/* 图片压缩：最长边 ≤maxSize（默认1000），JPEG 质量 0.75 → dataURL */
+function compressImage(file, cb, maxSize){
   const img = new Image();
   const url = URL.createObjectURL(file);
   img.onload = ()=>{
-    const MAX = 1000;
+    const MAX = maxSize || 1000;
     const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.max(1, Math.round(img.naturalWidth * scale));
     const h = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -1756,6 +1946,7 @@ function gcImages(){
     }
   }
   for(const n of S.catnotes){ (n.images||[]).forEach(id=>refs.add(id)); }
+  if(S.settings.bgImageId) refs.add(S.settings.bgImageId);   // 背景图
   let removed = 0;
   for(const k of Store.allKeys()){
     if(k.startsWith('img:') && !refs.has(k.slice(4))){ Store.del(k); removed++; }
@@ -2313,8 +2504,8 @@ const Views = {
     const vNow = D.dkToTs(hd) + 86400000 - 1;         // 该天 23:59:59（历史日按"当天视角"计算）
     const active = S.spaces.filter(x=>!x.archived);
     let h = '';
-    /* 日期时间 */
-    h += '<div class="card card--mark home-hero">'+
+    /* 日期时间（隐藏入口：点击进入闹钟页面，外观不做任何改动） */
+    h += '<div class="card card--mark home-hero" data-action="open-alarm">'+
            '<div class="hero-date" data-bind="bigdate"></div>'+
            '<div class="hero-clock num" data-bind="bigclock"></div>'+
          '</div>';
@@ -2591,6 +2782,34 @@ const Views = {
     h += '</section>';
     return h;
   },
+  /* —— 闹钟（隐藏页面） —— */
+  alarm(){
+    const alarms = [...(S.alarms||[])].sort((a,b)=>a.time<b.time?-1:1);
+    let h = '<section class="sec"><h2 class="sec-title">闹钟</h2>';
+    h += '<button class="btn btn--primary btn--block" data-action="alarm-form" style="margin-bottom:12px">＋ 添加闹钟</button>';
+    if(alarms.length===0){
+      h += '<div class="empty"><span class="empty-ico">⏰</span>还没有闹钟<br><span style="font-size:12px">点击「添加闹钟」设定响铃时刻</span></div>';
+    }else{
+      for(const a of alarms){
+        const rep = a.repeat==='daily' ? '每天' : '每周'+(a.weekdays||[]).map(w=>'一二三四五六日'[w-1]).join('');
+        h += '<div class="card pad alarm-item'+(a.enabled?'':' off')+'" style="margin-bottom:10px">'+
+               '<div style="display:flex;align-items:center;gap:12px">'+
+                 '<div class="alarm-time num">'+esc(a.time)+'</div>'+
+                 '<div style="flex:1;min-width:0">'+
+                   '<div style="font-weight:600">'+esc(a.label||'闹钟')+'</div>'+
+                   '<div style="font-size:12px;color:var(--text-2)">'+rep+'</div>'+
+                 '</div>'+
+                 '<button class="alarm-switch'+(a.enabled?' on':'')+'" data-action="alarm-toggle" data-id="'+a.id+'" aria-label="开关"><span></span></button>'+
+                 '<button class="icon-btn" data-action="alarm-form" data-id="'+a.id+'" style="width:26px;height:26px">✎</button>'+
+                 '<button class="icon-btn" data-action="alarm-del" data-id="'+a.id+'" style="width:26px;height:26px">🗑</button>'+
+               '</div>'+
+             '</div>';
+      }
+    }
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:4px">闹钟只在「可能性空间」页面打开期间响铃（浏览器限制）。响铃时会弹出提示并播放提示音。</div>';
+    h += '</section>';
+    return h;
+  },
   /* —— 设置 —— */
   settings(){
     let h = '';
@@ -2609,6 +2828,19 @@ const Views = {
       '<div class="field"><label>待办确认回退秒数（点击后多久不确认就恢复）</label>'+
         '<input type="number" class="input num" id="set-confirm" min="3" max="60" step="1" value="'+S.settings.confirmSeconds+'"></div>'+
       '<button class="btn btn--primary btn--block" data-action="save-settings">'+CONFIG.T.save+'设置</button>'+
+    '</div></section>';
+    h += '<section class="sec"><h2 class="sec-title">背景外观</h2><div class="card pad">'+
+      '<div class="field"><label>背景图片</label>'+
+        (bgSrc() ? '<div class="img-thumb" style="width:84px;height:84px"><img src="'+bgSrc()+'" alt=""></div>' : '')+
+        '<div style="display:flex;gap:10px;margin-top:8px">'+
+          '<button class="btn btn--small" data-action="bg-set">'+(bgSrc()?'更换背景图片':'选择背景图片')+'</button>'+
+          (bgSrc()?'<button class="btn btn--small btn--danger" data-action="bg-clear">移除背景</button>':'')+
+        '</div>'+
+        '<div class="hint">设置后，软件背景由默认白色变为你的图片。在首页双指收缩，图片会浮上来覆盖全屏（左上角也有进入/退出按钮），双指放大恢复为背景。未设置图片时此功能不出现。</div></div>'+
+      '<div class="field"><label>背景透明度 <span id="bg-op-val" style="color:var(--accent)">'+(S.settings.bgOpacity ?? 45)+'%</span></label>'+
+        '<input type="range" id="bg-opacity" min="5" max="100" step="5" value="'+(S.settings.bgOpacity ?? 45)+'" data-oninput="bg-opacity"></div>'+
+      '<div class="field"><label>背景模糊度 <span id="bg-blur-val" style="color:var(--accent)">'+(S.settings.bgBlur ?? 0)+'px</span></label>'+
+        '<input type="range" id="bg-blur" min="0" max="20" step="1" value="'+(S.settings.bgBlur ?? 0)+'" data-oninput="bg-blur"></div>'+
     '</div></section>';
     h += '<section class="sec"><h2 class="sec-title">数据与备份</h2><div class="card pad">'+
       '<div class="field"><label>存储用量（当前浏览器内）</label>'+
@@ -2631,6 +2863,103 @@ const Views = {
     return h;
   }
 };
+/* ══════════════════════════════════════════════════════════════
+   9.5 自定义背景 / 覆盖模式
+   ══════════════════════════════════════════════════════════════ */
+function bgSrc(){
+  const id = S.settings.bgImageId;
+  return id ? (Store.getImage(id) || null) : null;
+}
+/* 把背景图/透明度/模糊度应用到背景层 */
+function applyBg(){
+  const el = document.getElementById('bg-layer');
+  if(!el) return;
+  const src = bgSrc();
+  if(src){
+    el.style.backgroundImage = 'url("'+src+'")';
+    el.style.opacity = String((S.settings.bgOpacity ?? 45) / 100);
+    el.style.filter = 'blur('+(S.settings.bgBlur ?? 0)+'px)';
+    el.classList.remove('hidden');
+  }else{
+    el.classList.add('hidden');
+  }
+}
+/* 覆盖模式：背景图浮上来覆盖全屏，边缘小字显示日期时间/最优先/正在递归 */
+function enterOverlay(){
+  const src = bgSrc();
+  if(!src || S.bgOverlay) return;
+  S.bgOverlay = true;
+  const ov = document.getElementById('bg-overlay');
+  ov.style.backgroundImage = 'url("'+src+'")';
+  ov.style.filter = 'none';
+  const now = Date.now();
+  const elT = document.getElementById('boi-todo');
+  let urgent = null;
+  for(const t of S.todos){
+    if(t.archived || todoStatus(t, now)==='done') continue;
+    const due = TodoLogic.dueAt(t, now);
+    if(due==null) continue;
+    if(!urgent || due < TodoLogic.dueAt(urgent, now)) urgent = t;
+  }
+  if(urgent){
+    elT.dataset.id = urgent.id;
+    elT.innerHTML = '最优先：<b>'+esc(urgent.title)+'</b> · <span data-cd></span>';
+    elT.style.display = '';
+  }else{
+    elT.innerHTML = '';
+    elT.style.display = 'none';
+  }
+  const elR = document.getElementById('boi-rec');
+  const act = Rhythm.activeManual();
+  if(act){
+    elR.dataset.space = act.spaceId;
+    elR.innerHTML = '正在递归：'+esc(spaceNameOf(act.spaceId))+' · <span data-rec-t></span>';
+    elR.style.display = '';
+  }else{
+    elR.innerHTML = '';
+    elR.style.display = 'none';
+  }
+  ov.classList.remove('hidden');
+  UI.toast('覆盖模式 · 双指放大或左上角按钮退出');
+}
+function exitOverlay(){
+  S.bgOverlay = false;
+  const ov = document.getElementById('bg-overlay');
+  if(ov) ov.classList.add('hidden');
+}
+/* 背景图选择回调（压缩到1600px保存） */
+function handleBgImageFile(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
+  UI.toast('压缩处理中…');
+  compressImage(file, dataURL=>{
+    Store.del('img:bg');
+    if(!Store.saveImage('img_bg', dataURL)){ UI.toast('存储空间不足', 'err'); return; }
+    S.settings.bgImageId = 'img_bg';
+    if(S.settings.bgOpacity==null) S.settings.bgOpacity = 45;
+    if(S.settings.bgBlur==null) S.settings.bgBlur = 0;
+    saveSettings();
+    applyBg();
+    scheduleRender();
+    UI.toast('背景已设置');
+  }, 1600);
+}
+/* 双指手势：收缩→进入覆盖，放大→退出（无背景图时不生效） */
+function setupPinch(el){
+  let start = 0;
+  el.addEventListener('touchstart', e=>{
+    if(S.view!=='home' || !bgSrc()) return;
+    if(e.touches.length===2){
+      start = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    }
+  }, {passive:true});
+  el.addEventListener('touchmove', e=>{
+    if(!start || e.touches.length!==2) return;
+    const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    if(d/start < 0.7){ start = 0; if(!S.bgOverlay) enterOverlay(); }
+    else if(d/start > 1.45){ start = 0; if(S.bgOverlay) exitOverlay(); }
+  }, {passive:true});
+  el.addEventListener('touchend', ()=>{ start = 0; }, {passive:true});
+}
 /* 当前浏览器名（用于设置页展示） */
 function browserName(){
   try{
@@ -2644,7 +2973,7 @@ function browserName(){
 }
 
 /* 渲染入口 */
-const VIEW_TITLES = {home:'首页', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', space:''};
+const VIEW_TITLES = {home:'首页', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:''};
 function renderView(){
   const root = document.getElementById('view-root');
   const ae = document.activeElement;
@@ -2666,7 +2995,9 @@ function renderView(){
     document.getElementById('hdr-title').textContent = VIEW_TITLES[S.view]||'';
   }
   root.innerHTML = html;
-  document.getElementById('back-btn').classList.toggle('hidden', !(S.view==='settings' || S.view==='space'));
+  document.getElementById('back-btn').classList.toggle('hidden', !(S.view==='settings' || S.view==='space' || S.view==='alarm'));
+  const bgBtn = document.getElementById('bg-btn');
+  if(bgBtn) bgBtn.classList.toggle('hidden', !(S.view==='home' && bgSrc() && !S.bgOverlay));
   document.querySelectorAll('#tabbar .tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===S.view));
   collectBindings();
 }
@@ -2679,6 +3010,8 @@ function refreshFromStorage(){
   S.todos = Store.get('todos', []);
   S.catnotes = Store.get('catnotes', []);
   S.sessions = Store.get('sessions', []);
+  S.alarms = Store.get('alarms', []);
+  S.alarmFired = {};
   S.days.clear();
   S.confirmMap.clear();
   let todosChanged = false;
@@ -2710,11 +3043,15 @@ function boot(){
   Store.set('heartbeat', {lastActiveAt:S.lastHb});
   gcImages();               // 回收无引用图片
   reconcileNow();
+  applyBg();                // 应用自定义背景
   renderView();
   setInterval(tick, 1000);
 
   /* 事件绑定 */
   const viewRoot = document.getElementById('view-root');
+  /* 双指手势：首页收缩→背景覆盖，放大→退出 */
+  setupPinch(viewRoot);
+  setupPinch(document.getElementById('bg-overlay'));
   viewRoot.addEventListener('click', e=>{
     const t = e.target.closest('[data-action]');
     if(!t) return;
@@ -2728,6 +3065,16 @@ function boot(){
   viewRoot.addEventListener('change', e=>{
     const t = e.target.closest('[data-onchange]');
     if(t && Actions[t.dataset.onchange]) Actions[t.dataset.onchange](t, e);
+  });
+  /* 顶栏按钮（返回/设置/背景覆盖入口） */
+  document.getElementById('app-header').addEventListener('click', e=>{
+    const t = e.target.closest('[data-action]');
+    if(t && Actions[t.dataset.action]) Actions[t.dataset.action](t, e);
+  });
+  /* 覆盖层的退出按钮 */
+  document.getElementById('bg-overlay').addEventListener('click', e=>{
+    const t = e.target.closest('[data-action]');
+    if(t && Actions[t.dataset.action]) Actions[t.dataset.action](t, e);
   });
   document.getElementById('tabbar').addEventListener('click', e=>{
     const t = e.target.closest('[data-tab]');
@@ -2747,6 +3094,8 @@ function boot(){
     const cb = S.pendingFileCb; S.pendingFileCb = null;
     if(cb && e.target.files && e.target.files[0]) cb(e.target.files[0]);
   });
+  /* 首次交互解锁音频（闹钟提示音需要） */
+  document.addEventListener('pointerdown', function unlockAudio(){ Alarms.unlockAudio(); }, {once:true});
   window.addEventListener('beforeunload', ()=>{ Store.set('heartbeat', {lastActiveAt:Date.now()}); });
   document.addEventListener('visibilitychange', ()=>{
     if(!document.hidden){
