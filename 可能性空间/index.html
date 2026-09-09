@@ -287,7 +287,7 @@ img{max-width:100%;display:block}
   padding:1px 20px 3px;font-size:30px;font-weight:800;line-height:1.25;color:var(--text);
   backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);text-shadow:0 1px 2px rgba(255,255,255,.8)}
 .mascot-zone{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
-.mascot-zone .mascot{position:relative;z-index:2;width:min(58vw,300px);cursor:pointer;
+.mascot-zone .mascot{position:relative;z-index:2;width:min(72vw,400px);cursor:pointer;
   animation:floatY 4s ease-in-out infinite}
 @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 .mascot-zone .mascot svg,.mascot-zone .mascot img{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 18px rgba(60,90,140,.25))}
@@ -328,20 +328,7 @@ img{max-width:100%;display:block}
   box-shadow:0 6px 18px rgba(255,150,190,.25),inset 0 1px 0 rgba(255,255,255,.5);
   transition:opacity .22s,transform .22s}
 .grow-btn.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
-/* 大小/位置调节条 */
-.mascot-ctrl{position:absolute;bottom:12%;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:6;
-  opacity:0;pointer-events:none;transition:opacity .22s}
-.mascot-ctrl.show{opacity:1;pointer-events:auto}
-.mc-pill{display:flex;align-items:center;gap:2px;padding:4px 8px;border-radius:999px;
-  background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);
-  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);box-shadow:var(--shadow)}
-.mc-b{border:none;background:none;width:26px;height:26px;border-radius:50%;font-size:14px;font-weight:700;color:var(--accent-dark)}
-.mc-b:active{background:var(--accent-soft)}
-.mc-lbl{font-size:11px;color:var(--text-2);padding:0 3px;font-weight:600;white-space:nowrap}
 .mascot-pos{display:block;width:100%}
-/* 调节模式：立绘可拖动，带虚线框提示 */
-.mascot.adjust{cursor:move}
-.mascot.adjust .mascot-pos{outline:1.5px dashed rgba(255,150,190,.75);outline-offset:10px;border-radius:24px}
 .mascot.mascot-hop{animation:mascotHop .55s cubic-bezier(.3,.9,.4,1.2)}
 @keyframes mascotHop{0%,100%{transform:translateY(0)}30%{transform:translateY(-22px) rotate(-4deg)}55%{transform:translateY(2px) rotate(2deg)}}
 .mascot.mascot-squish{animation:mascotSquish .5s cubic-bezier(.3,.9,.4,1.2)}
@@ -492,16 +479,18 @@ img{max-width:100%;display:block}
 .console-empty{padding:16px;text-align:center;color:var(--text-2);font-size:13px}
 .console-empty .big{font-size:30px;margin-bottom:6px}
 /* —— 纯净模式全局修正 —— */
-/* 桌面端右下时间带面板（手机屏幕太窄，只显示小筹码） */
-.desk-band{display:none}
+/* 右下时间带面板：手机竖屏与桌面都显示（手机更紧凑） */
+.desk-band{display:block;width:min(48vw,430px);margin-top:6px;padding:9px 12px 8px;border-radius:16px;
+  background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.8);box-shadow:var(--shadow);
+  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
+.db-head{font-size:12px;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.desk-band .rh-track{height:11px}
+.desk-band .rh-band{border-radius:999px}
+.mini-chips.right{align-items:flex-end;max-width:64vw}
 @media (min-width:560px){
-  .desk-band{display:block;width:min(430px,46vw);margin-top:6px;padding:12px 14px 10px;border-radius:18px;
-    background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.8);box-shadow:var(--shadow);
-    backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
-  .db-head{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .desk-band{width:min(430px,46vw);padding:12px 14px 10px;border-radius:18px}
+  .db-head{font-size:13px}
   .desk-band .rh-track{height:14px}
-  .desk-band .rh-band{border-radius:999px}
-  .mini-chips.right{align-items:flex-end;max-width:62vw}
 }
 body.pure-mode #toast-root{bottom:calc(18px + env(safe-area-inset-bottom))}
 body.pure-mode #app{height:100dvh;display:block}
@@ -553,7 +542,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.1.4', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.1.5', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
@@ -2246,12 +2235,15 @@ const Actions = {
           '<div style="font-size:12px;color:var(--text-2);margin-top:2px">单击看板娘可以互动哦～</div>'+
         '</div>'+
       '</div>'+
-      '<div class="field"><label>形象（可随时更换）</label>'+
+      '<div class="field"><label>形象（可随时更换，上传为原图不压缩、保留透明背景）</label>'+
         '<div class="chip-row">'+
           '<button class="chip'+(mId==null?' on':'')+'" data-action="grow-img-file">📁 看板娘.png</button>'+
           '<button class="chip'+(mId==='placeholder'?' on':'')+'" data-action="grow-img-default">🐣 内置占位</button>'+
           '<button class="chip'+(mId && mId!=='placeholder'?' on':'')+'" data-action="grow-img-upload">⬆ 上传立绘</button>'+
         '</div></div>'+
+      '<div class="field"><label>大小与位置</label>'+
+        '<div class="hint">纯净首页按住她单指拖动位置 · 双指捏合缩放（0.6~1.6 倍）</div>'+
+        '<button class="btn btn--small" data-action="grow-reset-pos" style="margin-top:6px">还原默认大小与位置</button></div>'+
       '<div class="hint" style="font-size:12px;color:var(--text-2)">养成系统将在 v1.2 上线：经验与等级（递归时间、完成待办、写记录都会让她成长）、台词与称号、投喂互动、换装解锁。敬请期待～</div>'+
       '<div class="modal-actions"><button class="btn btn--primary" data-action="modal-close">好期待！</button></div>');
   },
@@ -2263,6 +2255,14 @@ const Actions = {
   },
   'grow-img-file'(){ S.settings.mascotId = null; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已使用文件夹里的「看板娘.png」'); },
   'grow-img-default'(){ S.settings.mascotId = 'placeholder'; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已换回内置占位小可爱'); },
+  'grow-reset-pos'(){ Mascot.resetPos(); UI.closeModal(); UI.toast('已还原默认大小与位置'); },
+  /* —— 设置里隐藏/显示看板娘 —— */
+  'mascot-toggle'(){
+    S.settings.mascotHidden = !S.settings.mascotHidden;
+    saveSettings();
+    scheduleRender();
+    UI.toast(S.settings.mascotHidden ? '看板娘已隐藏（设置里可重新显示）' : '看板娘回来啦');
+  },
   'bg-opacity'(el){
     S.settings.bgOpacity = +el.value;
     saveSettings();
@@ -3002,7 +3002,7 @@ const Views = {
     const mScale = S.settings.mascotScale || 1;
     const mPos = S.settings.mascotPos || {dx:0, dy:0};
     h += '<div class="mascot-zone">'+
-           '<div class="mascot-shadow"></div>'+
+           (S.settings.mascotHidden ? '' : '<div class="mascot-shadow"></div>'+
            '<div class="mascot" id="mascot">'+
              '<div class="mascot-pos" style="transform:translate('+mPos.dx+'vw,'+mPos.dy+'vh) scale('+mScale+')">'+
                '<img src="'+(mascotSrc || '看板娘.png')+'" alt="看板娘" draggable="false"'+
@@ -3019,7 +3019,7 @@ const Views = {
                  '<div class="ms-ribbon">🎀</div>'+
                '</div>'+
              '</div>'+
-           '</div>';
+           '</div>');
     /* 漂浮小星星 */
     const SPARKS = [[6,24,1.6,'✦'],[13,66,2.4,'✧'],[86,18,2.1,'✦'],[81,60,3.0,'✧'],[48,7,3.6,'✦'],[55,78,1.2,'✧']];
     for(const [x,y,d,c] of SPARKS) h += '<span class="sparkle" style="left:'+x+'%;top:'+y+'%;animation-delay:'+d+'s">'+c+'</span>';
@@ -3095,8 +3095,10 @@ const Views = {
     for(let i=0;i<startWd;i++) h += '<span></span>';
     for(let d=1;d<=daysIn;d++){
       const dk2 = S.sumCalY+'-'+pad2(S.sumCalM+1)+'-'+pad2(d);
+      const mood = (Store.loadDay(dk2)||{}).dayMood;
       h += '<button class="cal-day'+(dk2===today?' today':'')+(dk2===dk?' sel':'')+(dayHasData(dk2)?' has':'')+'" data-action="sum-cal-day" data-dk="'+dk2+'">'+
              '<span class="cal-n">'+d+'</span>'+
+             (mood&&mood.emoji?'<span class="cal-e">'+mood.emoji+'</span>':'')+
            '</button>';
     }
     h += '</div></div>';
@@ -3417,6 +3419,11 @@ const Views = {
       '<div class="field"><label>背景模糊度 <span id="bg-blur-val" style="color:var(--accent)">'+(S.settings.bgBlur ?? 0)+'px</span></label>'+
         '<input type="range" id="bg-blur" min="0" max="20" step="1" value="'+(S.settings.bgBlur ?? 0)+'" data-oninput="bg-blur"></div>'+
     '</div></section>';
+    h += '<section class="sec"><h2 class="sec-title">看板娘</h2><div class="card pad">'+
+      '<div class="field"><label>纯净首页显示看板娘</label>'+
+        '<button class="btn btn--small" data-action="mascot-toggle">当前：'+(S.settings.mascotHidden?'隐藏中 · 点此显示':'显示中 · 点此隐藏')+'</button></div>'+
+      '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍），点她可出现「角色养成」里还原。</div>'+
+    '</div></section>';
     /* 动画强度三档 */
     const animLv = S.settings.animLevel || 'light';
     const animOpts = [{k:'full',n:'完整',d:'全部动画与特效'},{k:'light',n:'轻度（推荐）',d:'保留核心动画，减少装饰'},{k:'off',n:'关闭',d:'所有动画停用，最省电'}];
@@ -3468,18 +3475,21 @@ function applyBg(){
     el.classList.add('hidden');
   }
 }
-/* 看板娘立绘上传回调（压缩到1600px保存） */
+/* 看板娘立绘上传回调：不压缩，原图保存（透明背景 PNG 无损保留） */
 function handleMascotImageFile(file){
   if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
-  UI.toast('压缩处理中…');
-  compressImage(file, dataURL=>{
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    const dataURL = rd.result;
     if(!Store.saveImage('mascot', dataURL)){ UI.toast('存储空间不足', 'err'); return; }
     S.settings.mascotId = 'mascot';
     saveSettings();
     UI.closeModal();
     scheduleRender();
-    UI.toast('看板娘立绘已更换');
-  }, 1600);
+    UI.toast('看板娘立绘已更换（原图无损）');
+  };
+  rd.onerror = ()=>{ UI.toast('图片读取失败', 'err'); };
+  rd.readAsDataURL(file);
 }
 /* 动画强度三档：完整 / 轻度（默认）/ 关闭 */
 function applyAnimLevel(){
@@ -3585,9 +3595,8 @@ const Mascot = {
     this.say(this.lines[Math.floor(Math.random()*this.lines.length)], 2600);
     /* 爱心粒子 */
     this.hearts();
-    /* 角色养成入口按钮 + 大小/位置调节条（几秒后收起） */
+    /* 角色养成入口按钮（几秒后收起）。大小/位置不用调钮：单指拖动、双指缩放 */
     this.showGrowBtn();
-    this.showCtrls();
   },
   say(text, ms){
     const zone = document.querySelector('#view-root .mascot-zone');
@@ -3633,44 +3642,7 @@ const Mascot = {
     b.classList.add('show');
     this._growT = setTimeout(()=>{ b.classList.remove('show'); }, 6000);
   },
-  /* —— 大小 / 位置调节条（单击后浮现，几秒收起） —— */
-  showCtrls(){
-    const zone = document.querySelector('#view-root .mascot-zone');
-    if(!zone) return;
-    let c = zone.querySelector('.mascot-ctrl');
-    if(!c){
-      c = document.createElement('div');
-      c.className = 'mascot-ctrl';
-      c.innerHTML =
-        '<div class="mc-pill"><button class="mc-b" data-kind="size" data-dir="m">−</button>'+
-          '<span class="mc-lbl">大小</span>'+
-          '<button class="mc-b" data-kind="size" data-dir="p">＋</button></div>'+
-        '<div class="mc-pill"><span class="mc-lbl">按住立绘拖动位置</span></div>'+
-        '<div class="mc-pill"><button class="mc-b" data-kind="reset">还原</button></div>';
-      c.querySelectorAll('.mc-b').forEach(b=>{
-        b.addEventListener('click', ()=>{ Mascot.adjust(b.dataset.kind, b.dataset.dir); });
-      });
-      zone.appendChild(c);
-    }
-    this.refreshCtrlTimer();
-  },
-  /* 延长调节条显示（拖动松手后继续可调） */
-  refreshCtrlTimer(){
-    const c = document.querySelector('#view-root .mascot-ctrl');
-    if(!c) return;
-    c.classList.add('show');
-    const m = document.getElementById('mascot'); if(m) m.classList.add('adjust');
-    clearTimeout(this._ctrlT);
-    this._ctrlT = setTimeout(()=>{
-      c.classList.remove('show');
-      const m2 = document.getElementById('mascot'); if(m2) m2.classList.remove('adjust');
-    }, 8000);
-  },
-  /* —— 拖动立绘移动位置（调节模式） —— */
-  isAdjustMode(){
-    const c = document.querySelector('#view-root .mascot-ctrl');
-    return !!(c && c.classList.contains('show'));
-  },
+  /* —— 单指拖动位置（按住立绘滑动即触发，与单击/双击/长按靠位移阈值区分） —— */
   dragStart(x, y){
     const p = S.settings.mascotPos || {dx:0, dy:0};
     this._drag = { x0:x, y0:y, dx0:p.dx, dy0:p.dy };
@@ -3688,7 +3660,21 @@ const Mascot = {
     this._drag = null;
     if(moved < 10){ Mascot.tap(); return; }      // 没怎么动 = 算单击互动
     saveSettings();
-    this.refreshCtrlTimer();
+  },
+  /* —— 双指捏合缩放（0.6~1.6 倍） —— */
+  pinchTo(s0, ratio){
+    const s = clamp(Math.round(s0*ratio*10)/10, 0.6, 1.6);
+    S.settings.mascotScale = s;
+    this.applyPos();
+  },
+  pinchEnd(){ saveSettings(); },
+  /* 还原默认大小与位置（养成面板内） */
+  resetPos(){
+    S.settings.mascotScale = 1;
+    S.settings.mascotPos = {dx:0, dy:0};
+    saveSettings();
+    this.applyPos();
+    scheduleRender();
   },
   /* 调节大小（0.6~1.6，步进0.1）与位置（±32vw/vh，步进2） */
   adjust(kind, dir){
@@ -3861,11 +3847,13 @@ const Console = {
     const left = ((s - dayStart)/86400000*100);
     const w = Math.max(0.8, ((e - s)/86400000*100));
     return '<div class="slot-card sc-card'+(live?' sc-live':'')+(st.key==='done'?' sc-done':'')+'" data-slot="'+slot.id+'">'+
-      /* 猫耳朵（＋10 / －10 分钟）——拉三角时会弹大 */
-      '<div class="sc-ears">'+
-        '<button class="sc-ear r" data-action="cons-ear" data-id="'+slot.id+'" data-dir="p" aria-label="延长10分钟"><span class="ear-in">＋<small>10分</small></span></button>'+
-        '<button class="sc-ear l" data-action="cons-ear" data-id="'+slot.id+'" data-dir="m" aria-label="缩短10分钟"><span class="ear-in">－<small>10分</small></span></button>'+
-      '</div>'+
+      /* 猫耳朵（＋10 / －10 分钟）：只在进行中/时段内显示，已结束与未开始的卡不显示 */
+      ((st.key==='live' || st.key==='quota')
+        ? '<div class="sc-ears">'+
+            '<button class="sc-ear r" data-action="cons-ear" data-id="'+slot.id+'" data-dir="p" aria-label="延长10分钟"><span class="ear-in">＋<small>10分</small></span></button>'+
+            '<button class="sc-ear l" data-action="cons-ear" data-id="'+slot.id+'" data-dir="m" aria-label="缩短10分钟"><span class="ear-in">－<small>10分</small></span></button>'+
+          '</div>'
+        : '')+
       '<div class="sc-row">'+
         '<div class="sc-face">'+st.face+'</div>'+
         '<div class="sc-mid">'+
@@ -4105,12 +4093,54 @@ const Gestures = {
   NAV:{top:'rhythm', bottom:'todos', left:'spaces', right:'summary'},
   init(){
     this._buildArrows();
+    this._ptrs = new Map();
     /* 挂在 document：操控台是 view-root 的兄弟节点，双击后左滑可能从面板上方区域起手 */
-    document.addEventListener('pointerdown', e=>{ if(this._busy(e)) return; this._down(e); }, {passive:false});
-    document.addEventListener('pointermove', e=>{ if(this._mode!=='hold' && this._mode!=='maybe' && this._mode!=='mdrag') return; e.preventDefault(); this._move(e); }, {passive:false});
-    document.addEventListener('pointerup', e=>{ this._up(e); }, {passive:false});
-    document.addEventListener('pointercancel', ()=>{ this._reset(); });
+    document.addEventListener('pointerdown', e=>{ if(this._busy(e)) return; this._ptrDown(e); }, {passive:false});
+    document.addEventListener('pointermove', e=>{ this._ptrMove(e); }, {passive:false});
+    document.addEventListener('pointerup', e=>{ this._ptrUp(e); }, {passive:false});
+    document.addEventListener('pointercancel', e=>{ this._ptrs.delete(e.pointerId); this._reset(); });
     window.addEventListener('resize', ()=>{ if(this._mode==='hold') this._buildArrows(); });
+  },
+  /* 指针登记：第一指走常规判定；第二指落下=进入双指捏合缩放（看板娘） */
+  _ptrDown(e){
+    this._ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(this._ptrs.size >= 2){
+      clearTimeout(this._holdT);
+      if(this._mode==='mdrag') Mascot.dragEnd(99);
+      this._mode = 'pinch';
+      this._hideArrows();
+      const arr = [...this._ptrs.values()];
+      const p1 = arr[arr.length-2], p2 = arr[arr.length-1];
+      this._pinchD0 = Math.hypot(p2.x-p1.x, p2.y-p1.y) || 1;
+      this._pinchS0 = S.settings.mascotScale || 1;
+    }else{
+      this._down(e);
+    }
+  },
+  _ptrMove(e){
+    if(this._ptrs.has(e.pointerId)) this._ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(this._mode==='pinch'){
+      e.preventDefault();
+      if(this._ptrs.size >= 2){
+        const arr = [...this._ptrs.values()];
+        const p1 = arr[arr.length-2], p2 = arr[arr.length-1];
+        const d = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+        Mascot.pinchTo(this._pinchS0, d/this._pinchD0);
+      }
+      return;
+    }
+    if(this._mode!=='hold' && this._mode!=='maybe' && this._mode!=='mdrag') return;
+    e.preventDefault();
+    this._move(e);
+  },
+  _ptrUp(e){
+    this._ptrs.delete(e.pointerId);
+    if(this._mode==='pinch'){
+      this._mode = 'none';
+      Mascot.pinchEnd();
+      return;
+    }
+    this._up(e);
   },
   /* 是否命中“可交互区域”（按钮/输入/卡片等）：不抢它们的触摸 */
   _busy(e){
@@ -4125,12 +4155,6 @@ const Gestures = {
     this._t0 = now; this._x0 = e.clientX; this._y0 = e.clientY;
     this._moved = 0; this._dir = null; this._mode = 'maybe';
     this._onMascot = !!(e.target.closest && e.target.closest('#mascot'));
-    /* 调节模式（调节条可见）下按住立绘 = 直接拖动位置，不参与单击/双击/长按判定 */
-    if(this._onMascot && typeof Mascot!=='undefined' && Mascot.isAdjustMode()){
-      this._mode = 'mdrag';
-      Mascot.dragStart(e.clientX, e.clientY);
-      return;
-    }
     this._holdT = setTimeout(()=>{
       if(this._mode!=='maybe') return;
       if(this._moved > 30) return;      // 手指轻微抖动不打断长按（手机常见）
@@ -4151,6 +4175,12 @@ const Gestures = {
       const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'bottom':'top');
       this._dir = dir;
       this._highlight(dir, Math.max(Math.abs(dx), Math.abs(dy)));
+    }else if(this._mode==='maybe' && this._moved > 14 && this._onMascot){
+      /* 按住立绘滑动 = 单指拖动位置（位移触发，不占单击/双击/长按） */
+      clearTimeout(this._holdT);
+      this._mode = 'mdrag';
+      Mascot.dragStart(this._x0, this._y0);
+      Mascot.dragMove(e.clientX, e.clientY);
     }else if(this._mode==='maybe' && this._moved > 30){
       /* 明确在拖动（不是长按）：若是「双击后的左滑」→ 切到空间栏 */
       clearTimeout(this._holdT);
