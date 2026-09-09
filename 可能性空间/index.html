@@ -276,11 +276,16 @@ img{max-width:100%;display:block}
 /* ══════════════════════════════════════════════════════════════
    11. 纯净看板娘首页（背景+立绘+手势，无静态UI）
    ══════════════════════════════════════════════════════════════ */
-.pure-screen{position:relative;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none;-webkit-user-select:none}
-.pure-date{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center;z-index:3;
+.pure-screen{position:relative;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none;-webkit-user-select:none;
+  touch-action:none;-webkit-touch-callout:none}
+.pure-date{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3;
   background:none;border:none;padding:0;margin:0}
 .mini-date{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:13px;font-weight:600;color:var(--text-2);
   background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);border-radius:999px;backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
+/* 日期下方的大时间（点=闹钟） */
+.pure-clock{border:none;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);border-radius:999px;
+  padding:1px 20px 3px;font-size:30px;font-weight:800;line-height:1.25;color:var(--text);
+  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);text-shadow:0 1px 2px rgba(255,255,255,.8)}
 .mascot-zone{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
 .mascot-zone .mascot{position:relative;z-index:2;width:min(58vw,300px);cursor:pointer;
   animation:floatY 4s ease-in-out infinite}
@@ -304,6 +309,45 @@ img{max-width:100%;display:block}
 /* 呼吸泡泡/悬浮装饰 */
 .mascot-shadow{position:absolute;bottom:16%;left:50%;transform:translateX(-50%);width:44%;height:7%;border-radius:50%;
   background:rgba(60,90,140,.16);filter:blur(6px);animation:shadowPulse 4s ease-in-out infinite;z-index:1}
+/* 单击互动：台词气泡 / 爱心粒子 / 养成入口按钮 / 反应动画 / 大小位置调节条 */
+/* 台词气泡与提醒气泡都锚在立绘右上（左侧小尾巴指向看板娘） */
+.mascot-chat{position:absolute;left:calc(50% + 6vw);top:26%;bottom:auto;transform:none;z-index:6;
+  max-width:min(44vw,300px);padding:9px 14px;border-radius:16px 16px 16px 4px;background:rgba(255,255,255,.92);
+  border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);font-size:15px;color:var(--text);opacity:0;pointer-events:none;
+  transition:opacity .18s,transform .18s}
+.mascot-chat.show{opacity:1;transform:translateY(-5px)}
+.mascot-chat::after{content:'';position:absolute;left:-6px;top:44%;bottom:auto;width:12px;height:12px;background:inherit;
+  border-left:1px solid rgba(255,255,255,.9);border-top:1px solid rgba(255,255,255,.9);transform:rotate(-45deg)}
+.mascot-heart{position:absolute;font-size:18px;z-index:5;pointer-events:none;animation:heartUp 1.6s ease-out forwards}
+@keyframes heartUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translateY(-90px) scale(1.25)}}
+/* 养成入口：浅粉+透明模糊玻璃胶囊（无图标） */
+.grow-btn{position:absolute;bottom:4%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
+  border:1px solid rgba(255,255,255,.65);padding:9px 24px;border-radius:999px;font-size:14px;font-weight:800;letter-spacing:1px;
+  color:#C0447E;background:rgba(255,200,220,.5);
+  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);
+  box-shadow:0 6px 18px rgba(255,150,190,.25),inset 0 1px 0 rgba(255,255,255,.5);
+  transition:opacity .22s,transform .22s}
+.grow-btn.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+/* 大小/位置调节条 */
+.mascot-ctrl{position:absolute;bottom:12%;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:6;
+  opacity:0;pointer-events:none;transition:opacity .22s}
+.mascot-ctrl.show{opacity:1;pointer-events:auto}
+.mc-pill{display:flex;align-items:center;gap:2px;padding:4px 8px;border-radius:999px;
+  background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);
+  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);box-shadow:var(--shadow)}
+.mc-b{border:none;background:none;width:26px;height:26px;border-radius:50%;font-size:14px;font-weight:700;color:var(--accent-dark)}
+.mc-b:active{background:var(--accent-soft)}
+.mc-lbl{font-size:11px;color:var(--text-2);padding:0 3px;font-weight:600;white-space:nowrap}
+.mascot-pos{display:block;width:100%}
+/* 调节模式：立绘可拖动，带虚线框提示 */
+.mascot.adjust{cursor:move}
+.mascot.adjust .mascot-pos{outline:1.5px dashed rgba(255,150,190,.75);outline-offset:10px;border-radius:24px}
+.mascot.mascot-hop{animation:mascotHop .55s cubic-bezier(.3,.9,.4,1.2)}
+@keyframes mascotHop{0%,100%{transform:translateY(0)}30%{transform:translateY(-22px) rotate(-4deg)}55%{transform:translateY(2px) rotate(2deg)}}
+.mascot.mascot-squish{animation:mascotSquish .5s cubic-bezier(.3,.9,.4,1.2)}
+@keyframes mascotSquish{0%,100%{transform:scale(1,1)}35%{transform:scale(.9,1.12)}70%{transform:scale(1.06,.92)}}
+.grow-avatar{width:70px;height:110px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--gray-soft);border-radius:16px;overflow:hidden}
 @keyframes shadowPulse{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(.86);opacity:.7}}
 .sparkle{position:absolute;font-size:14px;opacity:.8;animation:twinkle 3.2s ease-in-out infinite;pointer-events:none;z-index:1}
 @keyframes twinkle{0%,100%{opacity:.15;transform:scale(.7) rotate(0)}50%{opacity:.95;transform:scale(1.15) rotate(28deg)}}
@@ -314,6 +358,8 @@ img{max-width:100%;display:block}
   background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.75);border-radius:999px;
   backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);cursor:pointer;line-height:1.5}
 .minichip b{color:var(--accent-dark);font-weight:700}
+.minichip b.ut{display:inline-block;max-width:26vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.mini-chips .minichip{max-width:64vw}
 .pure-hint{position:absolute;bottom:calc(8px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:11px;color:rgba(70,90,130,.5);z-index:3;letter-spacing:1px}
 .pure-screen .hint-legend{position:absolute;top:calc(58px + env(safe-area-inset-top));left:0;right:0;text-align:center;z-index:3;font-size:11px;color:rgba(70,90,130,.42)}
 /* 看板娘头顶气泡 */
@@ -335,15 +381,28 @@ img{max-width:100%;display:block}
 .gv-arrow .gv-ring{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent-dark);
   background:rgba(255,255,255,.8);border:1.5px solid rgba(255,255,255,.9);box-shadow:var(--shadow);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
 .gv-arrow .gv-txt{font-size:11px;font-weight:700;color:var(--accent-dark);padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.75)}
-.gv-arrow.top{transform:translate(-50%,-420%)}
-.gv-arrow.bottom{transform:translate(-50%,320%)}
-.gv-arrow.left{transform:translate(-520%,-50%)}
-.gv-arrow.right{transform:translate(420%,-50%)}
-.gv-arrow.top.show{transform:translate(-50%,-470%)}
-.gv-arrow.bottom.show{transform:translate(-50%,370%)}
-.gv-arrow.left.show{transform:translate(-560%,-50%)}
-.gv-arrow.right.show{transform:translate(460%,-50%)}
-#gesture-root.active .gv-arrow{opacity:0}
+/* 四向箭头按视口定位（不随自身尺寸偏移，窄屏也不会飞出屏幕） */
+.gv-arrow.top{top:16%;left:50%}
+.gv-arrow.bottom{top:84%;left:50%}
+.gv-arrow.left{left:13%;top:50%}
+.gv-arrow.right{left:87%;top:50%}
+.gv-arrow.top.show{transform:translate(-50%,-50%) scale(1.12)}
+.gv-arrow.bottom.show{transform:translate(-50%,-50%) scale(1.12)}
+.gv-arrow.left.show{transform:translate(-50%,-50%) scale(1.12)}
+.gv-arrow.right.show{transform:translate(-50%,-50%) scale(1.12)}
+/* 达到触发距离：选中的箭头放大提示“松手即可跳转”（原来会隐藏全部箭头=提示消失的bug） */
+#gesture-root.active .gv-arrow.show{transform:translate(-50%,-50%) scale(1.4)}
+#gesture-root.active .gv-arrow.show .gv-ring{box-shadow:0 0 0 7px var(--accent-soft),var(--shadow)}
+#gesture-root.active .gv-arrow.show .gv-txt{background:var(--accent-soft);color:var(--accent-dark)}
+/* 长按成功圆圈（按点出现，由浅渐实，提示可以开始滑动） */
+.gv-hold{position:absolute;display:none;z-index:1}
+#gesture-root.on .gv-hold{display:block}
+.gv-hold-ring{position:absolute;left:-44px;top:-44px;width:88px;height:88px;border-radius:50%;
+  border:2.5px solid rgba(61,126,255,.85);background:rgba(61,126,255,.14);
+  box-shadow:0 0 0 8px rgba(61,126,255,.08),0 0 26px rgba(61,126,255,.3);
+  animation:holdIn .45s ease-out both,holdPulse 1.5s ease-in-out .45s infinite}
+@keyframes holdIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes holdPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 
 /* ══════════════════════════════════════════════════════════════
    13. 节律操控台（双击呼出）· 猫耳时段卡 · 空间栏 · 投放区
@@ -352,7 +411,9 @@ img{max-width:100%;display:block}
 .console{pointer-events:auto;width:min(740px,100%);max-height:74vh;display:flex;flex-direction:column;
   background:rgba(250,252,255,.66);border:1px solid rgba(255,255,255,.8);border-bottom:none;border-radius:26px 26px 0 0;
   box-shadow:0 -14px 44px rgba(30,50,90,.2);backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);
-  padding-bottom:calc(8px + env(safe-area-inset-bottom));animation:sheetUp .26s cubic-bezier(.18,.85,.28,1.12)}
+  padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+/* 只有「打开」这一次播放滑入动画；重渲染不重播（避免闪烁） */
+.console.sheet-in{animation:sheetUp .26s cubic-bezier(.18,.85,.28,1.12)}
 @keyframes sheetUp{from{transform:translateY(60%);opacity:.4}to{transform:translateY(0);opacity:1}}
 .console-grab{width:44px;height:5px;border-radius:3px;background:rgba(99,125,170,.35);margin:8px auto 2px;flex:none}
 .console-head{display:flex;align-items:center;gap:8px;padding:4px 14px 8px;flex:none}
@@ -418,7 +479,7 @@ img{max-width:100%;display:block}
 .sb-scroll::-webkit-scrollbar{display:none}
 .sb-card{flex:none;width:112px;padding:12px 8px 10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:grab;
   background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.8));border:1px solid rgba(255,255,255,.9);border-top:3px solid var(--sc,var(--accent));
-  box-shadow:var(--shadow);user-select:none;-webkit-user-select:none;text-align:center}
+  box-shadow:var(--shadow);user-select:none;-webkit-user-select:none;text-align:center;touch-action:none}
 .sb-card.dragging{position:fixed;z-index:95;margin:0;box-shadow:var(--shadow-lg);opacity:.94;transition:none;pointer-events:none;width:112px}
 .sb-card .sb-ico{font-size:28px;line-height:1}
 .sb-card .sb-name{font-size:12.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -431,11 +492,28 @@ img{max-width:100%;display:block}
 .console-empty{padding:16px;text-align:center;color:var(--text-2);font-size:13px}
 .console-empty .big{font-size:30px;margin-bottom:6px}
 /* —— 纯净模式全局修正 —— */
+/* 桌面端右下时间带面板（手机屏幕太窄，只显示小筹码） */
+.desk-band{display:none}
+@media (min-width:560px){
+  .desk-band{display:block;width:min(430px,46vw);margin-top:6px;padding:12px 14px 10px;border-radius:18px;
+    background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.8);box-shadow:var(--shadow);
+    backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
+  .db-head{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .desk-band .rh-track{height:14px}
+  .desk-band .rh-band{border-radius:999px}
+  .mini-chips.right{align-items:flex-end;max-width:62vw}
+}
 body.pure-mode #toast-root{bottom:calc(18px + env(safe-area-inset-bottom))}
 body.pure-mode #app{height:100dvh;display:block}
-.pure-screen #bubble-root{position:absolute;left:50%;bottom:44%;transform:translateX(-50%);z-index:8;max-width:74vw;
-  pointer-events:auto;animation:popIn .22s cubic-bezier(.2,1.2,.4,1)}
-.pure-screen #bubble-root .mascot-bubble{position:relative;bottom:auto;left:auto;transform:none;max-width:100%;display:block}
+/* 提醒气泡：锚在立绘右上（与台词气泡同侧，台词在其下方一格），字号稍大 */
+.pure-screen #bubble-root{position:absolute;left:calc(50% + 6vw);top:8%;bottom:auto;transform:none;z-index:8;
+  max-width:min(44vw,300px);pointer-events:auto}
+.pure-screen #bubble-root .mascot-bubble{position:relative;bottom:auto;left:auto;transform:none;max-width:100%;display:block;
+  font-size:15px;animation:popInR .22s cubic-bezier(.2,1.2,.4,1)}
+.pure-screen #bubble-root .mascot-bubble::after{content:'';position:absolute;left:-6px;top:44%;bottom:auto;width:12px;height:12px;background:inherit;
+  border-left:1px solid rgba(255,255,255,.8);border-top:1px solid rgba(255,255,255,.8);transform:rotate(-45deg);
+  border-right:none;border-bottom:none}
+@keyframes popInR{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
 /* 桌面端纯净屏：立绘区限制最高，避免大屏全屏贴顶 */
 @media (min-width:520px){
   .pure-screen{max-width:none}
@@ -475,7 +553,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.1.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.1.4', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
@@ -1437,6 +1515,7 @@ function updateBinding(el, now){
     case 'quota': Rhythm.tickQuotaEl && Rhythm.tickQuotaEl(el, now); break; // 阶段4
     case 'quota-all': Rhythm.tickQuotaAllEl && Rhythm.tickQuotaAllEl(el, now); break; // 阶段4
     case 'quota-mini': setText(el, fmtMin(Rhythm.remainingMinutes(now))); break;
+    case 'nowline': el.style.left = (((now - D.dkToTs(D.dateKey(now)))/86400000)*100).toFixed(3)+'%'; break;
   }
 }
 function tick(){
@@ -1512,7 +1591,7 @@ function openSettings(){ S.backTarget = S.view==='settings' ? 'home' : S.view; S
 /* 事件动作分发表（视图渲染函数可通过 data-action 挂接） */
 const Actions = {
   'back'(){
-    if(S.view==='settings'){ const t = S.backTarget || 'home'; goView(t); }
+    if(S.view==='settings' || S.view==='alarm'){ const t = S.backTarget || 'home'; goView(t); }
     else if(S.view==='space') goView(S.backTarget || 'spaces');
     else goView('home');
   },
@@ -1898,8 +1977,10 @@ const Actions = {
     else Rhythm.manualStart(spId);
   },
   'rhythm-entry'(btn){ openRhythmEntryModal(S.rhythmDay || D.dateKey(Date.now()), btn.dataset.id || null); },
+  /* 共识页的时间轴日记（弹窗内记住目标日，保存/删除都落在该日） */
+  'sum-entry'(btn){ openRhythmEntryModal(S.sumDay || D.dateKey(Date.now()), btn.dataset.id || null); },
   'rhythm-entry-save'(btn){
-    const dk = S.rhythmDay || D.dateKey(Date.now());
+    const dk = S.form.entryDk || S.rhythmDay || D.dateKey(Date.now());
     const doc = dayDoc(dk);
     const text = document.getElementById('re-text').value.trim();
     const images = (S.form && S.form.images) ? S.form.images : [];
@@ -1919,7 +2000,22 @@ const Actions = {
     UI.toast('已记录');
   },
   'rhythm-entry-del'(btn){
-    const dk = S.rhythmDay || D.dateKey(Date.now());
+    /* 弹窗内删除：目标日由弹窗记录（S.form.entryDk），否则按当前浏览日 */
+    const dk = S.form.entryDk || S.rhythmDay || D.dateKey(Date.now());
+    const doc = dayDoc(dk);
+    const en = (doc.rhythmEntries||[]).find(x=>x.id===btn.dataset.id);
+    if(!en) return;
+    UI.confirmDialog('删除日记', '删除 '+en.at+' 的这条记录？', true, ()=>{
+      doc.rhythmEntries = doc.rhythmEntries.filter(x=>x.id!==en.id);
+      saveDay(dk);
+      UI.closeModal();
+      scheduleRender();
+      UI.toast('已删除');
+    });
+  },
+  /* 共识页列表里直接删除（不经过弹窗，S.form 可能是上次残留，必须用当前浏览日） */
+  'sum-entry-del'(btn){
+    const dk = S.sumDay || D.dateKey(Date.now());
     const doc = dayDoc(dk);
     const en = (doc.rhythmEntries||[]).find(x=>x.id===btn.dataset.id);
     if(!en) return;
@@ -2050,8 +2146,8 @@ const Actions = {
     saveDay(dk);
     scheduleRender();
   },
-  /* —— 闹钟（隐藏页面） —— */
-  'open-alarm'(){ S.backTarget = 'home'; S.view = 'alarm'; scheduleRender(); window.scrollTo(0,0); },
+  /* —— 闹钟（隐藏页面：纯净屏时钟/共识页日期时间板块均可进入，返回时回到来处） —— */
+  'open-alarm'(){ S.backTarget = S.view==='alarm' ? (S.backTarget||'home') : S.view; S.view = 'alarm'; scheduleRender(); window.scrollTo(0,0); },
   'alarm-form'(btn){ openAlarmFormModal(btn.dataset.id || null); },
   'alarm-save'(btn){
     const time = document.getElementById('al-time').value;
@@ -2133,6 +2229,40 @@ const Actions = {
     scheduleRender();
     UI.toast({'full':'动画强度：完整','light':'动画强度：轻度','off':'动画强度：关闭'}[btn.dataset.level]||'已保存');
   },
+  /* —— 看板娘互动 / 角色养成（v1.2 预告面板） —— */
+  'open-grow'(){
+    const mId = S.settings.mascotId;
+    const curName = mId==='placeholder' ? '内置占位小可爱' : mId ? '上传的自定义立绘' : '文件夹里的「看板娘.png」';
+    UI.openModal(
+      '<div class="modal-title">角色养成<button class="x" data-action="modal-close">×</button></div>'+
+      '<div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">'+
+        '<div class="grow-avatar">'+
+          (mId==='placeholder' ? '<div class="mascot-shell" style="position:static;width:64px;height:93px"><div class="ms-hair"></div><div class="ms-face"></div><div class="ms-eye l"></div><div class="ms-eye r"></div><div class="ms-mouth"></div><div class="ms-ribbon">🎀</div></div>'
+           : '<img src="'+((mId && mId!=='placeholder') ? (Store.getImage(mId)||'看板娘.png') : '看板娘.png')+'" alt="" onerror="this.outerHTML=\'<span style=font-size:34px>🐣</span>\'" style="width:64px;max-height:110px;object-fit:contain">')+
+        '</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:700;font-size:15px">你的看板娘</div>'+
+          '<div style="font-size:12px;color:var(--text-2);margin-top:3px">当前形象：'+curName+'</div>'+
+          '<div style="font-size:12px;color:var(--text-2);margin-top:2px">单击看板娘可以互动哦～</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="field"><label>形象（可随时更换）</label>'+
+        '<div class="chip-row">'+
+          '<button class="chip'+(mId==null?' on':'')+'" data-action="grow-img-file">📁 看板娘.png</button>'+
+          '<button class="chip'+(mId==='placeholder'?' on':'')+'" data-action="grow-img-default">🐣 内置占位</button>'+
+          '<button class="chip'+(mId && mId!=='placeholder'?' on':'')+'" data-action="grow-img-upload">⬆ 上传立绘</button>'+
+        '</div></div>'+
+      '<div class="hint" style="font-size:12px;color:var(--text-2)">养成系统将在 v1.2 上线：经验与等级（递归时间、完成待办、写记录都会让她成长）、台词与称号、投喂互动、换装解锁。敬请期待～</div>'+
+      '<div class="modal-actions"><button class="btn btn--primary" data-action="modal-close">好期待！</button></div>');
+  },
+  'grow-img-upload'(){
+    const fi = document.getElementById('file-input');
+    fi.accept = 'image/*';
+    S.pendingFileCb = handleMascotImageFile;
+    fi.value=''; fi.click();
+  },
+  'grow-img-file'(){ S.settings.mascotId = null; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已使用文件夹里的「看板娘.png」'); },
+  'grow-img-default'(){ S.settings.mascotId = 'placeholder'; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已换回内置占位小可爱'); },
   'bg-opacity'(el){
     S.settings.bgOpacity = +el.value;
     saveSettings();
@@ -2331,6 +2461,7 @@ function gcImages(){
   }
   for(const n of S.catnotes){ (n.images||[]).forEach(id=>refs.add(id)); }
   if(S.settings.bgImageId) refs.add(S.settings.bgImageId);   // 背景图
+  if(S.settings.mascotId && S.settings.mascotId!=='placeholder') refs.add(S.settings.mascotId);   // 看板娘立绘
   let removed = 0;
   for(const k of Store.allKeys()){
     if(k.startsWith('img:') && !refs.has(k.slice(4))){ Store.del(k); removed++; }
@@ -2756,7 +2887,7 @@ function openRhythmEntryModal(dk, id){
   const doc = dayDoc(dk);
   const en = id ? (doc.rhythmEntries||[]).find(x=>x.id===id) : null;
   const at = en ? en.at : (dk===D.dateKey(Date.now()) ? D.tsToHHMM(Date.now()) : '21:00');
-  S.form = { images: [...(en ? (en.images||[]) : [])] };
+  S.form = { images: [...(en ? (en.images||[]) : [])], entryDk: dk };
   UI.openModal(
     '<div class="modal-title">时间轴日记 · '+D.fmtDateShort(dk)+'<button class="x" data-action="modal-close">×</button></div>'+
     '<div class="field"><label>时间点</label><input type="time" class="input num" id="re-time" value="'+esc(at)+'"></div>'+
@@ -2856,18 +2987,28 @@ const Views = {
   /* —— 纯净看板娘首页（背景+立绘两层分离，无静态UI，一切由手势呼出） —— */
   home(){
     const now = Date.now();
+    const dkToday = D.dateKey(now);
     const act = Rhythm.activeManual();
     let h = '<div class="pure-screen">';
-    /* 顶部日期药丸（点击=跳今日「每日总结·日历」页） */
-    h += '<button class="pure-date" data-action="go-summary-today" aria-label="每日总结与日历">'+
-           '<span class="mini-date" data-bind="bigdate"></span></button>';
-    /* 立绘层：设置中上传的角色图优先，否则内置占位看板娘 */
-    const mascotSrc = S.settings.mascotId ? Store.getImage(S.settings.mascotId) : null;
+    /* 顶部：日期 + 日期下方的大时间（日期点=共识页，时间点=闹钟） */
+    h += '<div class="pure-date">'+
+           '<button class="mini-date" data-action="go-summary-today" aria-label="我们的共识（每日总结与日历）" data-bind="bigdate"></button>'+
+           '<button class="pure-clock num" data-action="open-alarm" aria-label="闹钟" data-bind="bigclock">--:--:--</button>'+
+         '</div>';
+    /* 立绘层优先级：设置里上传的图 > 文件夹里的「看板娘.png」 > 内置占位小可爱 */
+    const mascotId = S.settings.mascotId;
+    const mascotSrc = (mascotId && mascotId!=='placeholder') ? Store.getImage(mascotId) : null;
+    const shellVis = mascotId==='placeholder' || (mascotId && !mascotSrc);
+    const mScale = S.settings.mascotScale || 1;
+    const mPos = S.settings.mascotPos || {dx:0, dy:0};
     h += '<div class="mascot-zone">'+
            '<div class="mascot-shadow"></div>'+
            '<div class="mascot" id="mascot">'+
-             (mascotSrc ? '<img src="'+mascotSrc+'" alt="看板娘" draggable="false">' :
-               '<div class="mascot-shell">'+
+             '<div class="mascot-pos" style="transform:translate('+mPos.dx+'vw,'+mPos.dy+'vh) scale('+mScale+')">'+
+               '<img src="'+(mascotSrc || '看板娘.png')+'" alt="看板娘" draggable="false"'+
+                 (shellVis?' style="display:none"':'')+
+                 ' onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'\'">'+
+               '<div class="mascot-shell"'+(shellVis?'':' style="display:none"')+'>'+
                  '<div class="ms-ahoge"></div><div class="ms-hair"></div>'+
                  '<div class="ms-hair2"></div><div class="ms-hair3"></div>'+
                  '<div class="ms-face"></div>'+
@@ -2876,7 +3017,8 @@ const Views = {
                  '<div class="ms-blush l"></div><div class="ms-blush r"></div>'+
                  '<div class="ms-mouth"></div>'+
                  '<div class="ms-ribbon">🎀</div>'+
-               '</div>')+
+               '</div>'+
+             '</div>'+
            '</div>';
     /* 漂浮小星星 */
     const SPARKS = [[6,24,1.6,'✦'],[13,66,2.4,'✧'],[86,18,2.1,'✦'],[81,60,3.0,'✧'],[48,7,3.6,'✦'],[55,78,1.2,'✧']];
@@ -2884,18 +3026,38 @@ const Views = {
     h += '</div>';
     /* 看板娘气泡（提醒用，点击可跳转） */
     h += '<div id="bubble-root" class="hidden"></div>';
-    /* 底部角落：实时时钟（点=闹钟页）· 正在递归（点=节律表）· 今日剩余额度（点=节律表） */
+    /* 底部角落：最优先待办（实时倒计时，点=待办页）· 正在递归（点=节律表）· 今日剩余额度（点=节律表） */
+    let urgent = null;
+    for(const t of S.todos){
+      if(t.archived || todoStatus(t, now)==='done') continue;
+      const due = TodoLogic.dueAt(t, now);
+      if(due == null) continue;
+      if(!urgent || due < TodoLogic.dueAt(urgent, now)) urgent = t;
+    }
     h += '<div class="pure-bottom">'+
            '<div class="mini-chips">'+
-             '<button class="minichip" data-action="open-alarm" aria-label="闹钟">🕒 <span data-bind="bigclock">--:--:--</span></button>'+
+             (urgent ? '<button class="minichip" data-bind="urgent" data-id="'+urgent.id+'" data-action="goto-todos" style="color:var(--red)">'+
+                        '最优先：<b class="ut">'+esc(urgent.title)+'</b> · <span class="num" data-cd>'+fmtRemain(TodoLogic.dueAt(urgent, now)-now)+'</span></button>' : '')+
              (act ? '<button class="minichip" data-bind="rec" data-space="'+act.spaceId+'" data-action="goto-rhythm" style="color:var(--accent-dark)">'+
                       '<span class="pulse-dot"></span> '+esc(spaceNameOf(act.spaceId))+' · <span class="num" data-rec-t>'+fmtDur(now-act.start)+'</span></button>' : '')+
            '</div>'+
            '<div class="mini-chips right">'+
-             '<button class="minichip" data-action="goto-rhythm" aria-label="节律表">⏳ 剩余 <b data-bind="quota-mini">--</b></button>'+
+             '<button class="minichip" data-action="goto-rhythm" aria-label="节律表">剩余 <b data-bind="quota-mini">--</b></button>'+
+             /* 桌面端：右下时间带面板（今日24小时递归带，进行中时显示实时计时） */
+             '<div class="desk-band">'+
+               '<div class="db-head"'+(act ? ' data-bind="rec" data-space="'+act.spaceId+'"' : '')+'>'+
+                 (act ? '<span class="pulse-dot"></span> 正在递归：'+esc(spaceNameOf(act.spaceId))+' · <span class="num" data-rec-t>'+fmtDur(now-act.start)+'</span>'
+                      : '今日递归时间带')+
+               '</div>'+
+               '<div class="rh-track">'+
+                 S.sessions.filter(s=>s.day===dkToday && s.end!=null).sort((a,b)=>a.start-b.start).map(s=>bandHtml(s,false)).join('')+
+                 Rhythm.activeSlices().filter(s=>s.day===dkToday).map(s=>bandHtml(s,true)).join('')+
+                 '<div class="rh-now" data-bind="nowline" style="left:'+((now-D.dkToTs(dkToday))/86400000*100).toFixed(3)+'%"></div>'+
+               '</div>'+
+             '</div>'+
            '</div>'+
          '</div>';
-    h += '<div class="pure-hint">双击呼出操控台 · 长按拖动切换页面</div>';
+    h += '<div class="pure-hint">双击呼出节律表操控台 · 长按滑动切换页面</div>';
     h += '</div>';
     return h;
   },
@@ -2910,7 +3072,13 @@ const Views = {
     const Q = Rhythm.quotaFor(dk);
     const consumed = Rhythm.consumedMinutes(dk, now);
     const remain = Math.max(0, Q - consumed);
-    let h = '<section class="sec"><h2 class="sec-title">每日总结<span class="sec-extra">'+(isTodayView?'今天':'回看')+'这一天干了什么 · 积累了什么</span></h2>';
+    let h = '';
+    /* 日期时间板块（和旧首页一样：实时时钟，点击=隐藏的闹钟入口） */
+    h += '<div class="card card--mark home-hero" data-action="open-alarm">'+
+           '<div class="hero-date" data-bind="bigdate"></div>'+
+           '<div class="hero-clock num" data-bind="bigclock"></div>'+
+         '</div>';
+    h += '<section class="sec"><h2 class="sec-title">我们的共识<span class="sec-extra">'+(isTodayView?'今天':'回看')+'这一天干了什么 · 积累了什么</span></h2>';
     /* 月历：点任意一天 → 跳到那一天总结（今天粗框、有记录的点圆点、已选高亮） */
     if(!S.sumCalY){ const d = new Date(); S.sumCalY = d.getFullYear(); S.sumCalM = d.getMonth(); }
     const first = new Date(S.sumCalY, S.sumCalM, 1);
@@ -2977,16 +3145,23 @@ const Views = {
       });
       for(const t of sorted) h += todoCardHtml(t, isTodayView ? now : vNow, isTodayView);
     }
-    /* 时间轴日记 */
+    /* 时间轴日记（v1.1 起归属「我们的共识」：任意一天都能补记/编辑/删除） */
     const entries = [...(doc.rhythmEntries||[])].sort((a,b)=>a.at<b.at?-1:1);
     h += '<div class="sec-sub" style="margin-top:14px">时间轴日记'+
          (entries.length?'<span class="cnt">'+entries.length+'</span>':'')+'</div>';
+    h += '<button class="btn btn--primary btn--block" data-action="sum-entry" style="margin-bottom:12px">＋ 记录想法'+(isTodayView?'（此刻）':'')+'</button>';
     if(entries.length===0){
-      h += '<div class="hint" style="font-size:12px;color:var(--text-2)">这一天没有写日记</div>';
+      h += '<div class="empty"><span class="empty-ico">📔</span>以时间为标签的日记<br>记录一天24小时的想法与活动</div>';
     }else{
       for(const en of entries){
         h += '<div class="card pad rh-entry" style="margin-bottom:8px">'+
-               '<span class="rh-time num">'+esc(en.at)+'</span>'+
+               '<div style="display:flex;justify-content:space-between;align-items:center">'+
+                 '<span class="rh-time num">'+esc(en.at)+'</span>'+
+                 '<span style="display:flex">'+
+                   '<button class="icon-btn" data-action="sum-entry" data-id="'+en.id+'" style="width:26px;height:26px" aria-label="编辑">✎</button>'+
+                   '<button class="icon-btn" data-action="sum-entry-del" data-id="'+en.id+'" style="width:26px;height:26px" aria-label="删除">🗑</button>'+
+                 '</span>'+
+               '</div>'+
                (en.text?'<div style="font-size:13px;white-space:pre-wrap;margin-top:4px">'+esc(en.text)+'</div>':'')+
                imgsHtml(en.images)+
              '</div>';
@@ -3177,27 +3352,8 @@ const Views = {
         h += '</div>';
       }
     }
-    /* 时间轴日记（任意一天都可以补记） */
-    h += '<div class="sec-sub" style="margin-top:18px">时间轴日记</div>';
-    h += '<button class="btn btn--primary btn--block" data-action="rhythm-entry" style="margin-bottom:12px">＋ 记录想法'+(isTodayView?'（此刻）':'')+'</button>';
-    const entries = [...(doc.rhythmEntries||[])].sort((a,b)=>a.at<b.at?-1:1);
-    if(entries.length===0){
-      h += '<div class="empty"><span class="empty-ico">📔</span>以时间为标签的日记<br>记录一天24小时的想法与活动</div>';
-    }else{
-      for(const en of entries){
-        h += '<div class="card pad rh-entry" style="margin-bottom:10px">'+
-               '<div style="display:flex;justify-content:space-between;align-items:center">'+
-                 '<span class="rh-time num">'+esc(en.at)+'</span>'+
-                 '<span style="display:flex">'+
-                   '<button class="icon-btn" data-action="rhythm-entry" data-id="'+en.id+'" style="width:26px;height:26px">✎</button>'+
-                   '<button class="icon-btn" data-action="rhythm-entry-del" data-id="'+en.id+'" style="width:26px;height:26px">🗑</button>'+
-                 '</span>'+
-               '</div>'+
-               (en.text?'<div style="font-size:13px;white-space:pre-wrap;margin-top:6px">'+esc(en.text)+'</div>':'')+
-               imgsHtml(en.images)+
-             '</div>';
-      }
-    }
+    /* 时间轴日记已迁至「我们的共识」页 */
+    h += '<div class="hint" style="font-size:12px;color:var(--text-2);margin-top:18px">📔 时间轴日记已搬到「我们的共识」页（长按右滑，或纯净页点顶部日期）</div>';
     h += '</section>';
     return h;
   },
@@ -3312,6 +3468,19 @@ function applyBg(){
     el.classList.add('hidden');
   }
 }
+/* 看板娘立绘上传回调（压缩到1600px保存） */
+function handleMascotImageFile(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
+  UI.toast('压缩处理中…');
+  compressImage(file, dataURL=>{
+    if(!Store.saveImage('mascot', dataURL)){ UI.toast('存储空间不足', 'err'); return; }
+    S.settings.mascotId = 'mascot';
+    saveSettings();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('看板娘立绘已更换');
+  }, 1600);
+}
 /* 动画强度三档：完整 / 轻度（默认）/ 关闭 */
 function applyAnimLevel(){
   const lv = S.settings.animLevel || 'light';
@@ -3398,15 +3567,169 @@ function bubbleScene(key, text, go, sub){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   9.55 看板娘互动 Mascot（单击立绘：反应动画+台词气泡+爱心粒子+养成入口按钮）
+   ══════════════════════════════════════════════════════════════ */
+const Mascot = {
+  lines:['今天也要一起加油哦~','摸摸头！','有什么事都可以交给我！','记得喝水哦，指挥官','要开始新的可能性了吗？','休息一下也没关系~','你的努力我都看在眼里！','今天想做什么呢？'],
+  tap(){
+    if(S.view!=='home') return;
+    const el = document.getElementById('mascot');
+    if(!el) return;
+    /* 反应动画：随机跳一跳 / 软软一挤（播完移除，呼吸浮动恢复） */
+    const cls = Math.random()<0.5?'mascot-hop':'mascot-squish';
+    el.classList.remove('mascot-hop','mascot-squish');
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(()=>el.classList.remove(cls), 700);
+    /* 台词气泡 */
+    this.say(this.lines[Math.floor(Math.random()*this.lines.length)], 2600);
+    /* 爱心粒子 */
+    this.hearts();
+    /* 角色养成入口按钮 + 大小/位置调节条（几秒后收起） */
+    this.showGrowBtn();
+    this.showCtrls();
+  },
+  say(text, ms){
+    const zone = document.querySelector('#view-root .mascot-zone');
+    if(!zone) return;
+    let b = zone.querySelector('.mascot-chat');
+    if(!b){
+      b = document.createElement('div');
+      b.className = 'mascot-chat';
+      zone.appendChild(b);
+    }
+    b.textContent = text;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+    clearTimeout(this._sayT);
+    this._sayT = setTimeout(()=>{ b.classList.remove('show'); }, ms || 2600);
+  },
+  hearts(){
+    const zone = document.querySelector('#view-root .mascot-zone');
+    if(!zone) return;
+    const em = ['💗','💙','✨','💛'];
+    for(let i=0;i<5;i++){
+      const s = document.createElement('span');
+      s.className = 'mascot-heart';
+      s.textContent = em[Math.floor(Math.random()*em.length)];
+      s.style.left = (38+Math.random()*24)+'%';
+      s.style.bottom = (56+Math.random()*16)+'%';
+      s.style.animationDelay = (i*0.07)+'s';
+      zone.appendChild(s);
+      setTimeout(()=>s.remove(), 1800);
+    }
+  },
+  showGrowBtn(){
+    const zone = document.querySelector('#view-root .mascot-zone');
+    if(!zone) return;
+    let b = zone.querySelector('.grow-btn');
+    if(!b){
+      b = document.createElement('button');
+      b.className = 'grow-btn';
+      b.textContent = '角色养成';
+      b.addEventListener('click', ()=>{ Actions['open-grow'](); });
+      zone.appendChild(b);
+    }
+    clearTimeout(this._growT);
+    b.classList.add('show');
+    this._growT = setTimeout(()=>{ b.classList.remove('show'); }, 6000);
+  },
+  /* —— 大小 / 位置调节条（单击后浮现，几秒收起） —— */
+  showCtrls(){
+    const zone = document.querySelector('#view-root .mascot-zone');
+    if(!zone) return;
+    let c = zone.querySelector('.mascot-ctrl');
+    if(!c){
+      c = document.createElement('div');
+      c.className = 'mascot-ctrl';
+      c.innerHTML =
+        '<div class="mc-pill"><button class="mc-b" data-kind="size" data-dir="m">−</button>'+
+          '<span class="mc-lbl">大小</span>'+
+          '<button class="mc-b" data-kind="size" data-dir="p">＋</button></div>'+
+        '<div class="mc-pill"><span class="mc-lbl">按住立绘拖动位置</span></div>'+
+        '<div class="mc-pill"><button class="mc-b" data-kind="reset">还原</button></div>';
+      c.querySelectorAll('.mc-b').forEach(b=>{
+        b.addEventListener('click', ()=>{ Mascot.adjust(b.dataset.kind, b.dataset.dir); });
+      });
+      zone.appendChild(c);
+    }
+    this.refreshCtrlTimer();
+  },
+  /* 延长调节条显示（拖动松手后继续可调） */
+  refreshCtrlTimer(){
+    const c = document.querySelector('#view-root .mascot-ctrl');
+    if(!c) return;
+    c.classList.add('show');
+    const m = document.getElementById('mascot'); if(m) m.classList.add('adjust');
+    clearTimeout(this._ctrlT);
+    this._ctrlT = setTimeout(()=>{
+      c.classList.remove('show');
+      const m2 = document.getElementById('mascot'); if(m2) m2.classList.remove('adjust');
+    }, 8000);
+  },
+  /* —— 拖动立绘移动位置（调节模式） —— */
+  isAdjustMode(){
+    const c = document.querySelector('#view-root .mascot-ctrl');
+    return !!(c && c.classList.contains('show'));
+  },
+  dragStart(x, y){
+    const p = S.settings.mascotPos || {dx:0, dy:0};
+    this._drag = { x0:x, y0:y, dx0:p.dx, dy0:p.dy };
+  },
+  dragMove(x, y){
+    if(!this._drag) return;
+    const w = window.innerWidth || 390, h = window.innerHeight || 844;
+    S.settings.mascotPos = {
+      dx: clamp(this._drag.dx0 + (x - this._drag.x0)/w*100, -32, 32),
+      dy: clamp(this._drag.dy0 + (y - this._drag.y0)/h*100, -32, 32)
+    };
+    this.applyPos();
+  },
+  dragEnd(moved){
+    this._drag = null;
+    if(moved < 10){ Mascot.tap(); return; }      // 没怎么动 = 算单击互动
+    saveSettings();
+    this.refreshCtrlTimer();
+  },
+  /* 调节大小（0.6~1.6，步进0.1）与位置（±32vw/vh，步进2） */
+  adjust(kind, dir){
+    if(kind==='reset'){
+      S.settings.mascotScale = 1;
+      S.settings.mascotPos = {dx:0, dy:0};
+    }else if(kind==='size'){
+      const s = clamp((S.settings.mascotScale||1) + (dir==='p'?0.1:-0.1), 0.6, 1.6);
+      S.settings.mascotScale = Math.round(s*10)/10;
+    }else{
+      const p = {...(S.settings.mascotPos||{dx:0, dy:0})};
+      if(dir==='left') p.dx -= 2;
+      else if(dir==='right') p.dx += 2;
+      else if(dir==='up') p.dy -= 2;
+      else p.dy += 2;
+      p.dx = clamp(p.dx, -32, 32);
+      p.dy = clamp(p.dy, -32, 32);
+      S.settings.mascotPos = p;
+    }
+    saveSettings();
+    this.applyPos();
+  },
+  /* 把大小/位置直接应用到立绘（不整页重渲染，响应即时） */
+  applyPos(){
+    const el = document.querySelector('#view-root .mascot-pos');
+    if(!el) return;
+    const s = S.settings.mascotScale||1, p = S.settings.mascotPos||{dx:0, dy:0};
+    el.style.transform = 'translate('+p.dx+'vw,'+p.dy+'vh) scale('+s+')';
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
    9.7 节律操控台 Console（双击呼出 · 猫耳时段卡 · 空间栏 · 投放区）
    ══════════════════════════════════════════════════════════════ */
 const Console = {
   lastTouch:0,           // 用户刚碰过面板的时间（拖动/滚动时暂停每秒刷新）
   hold:0,                // 正被拖拽的三角（暂停每秒刷新）
-  html(){ return '<div class="console">'+
+  html(){ return '<div class="console'+(this._anim?' sheet-in':'')+'">'+
     '<div class="console-grab"></div>'+
     '<div class="console-head">'+
-      '<div class="console-title">节律操控台</div>'+
+      '<div class="console-title">节律表操控台</div>'+
       '<button class="ctab'+(S.consTab==='slots'?' on':'')+'" data-action="cons-tab" data-tab="slots">自流转</button>'+
       '<button class="ctab'+(S.consTab==='spaces'?' on':'')+'" data-action="cons-tab" data-tab="spaces">空间</button>'+
       '<button class="icon-btn" data-action="open-settings" aria-label="设置">⚙</button>'+
@@ -3414,7 +3737,7 @@ const Console = {
     '</div>'+
     '<div class="console-body">'+(S.consTab==='slots' ? this.slotsHtml() : this.spacesHtml())+'</div>'+
   '</div>'; },
-  open(){ S.consOpen = true; this.lastTouch = Date.now(); this.render(); },
+  open(){ S.consOpen = true; this.lastTouch = Date.now(); this._anim = true; this.render(); },
   close(){ S.consOpen = false; S.sbOpen = false;
     const el = document.getElementById('console-root'); if(el) el.innerHTML=''; },
   toggle(){ S.consOpen ? this.close() : this.open(); },
@@ -3423,6 +3746,8 @@ const Console = {
     const el = document.getElementById('console-root');
     if(!el) return;
     el.innerHTML = this.html();
+    this._anim = false;                      // 滑入动画只在「打开」这一次播放
+    this._sig = this.sig(Date.now());        // 记录签名，避免下一秒 tick 立刻重绘（闪烁来源）
     this.bind();
   },
   /* 每秒定向刷新：计时数字原地更新；状态变化时才整体重画（保留滚动位置） */
@@ -3730,12 +4055,19 @@ const Console = {
     const w = rect.width, h = rect.height;
     const offX = e.clientX - rect.left, offY = e.clientY - rect.top;
     Console.hold = Date.now();
-    card.classList.add('dragging');
+    /* 幽灵卡必须挂在 body 下：操控台的 backdrop-filter 会生成包含块，
+       让 fixed 定位相对面板生效并被 overflow 裁剪 → 手机上卡片“消失”的根源 */
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('dragging');
+    ghost.style.width = w+'px'; ghost.style.height = h+'px';
+    ghost.style.left = rect.left+'px'; ghost.style.top = rect.top+'px';
+    document.body.appendChild(ghost);
+    card.style.opacity = '.35';
     const pad = document.getElementById('drop-pad');
     const move = ev => {
       ev.preventDefault();
-      card.style.left = (ev.clientX - offX)+'px';
-      card.style.top  = (ev.clientY - offY)+'px';
+      ghost.style.left = (ev.clientX - offX)+'px';
+      ghost.style.top  = (ev.clientY - offY)+'px';
       if(pad){
         const pr = pad.getBoundingClientRect();
         const over = ev.clientX>pr.left && ev.clientX<pr.right && ev.clientY>pr.top && ev.clientY<pr.bottom;
@@ -3747,8 +4079,8 @@ const Console = {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       Console.hold = 0;
-      card.classList.remove('dragging');
-      card.style.left = ''; card.style.top = '';
+      ghost.remove();
+      card.style.opacity = '';
       if(pad) pad.classList.remove('hot');
       if(pad){
         const pr = pad.getBoundingClientRect();
@@ -3756,9 +4088,6 @@ const Console = {
         if(over){ Rhythm.manualStart(spId); }
       }
     };
-    /* 固定定位幽灵卡片：先用 rect 定位在初始位置 */
-    card.style.left = rect.left+'px';
-    card.style.top = rect.top+'px';
     window.addEventListener('pointermove', move, {passive:false});
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
@@ -3772,13 +4101,13 @@ const Console = {
 const Gestures = {
   _t0:0, _x0:0, _y0:0, _mode:'none', _moved:0, _lastTap:0, _dblTapAt:0,
   _lastX:0, _lastY:0, _dir:null, _holdT:null,
-  DIRS:{top:{label:'节律表',ico:'▲'}, bottom:{label:'待办',ico:'▼'}, left:{label:'空间',ico:'◀'}, right:{label:'日历·总结',ico:'▶'}},
+  DIRS:{top:{label:'节律表',ico:'▲'}, bottom:{label:'待办',ico:'▼'}, left:{label:'空间',ico:'◀'}, right:{label:'我们的共识',ico:'▶'}},
   NAV:{top:'rhythm', bottom:'todos', left:'spaces', right:'summary'},
   init(){
     this._buildArrows();
     /* 挂在 document：操控台是 view-root 的兄弟节点，双击后左滑可能从面板上方区域起手 */
     document.addEventListener('pointerdown', e=>{ if(this._busy(e)) return; this._down(e); }, {passive:false});
-    document.addEventListener('pointermove', e=>{ if(this._mode!=='hold' && this._mode!=='maybe') return; e.preventDefault(); this._move(e); }, {passive:false});
+    document.addEventListener('pointermove', e=>{ if(this._mode!=='hold' && this._mode!=='maybe' && this._mode!=='mdrag') return; e.preventDefault(); this._move(e); }, {passive:false});
     document.addEventListener('pointerup', e=>{ this._up(e); }, {passive:false});
     document.addEventListener('pointercancel', ()=>{ this._reset(); });
     window.addEventListener('resize', ()=>{ if(this._mode==='hold') this._buildArrows(); });
@@ -3795,38 +4124,55 @@ const Gestures = {
     if(e.pointerType!=='touch' && e.pointerType!=='mouse' && e.pointerType!=='pen') return;
     this._t0 = now; this._x0 = e.clientX; this._y0 = e.clientY;
     this._moved = 0; this._dir = null; this._mode = 'maybe';
+    this._onMascot = !!(e.target.closest && e.target.closest('#mascot'));
+    /* 调节模式（调节条可见）下按住立绘 = 直接拖动位置，不参与单击/双击/长按判定 */
+    if(this._onMascot && typeof Mascot!=='undefined' && Mascot.isAdjustMode()){
+      this._mode = 'mdrag';
+      Mascot.dragStart(e.clientX, e.clientY);
+      return;
+    }
     this._holdT = setTimeout(()=>{
       if(this._mode!=='maybe') return;
-      if(this._moved > 14) return;
+      if(this._moved > 30) return;      // 手指轻微抖动不打断长按（手机常见）
       this._mode = 'hold';
       this._showArrows(e.clientX, e.clientY);
-    }, 400);
+    }, 700);                            // 长按 0.7 秒判定成功
   },
   _move(e){
     const dx = e.clientX - this._x0, dy = e.clientY - this._y0;
     this._moved = Math.max(this._moved, Math.hypot(dx, dy));
+    if(this._mode==='mdrag'){
+      e.preventDefault();
+      Mascot.dragMove(e.clientX, e.clientY);
+      return;
+    }
     if(this._mode==='hold'){
       e.preventDefault();
       const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'bottom':'top');
       this._dir = dir;
       this._highlight(dir, Math.max(Math.abs(dx), Math.abs(dy)));
-    }else if(this._mode==='maybe' && this._moved > 18){
-      /* 开始拖动后：若是「双击后的左滑」→ 切到空间栏 */
+    }else if(this._mode==='maybe' && this._moved > 30){
+      /* 明确在拖动（不是长按）：若是「双击后的左滑」→ 切到空间栏 */
       clearTimeout(this._holdT);
       if(Date.now() - this._dblTapAt < 420 && dx < -52 && S.consOpen){
         this._reset();
         S.consTab = 'spaces';
-        Console.render(true);
+        Console.render();
       }
     }
   },
   _up(e){
+    if(this._mode==='mdrag'){
+      this._mode = 'none';
+      Mascot.dragEnd(this._moved);
+      return;
+    }
     if(this._mode==='hold'){
       clearTimeout(this._holdT);
       this._hideArrows();
       const d = this._dir;
       this._mode = 'none';
-      if(d && Math.max(Math.abs(e.clientX-this._x0), Math.abs(e.clientY-this._y0)) >= 52){
+      if(d && Math.max(Math.abs(e.clientX-this._x0), Math.abs(e.clientY-this._y0)) >= 44){
         goView(Gestures.NAV[d]);                 // 长按 + 四向滑动 → 对应子页
         S.sumDay = null;
       }
@@ -3851,10 +4197,20 @@ const Gestures = {
       this._lastTap = now2; this._lastX = e.clientX; this._lastY = e.clientY;
       /* 单击：若上一个是双击即将到，暂存 */
       setTimeout(()=>{ if(this._lastTap && Date.now()-this._lastTap>330) this._lastTap = 0; }, 360);
+      /* 单击看板娘：稍等确认不是双击（双击=呼出操控台，二者互不冲突），再触发互动 */
+      if(this._onMascot){
+        const tapAt = now2;
+        setTimeout(()=>{
+          if(this._lastTap === tapAt && typeof Mascot!=='undefined') Mascot.tap();
+        }, 340);
+      }
     }
     this._reset();
   },
-  _reset(){ this._mode='none'; this._dir=null; clearTimeout(this._holdT); this._hideArrows(); },
+  _reset(){
+    if(this._mode==='mdrag'){ this._mode='none'; Mascot.dragEnd(Math.max(99, this._moved)); return; }
+    this._mode='none'; this._dir=null; clearTimeout(this._holdT); this._hideArrows();
+  },
   _buildArrows(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
@@ -3863,11 +4219,16 @@ const Gestures = {
       return '<div class="gv-arrow '+d+'" data-dir="'+d+'">'+
                '<div class="gv-ring">'+o.ico+'</div><div class="gv-txt">'+o.label+'</div>'+
              '</div>';
-    }).join('');
+    }).join('')+
+    '<div class="gv-hold"><span class="gv-hold-ring"></span></div>';
   },
   _showArrows(x, y){
     const root = document.getElementById('gesture-root');
-    if(root) root.classList.add('on');
+    if(!root) return;
+    root.classList.add('on');
+    /* 长按成功圆圈：出现在按压点，由浅渐实 */
+    const c = root.querySelector('.gv-hold');
+    if(c){ c.style.left = x+'px'; c.style.top = y+'px'; }
   },
   _highlight(dir, len){
     const root = document.getElementById('gesture-root');
@@ -3875,7 +4236,7 @@ const Gestures = {
     root.querySelectorAll('.gv-arrow').forEach(a=>{
       a.classList.toggle('show', a.dataset.dir===dir);
     });
-    root.classList.toggle('active', len >= 52);
+    root.classList.toggle('active', len >= 44);
   },
   _hideArrows(){
     const root = document.getElementById('gesture-root');
@@ -3918,7 +4279,7 @@ const Notify = {
 };
 
 /* 渲染入口：home=纯净看板娘页（无顶栏无静态UI），其余为带返回按钮的子页 */
-const VIEW_TITLES = {home:'', summary:'每日总结 · 日历', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:''};
+const VIEW_TITLES = {home:'', summary:'我们的共识', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:''};
 function renderView(){
   const root = document.getElementById('view-root');
   const ae = document.activeElement;
@@ -3946,13 +4307,13 @@ function renderView(){
   if(hdr) hdr.classList.toggle('hidden', isPure);
   document.getElementById('back-btn').classList.toggle('hidden', isPure);
   document.body.classList.toggle('pure-mode', isPure);
-  /* 离开纯净页：收起操控台 / 空间栏，清手势残留；回纯净页时若有待显示气泡则补上 */
+  /* 离开纯净页：收起操控台 / 空间栏，清手势残留；回纯净页时若有待显示气泡则补上
+     （操控台自身按签名自更新，不随 renderView 重绘——重绘会重播动画=闪烁） */
   if(!isPure){
     S.consOpen = false; S.sbOpen = false;
     const cr = document.getElementById('console-root'); if(cr) cr.innerHTML = '';
   }else{
     if(typeof Bubbles !== 'undefined') Bubbles.render();
-    if(S.consOpen && typeof Console !== 'undefined') Console.render();
   }
   collectBindings();
 }
