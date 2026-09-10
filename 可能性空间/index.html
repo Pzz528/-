@@ -206,6 +206,12 @@ img{max-width:100%;display:block}
 .cal-day.today .cal-n{color:var(--accent)}
 .cal-e{font-size:15px;line-height:1.1}
 .cal-t{font-size:9px;color:var(--text-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 月历标题行：点中间的「年月」可收起/展开整个日历 */
+.cal-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cal-head .cal-title{flex:1;min-width:0;text-align:center;font-weight:600;font-size:14px;color:var(--text);
+  background:none;border:none;padding:4px 0;cursor:pointer;border-radius:8px}
+.cal-head .cal-title:hover{background:var(--gray-soft)}
+.cal-caret{font-size:11px;color:var(--text-2);margin-left:2px}
 .cat-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
 .cat-ico{color:var(--accent);font-size:16px}
 .cat-name{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -228,6 +234,17 @@ img{max-width:100%;display:block}
 .rh-space.on{outline:2px solid var(--sc);outline-offset:1px}
 .rec-live{font-size:13px;font-weight:700;color:var(--sc,var(--accent));margin-top:2px}
 .rh-entry .rh-time{font-weight:700;color:var(--accent);font-size:14px}
+/* —— 24小时递归圆圈（共识页）：整圈=一天 · 扇形色块=一段递归 —— */
+.ring-wrap{position:relative;width:min(64vw,250px);margin:2px auto 0}
+.ring-svg{width:100%;height:auto;display:block;overflow:visible}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center}
+.ring-center b{font-size:16px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;line-height:1.25}
+.ring-center span{font-size:11px;color:var(--text-2);letter-spacing:1px}
+.ring-live{animation:pulse 1.6s ease infinite}
+.ring-legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:12px}
+.ring-legend .li{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-2)}
+.ring-legend .li b{color:var(--text);font-weight:700}
+.ring-legend .dot{margin:0}
 .slot-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px}
 .slot-info{flex:1;min-width:0}
 .slot-time{font-weight:600;font-size:14px}
@@ -280,14 +297,15 @@ img{max-width:100%;display:block}
   touch-action:none;-webkit-touch-callout:none}
 .pure-date{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3;
   background:none;border:none;padding:0;margin:0}
-.mini-date{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:13px;font-weight:600;color:var(--text-2);
+/* 字号可在「设置 → 纯净首页」里自定义（--pdfs 日期 / --pcfs 时间），内边距用 em 随字号一起放大 */
+.mini-date{display:inline-flex;align-items:center;gap:.45em;padding:.38em 1.05em;font-size:var(--pdfs,15px);font-weight:600;color:var(--text-2);
   background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);border-radius:999px;backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
 /* 日期下方的大时间（点=闹钟） */
 .pure-clock{border:none;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7);border-radius:999px;
-  padding:1px 20px 3px;font-size:30px;font-weight:800;line-height:1.25;color:var(--text);
+  padding:.03em .66em .1em;font-size:var(--pcfs,36px);font-weight:800;line-height:1.25;color:var(--text);
   backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);text-shadow:0 1px 2px rgba(255,255,255,.8)}
 .mascot-zone{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0}
-.mascot-zone .mascot{position:relative;z-index:2;width:min(72vw,400px);cursor:pointer;
+.mascot-zone .mascot{position:relative;z-index:2;width:100%;max-width:560px;cursor:pointer;
   animation:floatY 4s ease-in-out infinite}
 @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 .mascot-zone .mascot svg,.mascot-zone .mascot img{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 18px rgba(60,90,140,.25))}
@@ -321,8 +339,9 @@ img{max-width:100%;display:block}
 .mascot-heart{position:absolute;font-size:18px;z-index:5;pointer-events:none;animation:heartUp 1.6s ease-out forwards}
 @keyframes heartUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translateY(-90px) scale(1.25)}}
 /* 养成入口：浅粉+透明模糊玻璃胶囊（无图标） */
-.grow-btn{position:absolute;bottom:4%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
-  border:1px solid rgba(255,255,255,.65);padding:9px 24px;border-radius:999px;font-size:14px;font-weight:800;letter-spacing:1px;
+/* 位置抬高到 22%（避开底部的最优先待办/今日递归带），整体再大一号 */
+.grow-btn{position:absolute;bottom:22%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
+  border:1px solid rgba(255,255,255,.65);padding:13px 34px;border-radius:999px;font-size:17px;font-weight:800;letter-spacing:2px;
   color:#C0447E;background:rgba(255,200,220,.5);
   backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);
   box-shadow:0 6px 18px rgba(255,150,190,.25),inset 0 1px 0 rgba(255,255,255,.5);
@@ -360,27 +379,37 @@ img{max-width:100%;display:block}
 /* ══════════════════════════════════════════════════════════════
    12. 长按四向导航方向提示
    ══════════════════════════════════════════════════════════════ */
-#gesture-root{position:fixed;inset:0;z-index:80;pointer-events:none;display:none}
+#gesture-root{position:fixed;inset:0;z-index:80;pointer-events:none;display:none;overflow:hidden;--gvp:0;--gvc:#F5C542}
 #gesture-root.on{display:block}
-.gv-arrow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;
-  opacity:0;transition:opacity .12s,transform .12s}
-.gv-arrow.show{opacity:1}
-.gv-arrow .gv-ring{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent-dark);
-  background:rgba(255,255,255,.8);border:1.5px solid rgba(255,255,255,.9);box-shadow:var(--shadow);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
-.gv-arrow .gv-txt{font-size:11px;font-weight:700;color:var(--accent-dark);padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.75)}
-/* 四向箭头按视口定位（不随自身尺寸偏移，窄屏也不会飞出屏幕） */
-.gv-arrow.top{top:16%;left:50%}
-.gv-arrow.bottom{top:84%;left:50%}
-.gv-arrow.left{left:13%;top:50%}
-.gv-arrow.right{left:87%;top:50%}
-.gv-arrow.top.show{transform:translate(-50%,-50%) scale(1.12)}
-.gv-arrow.bottom.show{transform:translate(-50%,-50%) scale(1.12)}
-.gv-arrow.left.show{transform:translate(-50%,-50%) scale(1.12)}
-.gv-arrow.right.show{transform:translate(-50%,-50%) scale(1.12)}
-/* 达到触发距离：选中的箭头放大提示“松手即可跳转”（原来会隐藏全部箭头=提示消失的bug） */
-#gesture-root.active .gv-arrow.show{transform:translate(-50%,-50%) scale(1.4)}
-#gesture-root.active .gv-arrow.show .gv-ring{box-shadow:0 0 0 7px var(--accent-soft),var(--shadow)}
-#gesture-root.active .gv-arrow.show .gv-txt{background:var(--accent-soft);color:var(--accent-dark)}
+/* 扇形色块：顶点钉在屏幕边缘中点，随拖动距离变大（颜色=目标页面颜色） */
+.gv-wedge{position:absolute;width:0;height:0;opacity:0;transition:opacity .16s;z-index:1;
+  filter:drop-shadow(0 2px 18px rgba(30,50,90,.16))}
+.gv-wedge.on{opacity:.94}
+.gv-wedge svg{width:100%;height:100%;display:block}
+.gv-wedge path{fill:var(--gvc,#F5C542)}
+.gv-wedge.right{right:0;top:50%;transform:translate(50%,-50%)}
+.gv-wedge.left{left:0;top:50%;transform:translate(-50%,-50%)}
+.gv-wedge.top{top:0;left:50%;transform:translate(-50%,-50%)}
+.gv-wedge.bottom{bottom:0;left:50%;transform:translate(-50%,50%)}
+/* 四个边缘提示：目标页面的图标+名称停在它要来的那一边，箭头指向“拉进来”的方向
+   被拉的那个会往画面里挪一点、图标变大（--gvp = 拉出进度 0~1） */
+.gv-edge{position:absolute;display:flex;align-items:center;gap:6px;z-index:2;opacity:.34;transition:opacity .16s}
+.gv-edge.on{opacity:1}
+.gv-edge .gve-arrow{width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--gvc,#F5C542);color:#fff;font-size:15px;font-weight:800;box-shadow:0 2px 8px rgba(30,50,90,.25)}
+.gv-edge .gve-ring{width:46px;height:46px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;
+  background:rgba(255,255,255,.92);border:2px solid var(--gvc,#F5C542);box-shadow:var(--shadow);
+  transform:scale(calc(1 + var(--gvp,0) * .45))}
+.gv-edge .gve-name{font-size:11.5px;font-weight:800;color:#33415c;padding:3px 9px;border-radius:999px;white-space:nowrap;
+  background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(30,50,90,.2)}
+.gv-edge.top,.gv-edge.bottom{flex-direction:column}
+.gv-edge.top{top:15%;left:50%;transform:translate(-50%,0) translate(0,calc(var(--gvp,0) * 26px))}
+.gv-edge.bottom{bottom:16%;left:50%;transform:translate(-50%,0) translate(0,calc(var(--gvp,0) * -26px))}
+.gv-edge.left{left:8px;top:50%;transform:translate(0,-50%) translate(calc(var(--gvp,0) * 26px),0)}
+.gv-edge.right{right:8px;top:50%;transform:translate(0,-50%) translate(calc(var(--gvp,0) * -26px),0)}
+/* 拉够了：图标再大一圈、名称反白，提示“松手即可进入” */
+#gesture-root.locked .gv-edge.on .gve-ring{box-shadow:0 0 0 7px var(--accent-soft),var(--shadow)}
+#gesture-root.locked .gv-edge.on .gve-name{background:var(--gvc,#F5C542);color:#fff}
 /* 长按成功圆圈（按点出现，由浅渐实，提示可以开始滑动） */
 .gv-hold{position:absolute;display:none;z-index:1}
 #gesture-root.on .gv-hold{display:block}
@@ -390,6 +419,21 @@ img{max-width:100%;display:block}
   animation:holdIn .45s ease-out both,holdPulse 1.5s ease-in-out .45s infinite}
 @keyframes holdIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes holdPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+/* 加载页：整屏目标页面颜色的色块 + 图标 + 名称（约0.5秒后进入目标页） */
+.page-load{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .16s ease}
+.page-load.on{opacity:1}
+.page-load.out{opacity:0;transition:opacity .3s ease}
+.page-load .pl-inner{display:flex;flex-direction:column;align-items:center;gap:12px;color:#fff;text-align:center;
+  text-shadow:0 2px 14px rgba(20,35,60,.28);animation:plPop .42s cubic-bezier(.2,1.25,.4,1) both}
+.page-load .pl-ico{font-size:64px;line-height:1}
+.page-load .pl-name{font-size:21px;font-weight:800;letter-spacing:3px}
+.page-load .pl-dots{display:flex;gap:7px;margin-top:4px}
+.page-load .pl-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.85);animation:plDot 1s ease-in-out infinite}
+.page-load .pl-dots i:nth-child(2){animation-delay:.15s}
+.page-load .pl-dots i:nth-child(3){animation-delay:.3s}
+@keyframes plPop{from{transform:scale(.72);opacity:.3}to{transform:scale(1);opacity:1}}
+@keyframes plDot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 
 /* ══════════════════════════════════════════════════════════════
    13. 节律操控台（双击呼出）· 猫耳时段卡 · 空间栏 · 投放区
@@ -495,7 +539,9 @@ img{max-width:100%;display:block}
 body.pure-mode #toast-root{bottom:calc(18px + env(safe-area-inset-bottom))}
 body.pure-mode #app{height:100dvh;display:block}
 /* 提醒气泡：锚在立绘右上（与台词气泡同侧，台词在其下方一格），字号稍大 */
-.pure-screen #bubble-root{position:absolute;left:calc(50% + 6vw);top:8%;bottom:auto;transform:none;z-index:8;
+/* 提醒气泡排在顶部日期/时间板块下方（板块高度随自定义字号变化，这里跟着一起让位） */
+.pure-screen #bubble-root{position:absolute;left:calc(50% + 6vw);bottom:auto;transform:none;z-index:8;
+  top:calc(26px + var(--pdfs,15px)*2 + var(--pcfs,36px)*1.4);
   max-width:min(44vw,300px);pointer-events:auto}
 .pure-screen #bubble-root .mascot-bubble{position:relative;bottom:auto;left:auto;transform:none;max-width:100%;display:block;
   font-size:15px;animation:popInR .22s cubic-bezier(.2,1.2,.4,1)}
@@ -503,10 +549,10 @@ body.pure-mode #app{height:100dvh;display:block}
   border-left:1px solid rgba(255,255,255,.8);border-top:1px solid rgba(255,255,255,.8);transform:rotate(-45deg);
   border-right:none;border-bottom:none}
 @keyframes popInR{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
-/* 桌面端纯净屏：立绘区限制最高，避免大屏全屏贴顶 */
+/* 桌面端纯净屏：立绘按屏高限宽（避免大屏全屏贴顶，但比手机版留得更大） */
 @media (min-width:520px){
   .pure-screen{max-width:none}
-  .mascot-zone .mascot{width:min(44vh,300px)}
+  .mascot-zone .mascot{width:min(56vh,440px)}
 }
 </style>
 </head>
@@ -542,9 +588,12 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.1.5', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.1.7', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
+  /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
+  PURE_DATE_FS:{def:15, min:10, max:32},
+  PURE_CLOCK_FS:{def:36, min:18, max:80},
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
   PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
   EMOJIS:['😄','🙂','😌','😐','😔','😢','😡','🤩','😴','😮','🤔','🥰','😅','🥳'],
@@ -2256,6 +2305,30 @@ const Actions = {
   'grow-img-file'(){ S.settings.mascotId = null; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已使用文件夹里的「看板娘.png」'); },
   'grow-img-default'(){ S.settings.mascotId = 'placeholder'; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已换回内置占位小可爱'); },
   'grow-reset-pos'(){ Mascot.resetPos(); UI.closeModal(); UI.toast('已还原默认大小与位置'); },
+  /* —— 纯净首页：日期/时间字号自定义（拖动即时生效并保存） —— */
+  'pure-size-date'(el){
+    S.settings.pureDateFs = clamp(Math.round(+el.value) || CONFIG.PURE_DATE_FS.def, CONFIG.PURE_DATE_FS.min, CONFIG.PURE_DATE_FS.max);
+    saveSettings();
+    const v = document.getElementById('pure-date-val');
+    if(v) v.textContent = S.settings.pureDateFs+'px';
+  },
+  'pure-size-clock'(el){
+    S.settings.pureClockFs = clamp(Math.round(+el.value) || CONFIG.PURE_CLOCK_FS.def, CONFIG.PURE_CLOCK_FS.min, CONFIG.PURE_CLOCK_FS.max);
+    saveSettings();
+    const v = document.getElementById('pure-clock-val');
+    if(v) v.textContent = S.settings.pureClockFs+'px';
+  },
+  'pure-size-reset'(){
+    S.settings.pureDateFs = CONFIG.PURE_DATE_FS.def;
+    S.settings.pureClockFs = CONFIG.PURE_CLOCK_FS.def;
+    saveSettings(); scheduleRender();
+    UI.toast('已还原默认字号');
+  },
+  /* —— 我们的共识：日历收起/展开 —— */
+  'sum-cal-toggle'(){
+    S.settings.sumCalOpen = (S.settings.sumCalOpen === false);   // 默认展开
+    saveSettings(); scheduleRender();
+  },
   /* —— 设置里隐藏/显示看板娘 —— */
   'mascot-toggle'(){
     S.settings.mascotHidden = !S.settings.mascotHidden;
@@ -2882,6 +2955,95 @@ function bandHtml(s, active){
   const endTxt = active ? '进行中' : D.tsToHHMM(s.end);
   return '<div class="rh-band'+(active?' active':'')+'" style="left:'+left.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:'+color+'" title="'+esc(name)+' · '+modeTxt+' · '+D.tsToHHMM(s.start)+' ~ '+endTxt+'"></div>';
 }
+/* —— 24小时递归圆圈（共识页用）：整圈=一天，扇形色块=一段可能性递归 —— */
+/* 圆圈上的一个点（deg：0=12点方向，顺时针） */
+function ringPt(cx, cy, r, deg){
+  const t = (deg - 90) * Math.PI / 180;
+  return [(cx + r * Math.cos(t)).toFixed(2), (cy + r * Math.sin(t)).toFixed(2)];
+}
+/* 圆环上的一段弧（画扇形色块用） */
+function ringArc(cx, cy, r, a0, a1){
+  const p0 = ringPt(cx, cy, r, a0), p1 = ringPt(cx, cy, r, a1);
+  return 'M'+p0[0]+' '+p0[1]+' A'+r+' '+r+' 0 '+((a1-a0) > 180 ? 1 : 0)+' 1 '+p1[0]+' '+p1[1];
+}
+/* 扇形路径：顶点在圆心，deg=扇形朝向（0=正上、90=正右），half=半张角，r=半径
+   配合 200×200 的 viewBox 用（长按拖动时从屏幕边缘长出来的色块） */
+function sectorPath(deg, half, r){
+  const a0 = ringPt(100, 100, r, deg - half), a1 = ringPt(100, 100, r, deg + half);
+  return 'M100 100 L'+a0[0]+' '+a0[1]+' A'+r+' '+r+' 0 '+((half*2) > 180 ? 1 : 0)+' 1 '+a1[0]+' '+a1[1]+' Z';
+}
+/* 进入页面前的加载页：整屏目标页面颜色的色块 + 图标 + 名称，约0.5秒后再切页 */
+function pageLoad(meta, done){
+  const el = document.createElement('div');
+  el.className = 'page-load';
+  el.style.background = meta.color;
+  el.innerHTML = '<div class="pl-inner"><div class="pl-ico">'+meta.ico+'</div>'+
+                 '<div class="pl-name">'+esc(meta.name)+'</div>'+
+                 '<div class="pl-dots"><i></i><i></i><i></i></div></div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{ el.classList.add('on'); });
+  setTimeout(()=>{
+    try{ done(); }catch(err){ console.error('[pageLoad]', err); }
+    el.classList.add('out');
+    setTimeout(()=>el.remove(), 340);
+  }, 520);
+}
+/* 当日递归圆圈：灰色圆环=24小时底盘，每段递归按分钟占比画成扇形（颜色=空间色），
+   中心显示当日合计，下方图例按空间拆分（进行中的段会呼吸闪烁） */
+function dayRingHtml(dk, isToday, now){
+  const dayStart = D.dkToTs(dk);
+  const CX = 100, CY = 100, R = 70, W = 30;
+  const segs = [];
+  const add = (s, endTs, live)=>{
+    let a = (s.start - dayStart) / 60000, b = (endTs - dayStart) / 60000;
+    if(b <= 0 || a >= 1440) return;                 // 完全不在这一天
+    a = Math.max(0, a); b = Math.min(1440, b);
+    if(b < a) b = a;
+    const sp = spaceById(s.spaceId);
+    segs.push({a, b, live, color: sp ? sp.color : '#8A93A3', name: sp ? sp.name : '已删除空间'});
+  };
+  for(const s of S.sessions.filter(x=>x.day===dk && x.end!=null)) add(s, s.end, false);
+  if(isToday) for(const s of Rhythm.activeSlices().filter(x=>x.day===dk)) add(s, now, true);
+  segs.sort((x, y)=>x.a - y.a);
+  /* 底盘：24小时灰环 + 刻度（0/6/12/18 加粗） */
+  let g = '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="#E9EFF7" stroke-width="'+W+'"/>';
+  for(let hh=0; hh<24; hh++){
+    const major = hh % 6 === 0;
+    const p0 = ringPt(CX, CY, R + W/2 + 2, hh*15);
+    const p1 = ringPt(CX, CY, R + W/2 + (major ? 9 : 6), hh*15);
+    g += '<line x1="'+p0[0]+'" y1="'+p0[1]+'" x2="'+p1[0]+'" y2="'+p1[1]+'" stroke="'+(major ? '#B7C5D9' : '#DCE4EF')+
+         '" stroke-width="'+(major ? 1.8 : 1)+'" stroke-linecap="round"/>';
+  }
+  /* 扇形色块：不足 5 分钟的短递归也保证可见的一小撇 */
+  for(const sg of segs){
+    const a0 = sg.a / 1440 * 360, a1 = sg.b / 1440 * 360;
+    const e1 = Math.max(a1, a0 + 1.25);
+    const endTxt = sg.live ? '进行中' : D.tsToHHMM(dayStart + sg.b * 60000);
+    g += '<path d="'+ringArc(CX, CY, R, a0, e1)+'" fill="none" stroke="'+sg.color+'" stroke-width="'+W+
+         '" opacity="'+(sg.live ? '.95' : '.85')+'"'+(sg.live ? ' class="ring-live"' : '')+'>'+
+         '<title>'+esc(sg.name)+' · '+D.tsToHHMM(dayStart + sg.a * 60000)+' ~ '+endTxt+' · '+fmtMin(sg.b - sg.a)+'</title></path>';
+  }
+  /* 现在指针（仅今天） */
+  if(isToday){
+    const d = (now - dayStart) / 86400000 * 360;
+    const p0 = ringPt(CX, CY, R - W/2 - 3, d), p1 = ringPt(CX, CY, R + W/2 + 3, d);
+    g += '<line x1="'+p0[0]+'" y1="'+p0[1]+'" x2="'+p1[0]+'" y2="'+p1[1]+'" stroke="var(--red)" stroke-width="2.2" stroke-linecap="round"/>';
+  }
+  const total = segs.reduce((n, sg)=>n + (sg.b - sg.a), 0);
+  /* 图例：按空间合并 */
+  const byName = new Map();
+  for(const sg of segs){
+    const it = byName.get(sg.name) || {name:sg.name, color:sg.color, min:0};
+    it.min += sg.b - sg.a; byName.set(sg.name, it);
+  }
+  const legend = [...byName.values()].sort((x, y)=>y.min - x.min).map(it=>
+    '<span class="li"><i class="dot" style="background:'+it.color+'"></i>'+esc(it.name)+' <b class="num">'+fmtMin(it.min)+'</b></span>').join('');
+  return '<div class="ring-wrap">'+
+      '<svg class="ring-svg" viewBox="0 0 200 200" role="img" aria-label="当日递归圆圈">'+g+'</svg>'+
+      '<div class="ring-center"><b class="num">'+fmtMin(total)+'</b><span>'+(isToday?'今日递归':'当日递归')+'</span></div>'+
+    '</div>'+
+    (legend ? '<div class="ring-legend">'+legend+'</div>' : '');
+}
 /* 时间轴日记弹窗（dk=目标日期，id 为空则新建；支持文字+图片，纯图片也可以） */
 function openRhythmEntryModal(dk, id){
   const doc = dayDoc(dk);
@@ -2989,7 +3151,9 @@ const Views = {
     const now = Date.now();
     const dkToday = D.dateKey(now);
     const act = Rhythm.activeManual();
-    let h = '<div class="pure-screen">';
+    /* 日期/时间字号可在设置里自定义（默认日期15px · 时间36px） */
+    const dfs = S.settings.pureDateFs || CONFIG.PURE_DATE_FS.def, cfs = S.settings.pureClockFs || CONFIG.PURE_CLOCK_FS.def;
+    let h = '<div class="pure-screen" style="--pdfs:'+dfs+'px;--pcfs:'+cfs+'px">';
     /* 顶部：日期 + 日期下方的大时间（日期点=共识页，时间点=闹钟） */
     h += '<div class="pure-date">'+
            '<button class="mini-date" data-action="go-summary-today" aria-label="我们的共识（每日总结与日历）" data-bind="bigdate"></button>'+
@@ -3079,36 +3243,51 @@ const Views = {
            '<div class="hero-clock num" data-bind="bigclock"></div>'+
          '</div>';
     h += '<section class="sec"><h2 class="sec-title">我们的共识<span class="sec-extra">'+(isTodayView?'今天':'回看')+'这一天干了什么 · 积累了什么</span></h2>';
-    /* 月历：点任意一天 → 跳到那一天总结（今天粗框、有记录的点圆点、已选高亮） */
+    /* 月历：点任意一天 → 跳到那一天总结（今天粗框、有记录的点圆点、已选高亮）
+       标题行中间的「年月」可点，收起/展开整个日历（收起状态记在设置里） */
     if(!S.sumCalY){ const d = new Date(); S.sumCalY = d.getFullYear(); S.sumCalM = d.getMonth(); }
+    const calOpen = S.settings.sumCalOpen !== false;
     const first = new Date(S.sumCalY, S.sumCalM, 1);
     const startWd = first.getDay();
     const daysIn = new Date(S.sumCalY, S.sumCalM+1, 0).getDate();
-    h += '<div class="card pad" style="margin-bottom:12px">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
-        '<button class="icon-btn" data-action="sum-cal-prev" aria-label="上个月">◀</button>'+
-        '<div style="flex:1;text-align:center;font-weight:600;font-size:14px">'+S.sumCalY+'年'+(S.sumCalM+1)+'月</div>'+
-        '<button class="icon-btn" data-action="sum-cal-next" aria-label="下个月">▶</button>'+
-      '</div>'+
-      '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>'+
-      '<div class="cal-grid" style="margin-top:4px">';
-    for(let i=0;i<startWd;i++) h += '<span></span>';
-    for(let d=1;d<=daysIn;d++){
-      const dk2 = S.sumCalY+'-'+pad2(S.sumCalM+1)+'-'+pad2(d);
-      const mood = (Store.loadDay(dk2)||{}).dayMood;
-      h += '<button class="cal-day'+(dk2===today?' today':'')+(dk2===dk?' sel':'')+(dayHasData(dk2)?' has':'')+'" data-action="sum-cal-day" data-dk="'+dk2+'">'+
-             '<span class="cal-n">'+d+'</span>'+
-             (mood&&mood.emoji?'<span class="cal-e">'+mood.emoji+'</span>':'')+
-           '</button>';
-    }
-    h += '</div></div>';
-    /* 日期条：◀ 日期 ▶ · 情绪 · 日历跳转 · 回到今天 */
+    /* 日期条（今天+表情）在最上面，日历紧贴其下 */
     h += dayNavHtml('sum');
+    h += '<div class="card pad" style="margin-top:10px;margin-bottom:12px">'+
+      '<div class="cal-head">'+
+        '<button class="icon-btn" data-action="sum-cal-prev" aria-label="上个月">◀</button>'+
+        '<button class="cal-title" data-action="sum-cal-toggle" aria-label="收起或展开日历">'+S.sumCalY+'年'+(S.sumCalM+1)+'月 <span class="cal-caret">'+(calOpen?'▾ 收起':'▸ 展开')+'</span></button>'+
+        '<button class="icon-btn" data-action="sum-cal-next" aria-label="下个月">▶</button>'+
+      '</div>';
+    if(calOpen){
+      h += '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>'+
+           '<div class="cal-grid" style="margin-top:4px">';
+      for(let i=0;i<startWd;i++) h += '<span></span>';
+      for(let d=1;d<=daysIn;d++){
+        const dk2 = S.sumCalY+'-'+pad2(S.sumCalM+1)+'-'+pad2(d);
+        const mood = (Store.loadDay(dk2)||{}).dayMood;
+        h += '<button class="cal-day'+(dk2===today?' today':'')+(dk2===dk?' sel':'')+(dayHasData(dk2)?' has':'')+'" data-action="sum-cal-day" data-dk="'+dk2+'">'+
+               '<span class="cal-n">'+d+'</span>'+
+               (mood&&mood.emoji?'<span class="cal-e">'+mood.emoji+'</span>':'')+
+             '</button>';
+      }
+      h += '</div>';
+    }else{
+      h += '<div class="hint" style="font-size:11.5px;color:var(--text-2)">日历已收起 · 点上方月份可展开</div>';
+    }
+    h += '</div>';
     h += '</section>';
     /* ──── 干了什么 ──── */
     h += '<section class="sec"><h2 class="sec-title">干了什么</h2>';
-    /* 节律进度卡 */
-    h += '<div class="card card--mark pad"'+(isTodayView?' data-bind="quota"':'')+'>'+
+    /* 24小时递归圆圈：整圈=一天，扇形色块=一段可能性递归（替代原来的横向时间带） */
+    const hasRec = S.sessions.some(s=>s.day===dk && s.end!=null) ||
+                   (isTodayView && Rhythm.activeSlices().some(s=>s.day===dk));
+    h += '<div class="sec-sub">'+(isTodayView?'今日':'当日')+'递归圆圈</div>'+
+         '<div class="card pad">'+ dayRingHtml(dk, isTodayView, now) +
+         '<div class="hint" style="font-size:11px;color:var(--text-2);margin-top:10px;text-align:center">'+
+           (hasRec ? '整圈 = 一天24小时 · 扇形色块 = 一段递归（颜色 = 空间，悬停看细节）' : '这一天还没有递归记录')+
+         '</div></div>';
+    /* 节律递归时间进度卡（排在圆圈下面） */
+    h += '<div class="card card--mark pad" style="margin-top:14px"'+(isTodayView?' data-bind="quota"':'')+'>'+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
         '<div style="font-weight:700;font-size:14.5px">节律递归时间</div>'+
         '<div class="num" style="font-size:12.5px;color:var(--text-2)">'+(isTodayView?'今日':'当日')+'额度 '+fmtMin(Q)+'</div>'+
@@ -3118,18 +3297,6 @@ const Views = {
         '<span style="color:var(--text-2)">已消耗 <b class="num" data-q-used>'+fmtMin(consumed)+'</b></span>'+
         '<span>剩余 <b class="num" data-q-remain style="color:var(--accent)">'+fmtMin(remain)+'</b></span>'+
       '</div></div>';
-    /* 24小时递归时间带 */
-    const slices = S.sessions.filter(s=>s.day===dk && s.end!=null).sort((a,b)=>a.start-b.start);
-    const actSlices = isTodayView ? Rhythm.activeSlices().filter(s=>s.day===dk) : [];
-    h += '<div class="sec-sub">'+(isTodayView?'今日':'当日')+'递归时间带</div>'+
-         '<div class="card pad"><div class="rh-track">'+
-           slices.map(s=>bandHtml(s,false)).join('')+
-           actSlices.map(s=>bandHtml(s,true)).join('')+
-           (isTodayView ? '<div class="rh-now" style="left:'+((now-D.dkToTs(dk))/86400000*100).toFixed(3)+'%"></div>' : '')+
-         '</div>'+
-         '<div class="hint" style="font-size:11px;color:var(--text-2);margin-top:6px">'+
-           (slices.length+actSlices.length===0 ? '这一天没有递归记录' : '一段颜色 = 一段专注（悬停/长按看细节）')+
-         '</div></div>';
     /* 自流转课程表状态 */
     h += '<div class="sec-sub" style="margin-top:4px">自流转日程</div>';
     h += slotListHtml(dk, false);
@@ -3419,10 +3586,18 @@ const Views = {
       '<div class="field"><label>背景模糊度 <span id="bg-blur-val" style="color:var(--accent)">'+(S.settings.bgBlur ?? 0)+'px</span></label>'+
         '<input type="range" id="bg-blur" min="0" max="20" step="1" value="'+(S.settings.bgBlur ?? 0)+'" data-oninput="bg-blur"></div>'+
     '</div></section>';
-    h += '<section class="sec"><h2 class="sec-title">看板娘</h2><div class="card pad">'+
-      '<div class="field"><label>纯净首页显示看板娘</label>'+
+    /* 纯净首页：日期/时间字号自定义 + 看板娘显示开关 */
+    const pDateFs = S.settings.pureDateFs || CONFIG.PURE_DATE_FS.def;
+    const pClockFs = S.settings.pureClockFs || CONFIG.PURE_CLOCK_FS.def;
+    h += '<section class="sec"><h2 class="sec-title">纯净首页 · 看板娘</h2><div class="card pad">'+
+      '<div class="field"><label>日期字号 <span id="pure-date-val" style="color:var(--accent)">'+pDateFs+'px</span></label>'+
+        '<input type="range" id="pure-date-size" min="'+CONFIG.PURE_DATE_FS.min+'" max="'+CONFIG.PURE_DATE_FS.max+'" step="1" value="'+pDateFs+'" data-oninput="pure-size-date"></div>'+
+      '<div class="field"><label>时间字号 <span id="pure-clock-val" style="color:var(--accent)">'+pClockFs+'px</span></label>'+
+        '<input type="range" id="pure-clock-size" min="'+CONFIG.PURE_CLOCK_FS.min+'" max="'+CONFIG.PURE_CLOCK_FS.max+'" step="1" value="'+pClockFs+'" data-oninput="pure-size-clock"></div>'+
+      '<button class="btn btn--small" data-action="pure-size-reset" style="margin-bottom:12px">还原默认字号（'+CONFIG.PURE_DATE_FS.def+'px / '+CONFIG.PURE_CLOCK_FS.def+'px）</button>'+
+      '<div class="field"><label>显示看板娘</label>'+
         '<button class="btn btn--small" data-action="mascot-toggle">当前：'+(S.settings.mascotHidden?'隐藏中 · 点此显示':'显示中 · 点此隐藏')+'</button></div>'+
-      '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍），点她可出现「角色养成」里还原。</div>'+
+      '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍，最大可占满整屏宽度），点她可在「角色养成」里还原。</div>'+
     '</div></section>';
     /* 动画强度三档 */
     const animLv = S.settings.animLevel || 'light';
@@ -4086,20 +4261,38 @@ const Console = {
    9.8 手势引擎 Gestures（仅纯净页生效）
    双击=节律操控台 · 双击后左滑=空间栏 · 长按0.4s四向=导航页面
    ══════════════════════════════════════════════════════════════ */
+/* 长按拖动 = 把目标页面从对侧边缘「拉出来」：拖动方向 → 页面 / 它从哪条边来 / 箭头朝向 */
+const PULL_META = {
+  left: {page:'summary', edge:'right',  arrow:'←'},   // 向左拉 → 我们的共识从右边来
+  right:{page:'spaces',  edge:'left',   arrow:'→'},   // 向右拉 → 空间从左边来
+  up:   {page:'todos',   edge:'bottom', arrow:'↑'},   // 向上拉 → 待办从下面来
+  down: {page:'rhythm',  edge:'top',    arrow:'↓'}    // 向下拉 → 节律表从上面来
+};
+/* 每个页面的图标、名称与颜色（扇形与加载页色块都用它） */
+const PAGE_META = {
+  summary:{name:'我们的共识', ico:'📔', color:'#F5C542'},   // 暖黄
+  todos:  {name:'待办',      ico:'☀',  color:'#8FD9A8'},   // 浅绿
+  spaces: {name:'空间',      ico:'✦',  color:'#274B9F'},   // 深蓝
+  rhythm: {name:'节律表',    ico:'⏱',  color:'#E2483F'}    // 红
+};
+const PULL_COMMIT = 0.36;   // 拉出进度达到这个比例，松手就进入（否则弹回）
+const SECTOR_HALF = 55;     // 扇形半张角（度）
+
 const Gestures = {
   _t0:0, _x0:0, _y0:0, _mode:'none', _moved:0, _lastTap:0, _dblTapAt:0,
-  _lastX:0, _lastY:0, _dir:null, _holdT:null,
-  DIRS:{top:{label:'节律表',ico:'▲'}, bottom:{label:'待办',ico:'▼'}, left:{label:'空间',ico:'◀'}, right:{label:'我们的共识',ico:'▶'}},
-  NAV:{top:'rhythm', bottom:'todos', left:'spaces', right:'summary'},
+  _lastX:0, _lastY:0, _dir:null, _holdT:null, _gvp:0,
+  /* 拉满所需的拖动距离 / 扇形的最大半径（都按屏幕短边缩放） */
+  _pullMax(){ return Math.max(110, Math.min(window.innerWidth||360, window.innerHeight||640) * 0.46); },
+  _maxR(){ return Math.min(window.innerWidth||360, window.innerHeight||640) * 0.62; },
   init(){
-    this._buildArrows();
+    this._buildEdges();
     this._ptrs = new Map();
     /* 挂在 document：操控台是 view-root 的兄弟节点，双击后左滑可能从面板上方区域起手 */
     document.addEventListener('pointerdown', e=>{ if(this._busy(e)) return; this._ptrDown(e); }, {passive:false});
     document.addEventListener('pointermove', e=>{ this._ptrMove(e); }, {passive:false});
     document.addEventListener('pointerup', e=>{ this._ptrUp(e); }, {passive:false});
     document.addEventListener('pointercancel', e=>{ this._ptrs.delete(e.pointerId); this._reset(); });
-    window.addEventListener('resize', ()=>{ if(this._mode==='hold') this._buildArrows(); });
+    window.addEventListener('resize', ()=>{ if(this._mode==='hold') this._buildEdges(); });
   },
   /* 指针登记：第一指走常规判定；第二指落下=进入双指捏合缩放（看板娘） */
   _ptrDown(e){
@@ -4108,7 +4301,7 @@ const Gestures = {
       clearTimeout(this._holdT);
       if(this._mode==='mdrag') Mascot.dragEnd(99);
       this._mode = 'pinch';
-      this._hideArrows();
+      this._hideEdges();
       const arr = [...this._ptrs.values()];
       const p1 = arr[arr.length-2], p2 = arr[arr.length-1];
       this._pinchD0 = Math.hypot(p2.x-p1.x, p2.y-p1.y) || 1;
@@ -4159,7 +4352,7 @@ const Gestures = {
       if(this._mode!=='maybe') return;
       if(this._moved > 30) return;      // 手指轻微抖动不打断长按（手机常见）
       this._mode = 'hold';
-      this._showArrows(e.clientX, e.clientY);
+      this._showEdges(e.clientX, e.clientY);
     }, 700);                            // 长按 0.7 秒判定成功
   },
   _move(e){
@@ -4172,9 +4365,10 @@ const Gestures = {
     }
     if(this._mode==='hold'){
       e.preventDefault();
-      const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'bottom':'top');
+      /* 拖动方向（不是箭头方向）：向左拉 = 把右边的「我们的共识」拽出来 */
+      const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
       this._dir = dir;
-      this._highlight(dir, Math.max(Math.abs(dx), Math.abs(dy)));
+      this._pullTo(dir, Math.max(Math.abs(dx), Math.abs(dy)));
     }else if(this._mode==='maybe' && this._moved > 14 && this._onMascot){
       /* 按住立绘滑动 = 单指拖动位置（位移触发，不占单击/双击/长按） */
       clearTimeout(this._holdT);
@@ -4199,13 +4393,13 @@ const Gestures = {
     }
     if(this._mode==='hold'){
       clearTimeout(this._holdT);
-      this._hideArrows();
-      const d = this._dir;
+      const d = this._dir, p = this._gvp;
       this._mode = 'none';
-      if(d && Math.max(Math.abs(e.clientX-this._x0), Math.abs(e.clientY-this._y0)) >= 44){
-        goView(Gestures.NAV[d]);                 // 长按 + 四向滑动 → 对应子页
+      this._hideEdges();
+      if(d && p >= PULL_COMMIT){                 // 拉够了：进加载页 → 目标子页
         S.sumDay = null;
-      }
+        this._launch(d);
+      }                                          // 没拉够 = 弹回，什么也不发生
       return;
     }
     if(this._mode!=='maybe'){ this._reset(); return; }
@@ -4239,40 +4433,69 @@ const Gestures = {
   },
   _reset(){
     if(this._mode==='mdrag'){ this._mode='none'; Mascot.dragEnd(Math.max(99, this._moved)); return; }
-    this._mode='none'; this._dir=null; clearTimeout(this._holdT); this._hideArrows();
+    this._mode='none'; this._dir=null; this._gvp=0; clearTimeout(this._holdT); this._hideEdges();
   },
-  _buildArrows(){
+  /* 四条边各一个扇形色块（顶点钉在这条边的中点）+ 四个边缘提示 */
+  _buildEdges(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    root.innerHTML = Object.keys(this.DIRS).map(d=>{
-      const o = this.DIRS[d];
-      return '<div class="gv-arrow '+d+'" data-dir="'+d+'">'+
-               '<div class="gv-ring">'+o.ico+'</div><div class="gv-txt">'+o.label+'</div>'+
+    /* 扇形朝向 = 从这条边指向屏幕里（0°=12点、90°=3点、180°=6点、270°=9点） */
+    const DEG = {right:270, left:90, top:180, bottom:0};
+    let h = Object.keys(DEG).map(edge=>
+      '<div class="gv-wedge '+edge+'" data-edge="'+edge+'">'+
+        '<svg viewBox="0 0 200 200"><path d="'+sectorPath(DEG[edge], SECTOR_HALF, 100)+'"/></svg>'+
+      '</div>').join('');
+    h += Object.keys(PULL_META).map(d=>{
+      const pm = PULL_META[d], m = PAGE_META[pm.page];
+      return '<div class="gv-edge '+pm.edge+'" data-dir="'+d+'" style="--gvc:'+m.color+'">'+
+               '<span class="gve-arrow">'+pm.arrow+'</span>'+
+               '<span class="gve-ring">'+m.ico+'</span>'+
+               '<span class="gve-name">'+esc(m.name)+'</span>'+
              '</div>';
-    }).join('')+
-    '<div class="gv-hold"><span class="gv-hold-ring"></span></div>';
+    }).join('');
+    h += '<div class="gv-hold"><span class="gv-hold-ring"></span></div>';
+    root.innerHTML = h;
+    root.style.setProperty('--gvp', '0');
   },
-  _showArrows(x, y){
+  _showEdges(x, y){
     const root = document.getElementById('gesture-root');
     if(!root) return;
+    this._gvp = 0;
     root.classList.add('on');
     /* 长按成功圆圈：出现在按压点，由浅渐实 */
     const c = root.querySelector('.gv-hold');
     if(c){ c.style.left = x+'px'; c.style.top = y+'px'; }
   },
-  _highlight(dir, len){
+  /* 拖动 → 目标页面的扇形随距离长大、边缘提示亮起、拉够了解锁提示 */
+  _pullTo(dir, len){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    root.querySelectorAll('.gv-arrow').forEach(a=>{
-      a.classList.toggle('show', a.dataset.dir===dir);
+    const pm = PULL_META[dir], m = PAGE_META[pm.page];
+    const p = Math.max(0, Math.min(1, len / this._pullMax()));
+    this._gvp = p;
+    root.style.setProperty('--gvp', p.toFixed(3));
+    root.style.setProperty('--gvc', m.color);
+    root.classList.toggle('locked', p >= PULL_COMMIT);
+    root.querySelectorAll('.gv-edge').forEach(el=>{ el.classList.toggle('on', el.dataset.dir===dir); });
+    const rr = Math.round(p * this._maxR()) * 2;
+    root.querySelectorAll('.gv-wedge').forEach(w=>{
+      const on = w.dataset.edge === pm.edge;
+      w.classList.toggle('on', on);
+      if(on){ w.style.width = w.style.height = rr+'px'; }
     });
-    root.classList.toggle('active', len >= 44);
   },
-  _hideArrows(){
+  _launch(dir){
+    const page = PULL_META[dir].page;
+    pageLoad(PAGE_META[page], ()=>{ goView(page); });   // 加载页闪一下再进目标页
+  },
+  _hideEdges(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    root.classList.remove('on','active');
-    root.querySelectorAll('.gv-arrow.show').forEach(a=>a.classList.remove('show'));
+    this._gvp = 0;
+    root.classList.remove('on','locked');
+    root.style.setProperty('--gvp', '0');
+    root.querySelectorAll('.gv-edge.on').forEach(a=>a.classList.remove('on'));
+    root.querySelectorAll('.gv-wedge').forEach(w=>{ w.classList.remove('on'); });
   }
 };
 
