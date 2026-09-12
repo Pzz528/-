@@ -355,6 +355,20 @@ img{max-width:100%;display:block}
 .portal-btn.holding::after{content:'';position:absolute;inset:-6px;border-radius:50%;
   border:2px solid rgba(255,255,255,.85);animation:poHold .85s linear infinite}
 @keyframes poHold{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.3);opacity:0}}
+/* 她的空间入口（v1.7.5）：她画的 mimi/她的空间.png 那张当按钮（图不在就还是白圆黑星，功能一样）
+   ⚠️ 这张图**故意不写 position:absolute**：按钮本来就是 flex 居中，图按正常流撑满（100%）就行。
+      苹果 Safari 里 <button> 当不了绝对定位子元素的参照物（position:relative 在 button 上不生效），
+      写成 absolute+inset 的话，那颗水晶球在 iPhone 上有可能跑到屏幕角上去，而不是待在按钮里。
+      （注意：改正常流**并没有**解决无头截图拍不到它的问题——那是另一码事，见 _shot.js 里那条备注） */
+.portal-btn .pb-art{width:100%;height:100%;object-fit:contain;display:none;pointer-events:none;
+  filter:drop-shadow(0 6px 16px rgba(60,40,90,.34));animation:pbFloat 3.6s ease-in-out infinite}
+@keyframes pbFloat{0%,100%{transform:translateY(0) rotate(-2.5deg)}50%{transform:translateY(-5px) rotate(2.5deg)}}
+.portal-btn.has-art{width:92px;height:92px;border:none;background:none;box-shadow:none}
+.portal-btn.has-art .pb-art{display:block}
+.portal-btn.has-art .pb-star{display:none}
+.portal-btn.has-art.holding{transform:translateX(-50%) scale(1.1)}
+.portal-btn.has-art.holding::after{inset:-2px;border-color:rgba(255,255,255,.95);animation:poHoldArt .9s linear infinite}
+@keyframes poHoldArt{0%{transform:scale(.92);opacity:.95}100%{transform:scale(1.26);opacity:0}}
 /* 传送过渡：小圆里的星星外扩、白光铺满屏幕 → 落到另一边 */
 .portal-overlay{position:fixed;z-index:200;pointer-events:none;width:56px;height:56px;
   transform:translate(-50%,-50%) scale(1);transform-origin:50% 50%;
@@ -369,12 +383,29 @@ img{max-width:100%;display:block}
 .portal-overlay.go .po-star{transform:rotate(200deg) scale(2.1)}
 @keyframes poHalo{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8),0 0 24px 4px rgba(245,197,66,.55)}
   100%{box-shadow:0 0 0 46px rgba(255,255,255,0),0 0 70px 20px rgba(245,197,66,0)}}
+/* 传送过渡（v1.7.5）：有 mimi/她的空间过渡图.png 时，让**整屏那张画**从按钮那儿长出来铺满屏幕
+   （整屏大小、以按钮为中心：所以它自己是 100vw×100vh、居中压在 56px 的 overlay 上，
+     再跟着 overlay 一起放大 → 视觉上就是「按钮炸开成一片房间」，不是放大一个小圆）
+   没有这张图 → 还是原来的白圆黑星外扩，一点不受影响 */
+.portal-overlay .po-art{position:absolute;left:50%;top:50%;width:100vw;height:100vh;margin:-50vh 0 0 -50vw;
+  display:none;background-position:center;background-size:cover;background-repeat:no-repeat;border-radius:0}
+.portal-overlay.use-art .po-art{display:block}
+.portal-overlay.use-art .po-ring,.portal-overlay.use-art .po-star{display:none}
 .portal-overlay.done{opacity:0}
 .mascot-pos{display:block;width:100%}
 .mascot.mascot-hop{animation:mascotHop .55s cubic-bezier(.3,.9,.4,1.2)}
-@keyframes mascotHop{0%,100%{transform:translateY(0)}30%{transform:translateY(-22px) rotate(-4deg)}55%{transform:translateY(2px) rotate(2deg)}}
+@keyframes mascotHop{0%,100%{transform:translateY(0) scale(1,1)}
+  18%{transform:translateY(6px) scale(1.05,.9)}                     /* 预备下蹲 */
+  42%{transform:translateY(-24px) rotate(-4deg) scale(.96,1.06)}   /* 起跳拉长 */
+  62%{transform:translateY(3px) rotate(2deg) scale(1.07,.9)}       /* 落地过冲 */
+  84%{transform:translateY(-4px) scale(.99,1.02)}                  /* 回弹 */
+}
 .mascot.mascot-squish{animation:mascotSquish .5s cubic-bezier(.3,.9,.4,1.2)}
-@keyframes mascotSquish{0%,100%{transform:scale(1,1)}35%{transform:scale(.9,1.12)}70%{transform:scale(1.06,.92)}}
+@keyframes mascotSquish{0%,100%{transform:scale(1,1)}
+  35%{transform:scale(.88,1.16)}
+  70%{transform:scale(1.09,.88)}
+  88%{transform:scale(.98,1.03)}
+}
 .grow-avatar{width:70px;height:110px;flex:none;display:flex;align-items:center;justify-content:center;
   background:var(--gray-soft);border-radius:16px;overflow:hidden}
 /* 养成面板的等级块（v1.2）：等级 + 称号 + 经验条 + 连续打卡 */
@@ -469,6 +500,21 @@ body.mspace-mode{background:
 body.mspace-mode #bg-layer{display:none}
 body.mspace-mode .pure-hint{color:rgba(255,235,245,.6)}
 body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
+/* ── 她的房间（v1.7.3）：她的空间背景按时间段换（图在 mimi/，时段表见 CONFIG.DAY_BG）──
+   body[data-daypart] 由 DayBg.tick 每秒盯着打标记；缺图 = 这条规则没有图可画，
+   底下那套紫夜渐变照样在（所以「哪张图不在」永远不会变成一片黑） */
+.msp-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none}
+/* 顶上和底下压一层很淡的暗角：白天那种亮背景上，标题和底部提示也看得清 */
+.msp-bg::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(26,14,44,.42) 0,rgba(26,14,44,0) 24%,rgba(26,14,44,0) 74%,rgba(26,14,44,.36) 100%)}
+/* v1.7.6：每张写两层 —— 先 PNG、后 .webp（CSS 里**排在前面的画在上面**，正好就是我们要的
+   「她的 PNG 优先，找不到才用我压的 .webp」）。先试的那层不在，浏览器就只是不画它，底下那层照常出来，
+   不会变成一片黑；两层都不在就还是底下那套紫夜渐变（.msp-bg 自己的规矩没变） */
+body[data-daypart="dawn"]  .msp-bg{background-image:url('mimi/清晨.png'),url('mimi/清晨.webp')}
+body[data-daypart="day"]   .msp-bg{background-image:url('mimi/白天.png'),url('mimi/白天.webp')}
+body[data-daypart="dusk"]  .msp-bg{background-image:url('mimi/黄昏.png'),url('mimi/黄昏.webp')}
+body[data-daypart="eve"]   .msp-bg{background-image:url('mimi/晚上.png'),url('mimi/晚上.webp')}
+body[data-daypart="night"] .msp-bg{background-image:url('mimi/深夜.png'),url('mimi/深夜.webp')}
 .mspace-top{position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;z-index:3;
   display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
 .mspace-top .msp-t{font-size:15px;font-weight:800;letter-spacing:7px;color:rgba(255,242,249,.92);
@@ -546,37 +592,119 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 .mascot-anim.pose-sleep{transform:translateY(7%) scale(1.02,.86)}              /* 睡着了（软下去） */
 .mascot-anim.pose-droop{transform:translateY(3%) scale(1,.94);opacity:.94}     /* 没精打采地塌着 */
 .mascot-anim.pose-hide{transform:translateY(76%) scale(.92);opacity:0}         /* 走远消失 */
-/* —— 心情浮标：她头顶的小圆脸（不用出图就有表情） —— */
-.mood-dot{position:absolute;left:50%;top:-1%;transform:translate(-50%,-100%) scale(.85);z-index:5;
-  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;
-  background:rgba(255,255,255,.94);box-shadow:0 4px 12px rgba(60,60,110,.22);pointer-events:none;opacity:0;
-  transition:opacity .26s ease,transform .34s cubic-bezier(.2,1.3,.4,1)}
-.mood-dot.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
-.mood-dot.pop{animation:moodPop .5s cubic-bezier(.2,1.4,.4,1)}
-@keyframes moodPop{0%{transform:translate(-50%,-100%) scale(.4)}62%{transform:translate(-50%,-118%) scale(1.16)}100%{transform:translate(-50%,-100%) scale(1)}}
-/* —— 冲动动作（#mascot 上，播完摘掉、呼吸浮动自动恢复） —— */
+/* 换脸过渡（v1.7）：src 变化时淡入 0.28s——「变」是看得见的 */
+img[data-her-img].face-fade{animation:faceFade .28s ease}
+@keyframes faceFade{0%{opacity:0}100%{opacity:1}}
+/* —— 冲动动作（#mascot 上，播完摘掉、呼吸浮动自动恢复） ——
+   v1.7 表演升级：动漫式——预备下蹲 → 挤压拉伸 → 落地过冲 → 回摆收敛，
+   分段快-慢-快；时长与类名不变（CONFIG.ACT.MS 表与测试都盯着） */
 .mascot.act-bounce{animation:actBounce 1s cubic-bezier(.3,.9,.4,1.15)}
-@keyframes actBounce{0%,100%{transform:translateY(0)}18%{transform:translateY(-20px)}36%{transform:translateY(0)}54%{transform:translateY(-11px)}72%{transform:translateY(0)}}
+@keyframes actBounce{
+  0%,100%{transform:translateY(0) scale(1,1)}
+  16%{transform:translateY(8px) scale(1.04,.9)}               /* 预备：先蹲一下 */
+  34%{transform:translateY(-22px) scale(.96,1.08)}            /* 起跳：压扁拉长 */
+  52%{transform:translateY(3px) scale(1.09,.88)}              /* 落地：过冲挤压 */
+  70%{transform:translateY(-6px) scale(.98,1.03)}             /* 回弹一 */
+  84%{transform:translateY(2px) scale(1.02,.97)}              /* 回弹二（收敛） */
+}
 .mascot.act-jiggle{animation:actJiggle 1.1s ease-in-out}
-@keyframes actJiggle{0%,100%{transform:rotate(0)}15%{transform:rotate(-6deg) translateY(-3px)}35%{transform:rotate(6deg)}55%{transform:rotate(-4deg)}75%{transform:rotate(3deg)}}
+@keyframes actJiggle{
+  0%,100%{transform:rotate(0) scale(1,1)}
+  15%{transform:rotate(-6deg) translateY(-4px) scale(1.02,.97)}
+  35%{transform:rotate(6deg) scale(.98,1.04)}
+  55%{transform:rotate(-4deg) scale(1.02,.97)}
+  75%{transform:rotate(3deg)}
+  88%{transform:rotate(-1.5deg)}
+}
 .mascot.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
-@keyframes actStartle{0%{transform:translateY(0) scale(1,1)}22%{transform:translateY(-15px) scale(1.08,.93)}48%{transform:translateY(2px) scale(.95,1.06)}100%{transform:translateY(0) scale(1,1)}}
+@keyframes actStartle{
+  0%{transform:translateY(0) scale(1,1)}
+  14%{transform:translateY(6px) scale(1.1,.8)}                /* 吓一缩：蹲 + 横向挤 */
+  42%{transform:translateY(-16px) scale(.92,1.14)}            /* 弹起过冲 */
+  66%{transform:translateY(4px) scale(1.14,.82)}              /* 落回深蹲 */
+  84%{transform:translateY(-2px) scale(.97,1.04)}             /* 余震回正 */
+  100%{transform:translateY(0) scale(1,1)}
+}
 .mascot.act-shake{animation:actShake .72s ease-in-out}
-@keyframes actShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-8px) rotate(-2deg)}30%{transform:translateX(8px) rotate(2deg)}50%{transform:translateX(-5px)}70%{transform:translateX(4px)}}
+@keyframes actShake{
+  0%,100%{transform:translateX(0) rotate(0)}
+  12%{transform:translateX(-9px) rotate(-2.5deg) skewX(-3deg)}
+  30%{transform:translateX(9px) rotate(2.5deg) skewX(3deg)}
+  50%{transform:translateX(-5px) rotate(-1.5deg)}
+  70%{transform:translateX(4px) rotate(1deg)}
+}
 .mascot.act-spin{animation:actSpin .92s cubic-bezier(.3,.9,.4,1.1)}
-@keyframes actSpin{0%{transform:rotate(0) scale(1)}40%{transform:rotate(190deg) scale(.92)}100%{transform:rotate(360deg) scale(1)}}
-/* 忙碌页角落的 Q 版：她在右下角陪着（不吃触摸，纯陪伴） */
-#q-corner{position:fixed;right:9px;bottom:calc(13px + env(safe-area-inset-bottom));z-index:60;pointer-events:none;
-  width:58px;height:82px;display:flex;align-items:flex-end;justify-content:center;
+@keyframes actSpin{
+  0%{transform:rotate(0) scale(1)}
+  22%{transform:rotate(-12deg) scale(.95)}                    /* 蓄力反向预转 */
+  62%{transform:rotate(332deg) scale(.88)}                    /* 快转 */
+  82%{transform:rotate(374deg) scale(1.05)}                   /* 过冲 */
+  100%{transform:rotate(360deg) scale(1)}
+}
+/* 次要运动（v1.7）：整张 PNG 拆不了零件 → 内层图微延迟反向错位，
+   身体先动、头发与衣摆「晚半拍」跟上（幅度减半的错觉层） */
+#mascot.act-bounce .mascot-anim img,#mascot.act-jiggle .mascot-anim img,
+#mascot.act-startle .mascot-anim img,#mascot.act-shake .mascot-anim img,
+#mascot.act-spin .mascot-anim img,#q-corner.act-bounce img,#q-corner.act-jiggle img,
+#q-corner.act-startle img,#q-corner.act-shake img{will-change:transform}
+#mascot.act-bounce .mascot-anim img{animation:inBounce 1s ease-in-out}
+@keyframes inBounce{0%,100%{transform:translateY(0)}34%{transform:translateY(4px) scale(1.02,.97)}56%{transform:translateY(6px) scale(1.03,.96)}82%{transform:translateY(2px)}}
+#mascot.act-jiggle .mascot-anim img{animation:inJiggle 1.1s ease-in-out}
+@keyframes inJiggle{0%,100%{transform:rotate(0)}20%{transform:rotate(2.5deg)}45%{transform:rotate(-2.5deg)}75%{transform:rotate(1.5deg)}}
+#mascot.act-startle .mascot-anim img{animation:inStartle .64s ease-in-out}
+@keyframes inStartle{0%,100%{transform:translateX(0)}30%{transform:translateX(2px)}58%{transform:translateX(-2px)}84%{transform:translateX(1px)}}
+#mascot.act-shake .mascot-anim img{animation:inShake .72s ease-in-out}
+@keyframes inShake{0%,100%{transform:translateX(0) rotate(0)}15%{transform:translateX(5px) rotate(2deg)}35%{transform:translateX(-5px) rotate(-2deg)}55%{transform:translateX(3px)}75%{transform:translateX(-2px)}}
+#mascot.act-spin .mascot-anim img{animation:inSpin .92s ease-in-out}
+@keyframes inSpin{0%,100%{transform:rotate(0)}60%{transform:rotate(-14deg)}100%{transform:rotate(0)}}
+/* 忙碌页角落的 Q 版（v1.7.1）：她能自己动——单指拖动、双指捏合缩放、轻点有反应；
+   摆位与大小记在设置里（qPos/qScale），--qs 是她的当前缩放（姿势动画也要带上它） */
+#q-corner{position:fixed;right:9px;bottom:calc(13px + env(safe-area-inset-bottom));z-index:60;pointer-events:auto;touch-action:none;cursor:grab;
+  width:72px;height:104px;display:flex;align-items:flex-end;justify-content:center;
+  transform-origin:bottom center;
   opacity:0;transform:translateY(10px) scale(.9);transition:opacity .3s ease,transform .34s cubic-bezier(.2,1.2,.4,1)}
-#q-corner.on{opacity:1;transform:none}
+#q-corner.on{opacity:1;transform:scale(var(--qs,1))}
 #q-corner img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 #q-corner .mascot-shell{position:static;width:44px;height:64px}
+#q-corner.q-moving{transition:none;z-index:100;cursor:grabbing}
+#q-corner.q-drag{animation:qDragLean 1.1s ease-in-out infinite}   /* 拖动时的使劲儿姿势（没有拖动图时的替身） */
+@keyframes qDragLean{0%,100%{transform:rotate(-6deg) scale(var(--qs,1))}
+  50%{transform:rotate(6deg) scale(calc(var(--qs,1)*1.04))}}
 #q-corner.act-bounce{animation:actBounce 1s cubic-bezier(.3,.9,.4,1.15)}
 #q-corner.act-jiggle{animation:actJiggle 1.1s ease-in-out}
 #q-corner.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
 #q-corner.act-shake{animation:actShake .72s ease-in-out}
-#q-corner .mood-dot{top:2px;width:22px;height:22px;font-size:13px}
+/* 长按变身的小人（v1.7.1 放大版）：fixed 在按压点上方，不吃触摸（拖拽由手势引擎收）。
+   定方向后瞬移到页面要来的那条边，随着划动距离从「小拉」换成「用力拉」——
+   --lean/--tugx/--tugy 是拉的方向（写进姿势动画的 CSS 变量） */
+#pull-mini{position:fixed;z-index:95;width:110px;height:156px;pointer-events:none;
+  display:flex;align-items:flex-end;justify-content:center;
+  transform:translate(-50%,-108%);filter:drop-shadow(0 8px 14px rgba(30,50,90,.28))}
+#pull-mini img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#pull-mini.pop{animation:miniPop .32s cubic-bezier(.2,1.4,.4,1)}
+@keyframes miniPop{0%{transform:translate(-50%,-108%) scale(.1);opacity:0}
+  55%{transform:translate(-50%,-108%) scale(1.18);opacity:1}
+  100%{transform:translate(-50%,-108%) scale(1)}}
+#pull-mini.pop::after{content:'';position:absolute;inset:-8px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.9);animation:miniRing .4s ease-out}
+@keyframes miniRing{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.7);opacity:0}}
+#pull-mini.pull-soft{animation:miniTugSoft 1.5s ease-in-out infinite}   /* 小拉：轻轻拽 */
+@keyframes miniTugSoft{
+  0%,100%{transform:translate(-50%,-108%) rotate(var(--lean,8deg)) scale(1)}
+  50%{transform:translate(calc(-50% + var(--tugx,0px)), calc(-108% + var(--tugy,0px))) rotate(calc(var(--lean,8deg)*.55)) scale(1.02,.97)}}
+#pull-mini.pull-hard{animation:miniTugHard .72s ease-in-out infinite}   /* 用力拉：往后仰着使劲儿 */
+@keyframes miniTugHard{
+  0%,100%{transform:translate(-50%,-108%) rotate(var(--lean,16deg)) scale(1.03,.95)}
+  35%{transform:translate(calc(-50% + var(--tugx,0px)*1.6), calc(-108% + var(--tugy,0px)*1.6)) rotate(calc(var(--lean,16deg)*.3)) scale(1.06,.9)}
+  70%{transform:translate(-50%,-108%) rotate(var(--lean,16deg)) scale(1.01,.98)}}
+#pull-mini.out{animation:miniOut .24s ease-in forwards}
+@keyframes miniOut{to{transform:translate(-50%,-108%) scale(.1);opacity:0}}
+/* 大立绘的「砰」收与回（长按变身 / 弹回变回来） */
+.mascot.pop-down{animation:popDown .3s cubic-bezier(.45,0,.9,.4) forwards}
+@keyframes popDown{to{transform:scale(.05) translateY(46px);opacity:0}}
+.mascot.pop-back{animation:popBack .36s cubic-bezier(.2,1.4,.4,1)}
+@keyframes popBack{0%{transform:scale(.05) translateY(46px);opacity:0}
+  60%{transform:scale(1.07) translateY(-4px);opacity:1}100%{transform:scale(1)}}
 /* 全屏微闪：iPhone 没有震动 → 用一道光代替「震感」（生气 / 三周目大事时） */
 #flash-layer{position:fixed;inset:0;z-index:190;pointer-events:none;background:#fff;opacity:0}
 #flash-layer.on{animation:flashPulse .36s ease-out}
@@ -600,7 +728,7 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 /* ══════════════════════════════════════════════════════════════
    12. 长按四向导航方向提示
    ══════════════════════════════════════════════════════════════ */
-#gesture-root{position:fixed;inset:0;z-index:80;pointer-events:none;display:none;overflow:hidden;--gvp:0;--gvc:#F5C542}
+#gesture-root{position:fixed;inset:0;z-index:80;pointer-events:none;display:none;overflow:hidden;--gvp:0;--ride:0px;--gvc:#F5C542}
 #gesture-root.on{display:block}
 /* 半圆色块：圆心钉在屏幕边缘中点（平边贴边），半径随拖动距离变大（颜色=目标页面颜色） */
 .gv-wedge{position:absolute;width:0;height:0;opacity:0;transition:opacity .16s;z-index:1;
@@ -613,24 +741,61 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 .gv-wedge.top{top:0;left:50%;transform:translate(-50%,-50%)}
 .gv-wedge.bottom{bottom:0;left:50%;transform:translate(-50%,50%)}
 /* 四个边缘提示：目标页面的图标+名称停在它要来的那一边，箭头指向“拉进来”的方向
-   被拉的那个会往画面里挪一点、图标变大（--gvp = 拉出进度 0~1） */
-.gv-edge{position:absolute;display:flex;align-items:center;gap:6px;z-index:2;opacity:.34;transition:opacity .16s}
+   被拉的那个会往里走（--ride = 卡片这一簇走进屏幕多远，v1.7.2 由 PullMini.lane 按你的划动距离算好，
+   1:1 跟手）、图标变大（--gvp = 拉出进度 0~1）
+   一律竖排（箭头 / 圈 / 名字）——横排太占宽度，竖排才腾得出她站在旁边的身位 */
+.gv-edge{position:absolute;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:2;opacity:.34;transition:opacity .16s;
+  min-width:var(--gw,88px)}   /* 没插画那版也别比插画那版窄（窄了她就站远了一截，见 PullMini.lane） */
 .gv-edge.on{opacity:1}
 .gv-edge .gve-arrow{width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:var(--gvc,#F5C542);color:#fff;font-size:15px;font-weight:800;box-shadow:0 2px 8px rgba(30,50,90,.25)}
 .gv-edge .gve-ring{width:46px;height:46px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;
   background:rgba(255,255,255,.92);border:2px solid var(--gvc,#F5C542);box-shadow:var(--shadow);
   transform:scale(calc(1 + var(--gvp,0) * .45))}
-.gv-edge .gve-name{font-size:11.5px;font-weight:800;color:#33415c;padding:3px 9px;border-radius:999px;white-space:nowrap;
+.gv-edge .gve-name{font-size:11px;font-weight:800;color:#33415c;padding:3px 8px;border-radius:999px;white-space:nowrap;max-width:100%;
   background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(30,50,90,.2)}
-.gv-edge.top,.gv-edge.bottom{flex-direction:column}
-.gv-edge.top{top:15%;left:50%;transform:translate(-50%,0) translate(0,calc(var(--gvp,0) * 26px))}
-.gv-edge.bottom{bottom:16%;left:50%;transform:translate(-50%,0) translate(0,calc(var(--gvp,0) * -26px))}
-.gv-edge.left{left:8px;top:50%;transform:translate(0,-50%) translate(calc(var(--gvp,0) * 26px),0)}
-.gv-edge.right{right:8px;top:50%;transform:translate(0,-50%) translate(calc(var(--gvp,0) * -26px),0)}
-/* 拉够了：图标再大一圈、名称反白，提示“松手即可进入” */
+/* v1.7.3 卡片上的插画（mimi/ 里那几张，见 CARD_IMG）：有图时箭头和图标圈让位，
+   那一格尺寸由 --gw 定死（= PullMini.CARD_W，一个数说了算）
+   没图的那版（箭头 + 图标圈）也占同样高的一格：整张卡片就那么高（PullMini.CARD_H），
+   她的站位永远算得准。文件不在 / 图裂了 → 自己摘掉插画（img-miss），退回箭头那版 */
+.gv-edge .gve-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:var(--gw,88px);flex:none}
+.gv-edge .gve-img{width:var(--gw,88px);height:var(--gw,88px);flex:none;object-fit:contain;display:block;pointer-events:none;
+  transform:scale(.92);transition:transform .18s cubic-bezier(.2,1.2,.4,1),opacity .16s ease-out}
+.gv-edge.on .gve-img{transform:scale(calc(1 + var(--gvp,0) * .12))}   /* 越拉越大一点，和图标圈同一个意思 */
+.gv-edge.has-art .gve-stack{display:none}
+.gv-edge.has-art .gve-arrow,.gv-edge.has-art .gve-ring{display:none}
+.gv-edge.img-miss .gve-img{display:none}
+/* ⚠️ --ride（往里走多远）只作用在「被拉的那一张」身上：别的三张原地不动。
+   四条家底定位里一个都不许出现 --ride —— 四张都读它的话，往左拉时右边那张在动、
+   左边那张也在动，看着像整排 UI 都在飘（v1.7.4 起只认 .on 那张） */
+.gv-edge.top{top:15%;left:50%;transform:translate(-50%,0)}
+.gv-edge.bottom{bottom:16%;left:50%;transform:translate(-50%,0)}
+.gv-edge.left{left:8px;top:50%;transform:translate(0,-50%)}
+.gv-edge.right{right:8px;top:50%;transform:translate(0,-50%)}
+.gv-edge.top.on{transform:translate(-50%,0) translate(0,var(--ride,0px))}
+.gv-edge.bottom.on{transform:translate(-50%,0) translate(0,calc(var(--ride,0px) * -1))}
+.gv-edge.left.on{transform:translate(0,-50%) translate(var(--ride,0px),0)}
+.gv-edge.right.on{transform:translate(0,-50%) translate(calc(var(--ride,0px) * -1),0)}
+/* 拉够了（= 松手就能进）：图标再大一圈、名称反白、插画描一圈它自己的颜色，
+   外加 mimi/<页面名>松手.png 那张（拉到刻度时把原图整个换掉，见 cardReadyImg） */
 #gesture-root.locked .gv-edge.on .gve-ring{box-shadow:0 0 0 7px var(--accent-soft),var(--shadow)}
 #gesture-root.locked .gv-edge.on .gve-name{background:var(--gvc,#F5C542);color:#fff}
+/* ⚠️ locked 是打在 #gesture-root 上的（不是卡片上），选择器别写丢前缀 */
+#gesture-root.locked .gv-edge.on .gve-img{filter:drop-shadow(0 0 9px var(--gvc,#F5C542)) drop-shadow(0 0 20px var(--gvc,#F5C542))}
+/* 「松手」那张（v1.7.5）：和插画同一格、同一个位置，拉到刻度时**把原图换掉**
+   （她画的松手图是同一张卡片的另一个状态，不是叠一张贴纸上去，所以是「换」不是「叠」）
+   display 由 has-ready 控制（图真加载出来了才换；没有这张文件就一直用原图 + 上面那圈光晕） */
+.gv-edge .gve-ready{position:absolute;top:0;left:50%;display:none;pointer-events:none;
+  width:var(--gw,88px);height:var(--gw,88px);margin-left:calc(var(--gw,88px) / -2);object-fit:contain;
+  opacity:0;transition:opacity .16s ease-out}
+.gv-edge.has-ready .gve-ready{display:block}
+.gv-edge.on .gve-ready{transform:scale(calc(1 + var(--gvp,0) * .12))}   /* 和原图同一个「越拉越大」 */
+/* 插画自己都没了（img-miss）就别换——换了也没东西可换 */
+.gv-edge.img-miss .gve-ready{display:none}
+/* 换图：原图淡出、松手图淡入（两张同尺寸同位，看着就是原地换了个状态） */
+#gesture-root.locked .gv-edge.on.has-ready .gve-img{opacity:0}
+#gesture-root.locked .gv-edge.on .gve-ready{opacity:1}
+#gesture-root.locked .gv-edge.on.has-ready .gve-ready{filter:drop-shadow(0 0 9px var(--gvc,#F5C542)) drop-shadow(0 0 20px var(--gvc,#F5C542))}
 /* 长按成功圆圈（按点出现，由浅渐实，提示可以开始滑动） */
 .gv-hold{position:absolute;display:none;z-index:1}
 #gesture-root.on .gv-hold{display:block}
@@ -655,6 +820,10 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 .page-load .pl-dots i:nth-child(3){animation-delay:.3s}
 @keyframes plPop{from{transform:scale(.72);opacity:.3}to{transform:scale(1);opacity:1}}
 @keyframes plDot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+/* 有过渡图的那几页（mimi/<页面名>过渡图.png）＝整屏换成她画的画面，
+   中间那套「图标 + 名字 + 三个点」收起来（她的图本身就是完整一张画，叠字上去只会盖住画面） */
+.page-load.has-art{background-position:center;background-size:cover;background-repeat:no-repeat}
+.page-load.has-art .pl-inner{display:none}
 
 /* 看板娘投喂（v1.2）：完成待办的瞬间，点心从卡片飞向左下角的迷你看板娘，
    她咬一口、头顶飘出「+20」——纯演出层，不参与渲染，1.4秒后自动收起 */
@@ -798,17 +967,13 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 }
 body.pure-mode #toast-root{bottom:calc(18px + env(safe-area-inset-bottom))}
 body.pure-mode #app{height:100dvh;display:block}
-/* 提醒气泡：锚在立绘右上（与台词气泡同侧，台词在其下方一格），字号稍大 */
-/* 提醒气泡排在顶部日期/时间板块下方（板块高度随自定义字号变化，这里跟着一起让位） */
-.pure-screen #bubble-root{position:absolute;left:calc(50% + 6vw);bottom:auto;transform:none;z-index:8;
-  top:calc(26px + var(--pdfs,15px)*2 + var(--pcfs,36px)*1.4);
-  max-width:min(44vw,300px);pointer-events:auto}
+/* 说话/提醒气泡（v1.6.2）：不再锚在立绘边上——钉在屏幕中间偏下、横着居中，
+   说话不挡她的脸（表情差分自己会说话） */
+.pure-screen #bubble-root{position:absolute;left:50%;transform:translateX(-50%);bottom:23%;top:auto;z-index:8;
+  max-width:min(80vw,360px);pointer-events:auto;text-align:center}
 .pure-screen #bubble-root .mascot-bubble{position:relative;bottom:auto;left:auto;transform:none;max-width:100%;display:block;
-  font-size:15px;animation:popInR .22s cubic-bezier(.2,1.2,.4,1)}
-.pure-screen #bubble-root .mascot-bubble::after{content:'';position:absolute;left:-6px;top:44%;bottom:auto;width:12px;height:12px;background:inherit;
-  border-left:1px solid rgba(255,255,255,.8);border-top:1px solid rgba(255,255,255,.8);transform:rotate(-45deg);
-  border-right:none;border-bottom:none}
-@keyframes popInR{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+  font-size:15px;animation:popInC .22s cubic-bezier(.2,1.2,.4,1)}
+@keyframes popInC{0%{transform:translateY(12px) scale(.85);opacity:0}100%{transform:none;opacity:1}}
 /* 桌面端纯净屏：立绘按屏高限宽（避免大屏全屏贴顶，但比手机版留得更大） */
 @media (min-width:520px){
   .pure-screen{max-width:none}
@@ -852,7 +1017,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.6.1', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.7.6', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -881,9 +1046,9 @@ const CONFIG = {
      ★ 所有主动台词的唯一出口是 Her.voice()：将来想接真 AI，只改那一个函数。
      台词池的每条 = {when: 条件(可省), t: 文本或 (ctx)=>文本} */
   HER:{
-    VOICE_LEVELS:{loud:9, normal:5, quiet:2, off:0},  // 「她说话的频率」= 她一天最多主动说几句
-    COOLDOWN_MS:3*60*1000,   // 两条主动的话之间至少隔这么久（免得一开页面就连环弹）
-    IDLE_COOLDOWN_MS:75*60*1000, // 「日常念叨」的间隔（没什么正事时她也想跟你说说话）
+    VOICE_LEVELS:{loud:14, normal:8, quiet:4, off:0},  // 「她说话的频率」= 她一天最多主动说几句
+    COOLDOWN_MS:90*1000,      // 两条主动的话之间至少隔这么久（v1.6.2 用户嫌她话少：3min→90s）
+    IDLE_COOLDOWN_MS:30*60*1000, // 「日常念叨」的间隔（v1.6.2：75min→30min，她更常找你说话）
     NIGHT_FROM:21,           // 几点之后算夜深了（睡前总结）
     NIGHT_TO:5,              // 几点之前还算深夜
     MISS_DAYS:2,             // 隔几天没打开才算「好久不见」
@@ -1104,6 +1269,28 @@ const CONFIG = {
         {t:'够啦！再摇我真的要生气了！'},
         {t:'停——！我头晕！'}
       ]
+    },
+    /* v1.7 开口必配脸+小动作：每段话都有表情与动作变化。
+       emo='*idle' = 从 FACE_IDLE 随机挑；act 必须是 RUSH 动作或 pose-* 姿势 */
+    FACE_KEEP_MS:8000,           // 8 秒内的新情绪不被说话冲掉（刚发生的事最大）
+    FACE_IDLE:['happy','shy'],   // 日常念叨时随机挑
+    FACE:{
+      greet:{emo:'happy', act:'act-bounce'},
+      missAway:{emo:'sad', act:'act-jiggle'},
+      missStreak:{emo:'sad', act:'act-jiggle'},
+      night:{emo:'sleepy', act:'pose-droop', hold:6000},
+      urgeOver:{emo:'worried', act:'act-jiggle'},
+      recallTodo:{emo:'worried', act:'act-jiggle'},
+      recallSpace:{emo:'worried', act:'act-jiggle'},
+      idle:{emo:'*idle', act:'act-jiggle'},
+      recallAnswer:{emo:'happy', act:'act-bounce'},
+      shakeAsk:{emo:'shy', act:'act-jiggle'},
+      tapAngry:{emo:'angry', act:'act-startle'},
+      cornerAsk:{emo:'shy', act:'act-jiggle'},
+      pinchBig:{emo:'shy', act:'act-jiggle'},
+      pinchSmall:{emo:'sad', act:'act-jiggle'},
+      shakeDizzy:{emo:'worried', act:'act-shake'},
+      shakeAngry:{emo:'angry', act:'act-shake'}
     }
   },
   /* ── 她成为活人 v1.5：感情线（好感度 / 关系阶段 / 她的问题 / 对她说）──
@@ -1215,7 +1402,8 @@ const CONFIG = {
     SLOTS:{
       normal:[['base','普通'],['happy','开心'],['sad','难过'],['angry','生气'],['sleepy','困了']],
       q:     [['base','普通'],['happy','开心']],
-      acts:  [['sit','抱膝坐'],['sleep','睡着'],['startle','受惊'],['peek','扒边偷看'],['pull','拉页面']]
+      acts:  [['sit','抱膝坐'],['sleep','睡着'],['startle','受惊'],['peek','扒边偷看'],
+              ['pull','拉页面·小拉'],['pull-hard','拉页面·用力拉']]
     },
     FORM_NAME:{normal:'正常形态', q:'Q版小人', acts:'动作图'},
     FORM_HINT:{
@@ -1232,6 +1420,9 @@ const CONFIG = {
     MOOD_HOLD_MS:90*1000,   // 一件事惹出来的情绪保持多久（之后她自己淡回平静）
     NIGHT_FROM:23,          // 几点之后她困了（强制 sleepy）
     NIGHT_TO:5,             // 几点之前还算深夜
+    /* v1.7 表情漂移：没事件、非深夜时，每隔一段随机时间在 开心/害羞/平静 间轻漂一次
+       （纯 UI 微表情，不写 herMood；事件情绪与深夜自动遮蔽） */
+    DRIFT:{EMOS:['happy','shy','neutral','happy'], MIN_MS:15000, MAX_MS:30000},
     /* 忙碌页面里她会以 Q版 站在右下角（她的页面不重复出现——那儿本来就是她的地方） */
     HER_PAGES:['mgrow','moutfit','mcons','mdairy','mtalk'],
     /* 系统默认的她（v1.6.1）：住在 mimi/ 文件夹，文件名由槽位名推出来——
@@ -1239,6 +1430,20 @@ const CONFIG = {
        缺哪张就自动往后退：这张脸的文件 → 普通 → 旧版看板娘.png → 内置小可爱 */
     BUILTIN_DIR:'mimi/',
     BUILTIN_BASE:{normal:'normal', q:'q', acts:'normal'}
+  },
+  /* ── 她的房间背景（v1.7.3）：她的空间的背景按时间段换（图在 mimi/，名字就是时段名）──
+     ★ 要改「几点算哪个时段」就改这张表的 from/to（当天第几分钟：5*60 = 05:00）
+     ★ from > to 的那一段是跨夜的（深夜 23:00 → 次日 05:00）
+     ★ 哪张图不在（或换名字）都不要紧：那段时间就用回原来那套紫夜渐变 */
+  DAY_BG:{
+    DIR:'mimi/',
+    BUCKETS:[
+      {k:'dawn',  file:'清晨.png', from:5*60,       to:9*60},
+      {k:'day',   file:'白天.png', from:9*60,       to:17*60},
+      {k:'dusk',  file:'黄昏.png', from:17*60,      to:19*60+30},
+      {k:'eve',   file:'晚上.png', from:19*60+30,   to:23*60},
+      {k:'night', file:'深夜.png', from:23*60,      to:5*60}
+    ]
   },
   /* ── 她的动作与导演层：动作时长要和上面 CSS 的 animation 时长一致（改一处要改两处） ── */
   ACT:{
@@ -1249,11 +1454,11 @@ const CONFIG = {
     POSES:['pose-peek','pose-emerge','pose-near','pose-far','pose-sit','pose-sleep','pose-droop','pose-hide'],
     /* 动画强度三档：轻度只播这几个轻动作（藏拙不乱动）；完整全播；关闭一个都不播 */
     LIGHT:['act-bounce','act-jiggle'],
-    IDLE_AFTER:90*1000,      // 你安静这么久之后，她才开始自己找点事做
-    IDLE_GAP_MS:4*60*1000,   // 两次小动作之间至少隔这么久
-    IDLE_GAP_RAND:3*60*1000, // 再随机加 0~3 分钟（不然像定时器）
-    SIT_AFTER:4*60*1000,     // 你这么久没动静，她就坐下/打瞌睡了（待机小剧场）
-    SAY_CHANCE:0.34          // 小动作之后顺口说一句的概率（走 Her.say 的频率门）
+    IDLE_AFTER:45*1000,      // 你安静这么久之后，她才开始自己找点事做（v1.6.2：90s→45s，她更活泼）
+    IDLE_GAP_MS:2*60*1000,   // 两次小动作之间至少隔这么久（v1.6.2：4min→2min）
+    IDLE_GAP_RAND:2*60*1000, // 再随机加 0~2 分钟（不然像定时器）
+    SIT_AFTER:150*1000,      // 你这么久没动静，她就坐下/打瞌睡了（v1.6.2：4min→2.5min）
+    SAY_CHANCE:0.5           // 小动作之后顺口说一句的概率（走 Her.say 的频率门）
   },
   /* ── 她对你每个动作的敏感度：连戳 / 拖角落 / 捏大捏小 / 摇手机（实机手感就调这里） ── */
   SENSE:{
@@ -1265,7 +1470,8 @@ const CONFIG = {
     SHAKE_GAP:420,           // 一次摇晃只记一下（毫秒）
     SHAKE_N:2,               // 摇几下她开始喊晕
     SHAKE_ANGRY:5,           // 摇几下她真的生气
-    SHAKE_RESET:6000         // 这么久没再摇，计数归零
+    SHAKE_RESET:6000,        // 这么久没再摇，计数归零
+    TAP_FACES:['happy','shy','happy','worried']  // 连戳第 1~4 下依次的表情（第 5 下=生气）
   },
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
   PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
@@ -2246,7 +2452,9 @@ function tick(){
   if(typeof Her !== 'undefined') Her.tick(now);       // 她主动开口（睡前总结/过点督促/她惦记的事/念叨）
   if(typeof Love !== 'undefined') Love.tick(now);     // 感情线：升段演出 / 她问你问题 / 拿旧回答接话（v1.5）
   if(typeof Emo !== 'undefined') Emo.tick(now);       // 她的情绪会自己淡下来（v1.6a）
+  if(typeof Emo !== 'undefined') Emo.wanderTick(now); // 表情漂移（v1.7：平静时的微表情，不写情绪）
   if(typeof Director !== 'undefined') Director.tick(now);  // 她自己找点事做：小动作/待机小剧场（v1.6a）
+  if(typeof DayBg !== 'undefined') DayBg.tick(now);   // 她的房间按时间段换背景（v1.7.3）
   checkRollover(now);
   if(now - S.lastHb > 30000){ S.lastHb = now; Store.set('heartbeat', {lastActiveAt: now}); }
 }
@@ -3749,11 +3957,35 @@ function sectorPath(deg, half, r){
   const a0 = ringPt(100, 100, r, deg - half), a1 = ringPt(100, 100, r, deg + half);
   return 'M100 100 L'+a0[0]+' '+a0[1]+' A'+r+' '+r+' 0 '+((half*2) > 180 ? 1 : 0)+' 1 '+a1[0]+' '+a1[1]+' Z';
 }
-/* 进入页面前的加载页：整屏目标页面颜色的色块 + 图标 + 名称，约0.5秒后再切页 */
+/* 传进来的 meta 是 PAGE_META 里那张表本身（可能来自拉页面的 {page,edge,arrow}），
+   这里反查回它叫什么 key —— 过渡图要按页面名找文件（mimi/待办过渡图.png） */
+function pageOfMeta(meta){
+  if(!meta) return null;
+  if(meta.page && PAGE_META[meta.page]) return meta.page;      // 拉页面那套传的是 {page,edge,arrow}
+  for(const k in PAGE_META){ if(PAGE_META[k] === meta) return k; }
+  return null;
+}
+/* 进入页面前的加载页：整屏目标页面颜色的色块 + 图标 + 名称，约0.5秒后再切页
+   v1.7.5：这一页有过渡图（mimi/<页面名>过渡图.png）就整屏换成她画的画面，
+   中间那套「图标 + 名字 + 三个点」收起（见 .page-load.has-art）。纯色仍然留在底下当兜底 */
 function pageLoad(meta, done){
   const el = document.createElement('div');
   el.className = 'page-load';
-  el.style.background = meta.color;
+  const page = pageOfMeta(meta), trans = page ? pageTransImg(page) : null;
+  /* 图得先探到（开机后台温过）才用：没温到就老老实实纯色块，别让一张还没解码的图在闪的过程中跳出来
+     v1.7.6：探的是「这个后缀在不在」——mimi/ 里是 .webp 就用 .webp（见 artCands） */
+  const transOK = (trans && typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(artCands(trans)) : null;
+  const useArt = !!transOK;
+  if(useArt){
+    /* ⚠️ 这档只能写 backgroundColor。写成 background 简写会连 background-size/position 一起按内联样式定死，
+       把 .page-load.has-art 里那句 background-size:cover 盖掉 → 她那张 941×1672 的画会按原始尺寸
+       从左上角往外铺（不缩放、不居中），看着像贴歪了 */
+    el.style.backgroundColor = meta.color;
+    el.classList.add('has-art');
+    el.style.backgroundImage = 'url("'+transOK.replace(/"/g, '%22')+'")';
+  }else{
+    el.style.background = meta.color;
+  }
   el.innerHTML = '<div class="pl-inner"><div class="pl-ico">'+meta.ico+'</div>'+
                  '<div class="pl-name">'+esc(meta.name)+'</div>'+
                  '<div class="pl-dots"><i></i><i></i><i></i></div></div>';
@@ -3952,14 +4184,12 @@ const Views = {
     const mScale = S.settings.mascotScale || 1;
     const mPos = S.settings.mascotPos || {dx:0, dy:0};
     const hide = S.settings.mascotHidden && !force;
-    const face = Emo.face();
     let h = '<div class="mascot-zone">'+
            (hide ? '' : '<div class="mascot-shadow"></div>'+
            '<div class="mascot" id="mascot">'+
              '<div class="mascot-pos" style="transform:translate('+mPos.dx+'vw,'+mPos.dy+'vh) scale('+mScale+')">'+
                '<div class="mascot-anim">'+
                  HerBody.imgHtml('normal', Emo.slot())+
-                 '<div class="mood-dot'+(face?' on':'')+'">'+face+'</div>'+
                '</div>'+
              '</div>'+
            '</div>');
@@ -3973,6 +4203,7 @@ const Views = {
     /* 「来她的空间」+2（每天一次；涨满之后 gain 直接返回 0、不写库，所以渲染里调用它是安全的） */
     if(typeof Love !== 'undefined') Love.gain('space', Date.now());
     let h = '<div class="pure-screen mspace">';
+    h += '<div class="msp-bg"></div>';        // 她的房间：按时间段换背景（图在 mimi/，见 CONFIG.DAY_BG）
     h += '<div class="mspace-top"><span class="msp-t">她的世界</span>'+
            '<span class="msp-d" data-bind="bigdate"></span></div>';
     h += this._mascotZone(true);
@@ -4157,8 +4388,7 @@ const Views = {
     h += '<div class="moutfit-cur">'+
       '<div class="mo-ava">'+ HerBody.imgHtml('normal', Emo.slot(), {small:true}) +'</div>'+
       '<div style="flex:1;min-width:0"><div class="mo-k">现在的她</div><div class="mo-n">'+esc(HerBody.lookName())+'</div>'+
-        '<div class="mo-k" style="margin-top:4px">此刻心情：'+esc(CONFIG.BODY.EMO_TEXT[Emo.get()] || '平静')+
-          ' <span style="opacity:.7">'+Emo.face()+'</span></div></div>'+
+        '<div class="mo-k" style="margin-top:4px">此刻心情：'+esc(CONFIG.BODY.EMO_TEXT[Emo.get()] || '平静')+'</div></div>'+
     '</div>';
     /* 她的表情与动作（v1.6a） */
     h += '<div class="card pad" style="margin-top:12px">'+
@@ -4688,7 +4918,7 @@ const Views = {
       '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍，最大可占满整屏宽度），也可在「她的空间 → 服装页」里一键还原。</div>'+
     '</div></section>';
     /* 动画强度三档 */
-    const animLv = S.settings.animLevel || 'light';
+    const animLv = S.settings.animLevel || 'full';
     const animOpts = [{k:'full',n:'完整',d:'全部动画与特效'},{k:'light',n:'轻度（推荐）',d:'保留核心动画，减少装饰'},{k:'off',n:'关闭',d:'所有动画停用，最省电'}];
     h += '<section class="sec"><h2 class="sec-title">动画强度</h2><div class="card pad">'+
       '<div class="chip-row">'+animOpts.map(o=>
@@ -4853,7 +5083,7 @@ function handleOutfitFile(files){
 }
 /* 动画强度三档：完整 / 轻度（默认）/ 关闭 */
 function applyAnimLevel(){
-  const lv = S.settings.animLevel || 'light';
+  const lv = S.settings.animLevel || 'full';
   document.body.classList.toggle('anim-off', lv==='off');
   document.body.classList.toggle('anim-light', lv==='light');
 }
@@ -5011,12 +5241,34 @@ const Her = {
     if(Bubbles.seen[key]) return false;          // 这一条今天已经说过了
     if(!this.canSpeak(now)) return false;        // 今天说够了 / 刚说完没多久
     Bubbles.push(text, {key, sub: opt.sub || '她', go: opt.go || null});
+    /* 开口必配脸+小动作（v1.7）：每段话都有表情动作变化，不一张脸说到尾 */
+    this.reactFace(kind, now);
     /* 你把软件切到后台了 → 这句话也走系统通知送出去（她走出软件，v1.5） */
     if(opt.notify !== false && typeof Notify !== 'undefined') Notify.her(text, opt.sub || '她');
     const dk = D.dateKey(now), rec = S.settings.herSpoke;
     if(rec && rec.dk === dk) rec.n = this.budget(dk).used + 1;
     this._lastAt = now;
     saveSettings();
+    return true;
+  },
+  /* 说话时的脸与动作（v1.7）：软规则——困/气最优先、8 秒内的新情绪不冲淡、
+     深夜 sleepy 不动脸；只在她看得见的两个纯净页演 */
+  reactFace(kind, now){
+    const f = CONFIG.HER.FACE[kind];
+    if(!f) return false;
+    if(S.view !== 'home' && S.view !== 'mspace') return false;
+    now = now || Date.now();
+    let emo = f.emo;
+    if(emo === '*idle') emo = CONFIG.HER.FACE_IDLE[Math.floor(Math.random() * CONFIG.HER.FACE_IDLE.length)];
+    const cur = Emo.get(now), m = S.settings.herMood;
+    let skip = false;
+    if(cur === 'sleepy' || cur === 'angry') skip = true;                       // 困与气最优先
+    else if(cur !== 'neutral' && m && (now - (m.at || 0)) < CONFIG.HER.FACE_KEEP_MS) skip = true; // 新情绪让着
+    if(!skip && emo !== cur && typeof Emo !== 'undefined') Emo.set(emo, '说话', now);
+    if(f.act && typeof Director !== 'undefined' && Director.can()){
+      if(f.act.indexOf('pose-') === 0) Director.pose(f.act.slice(5), f.hold || 6000);
+      else Director.act(f.act, f);
+    }
     return true;
   },
   /* ── 直接回应（你回答了她的问题 / 你跟她说话）：不算「主动搭话」，
@@ -5666,7 +5918,9 @@ const Mascot = {
       this.say(this.randomLine(Grow.level()), 2600);
       /* 爱心粒子 */
       this.hearts();
-      if(Math.random() < 0.4) Emo.set('happy', '你戳了戳她', now);
+      /* v1.7 点击必有变化：每戳必换脸——按连戳计数递进（1=开心 2=害羞 3=开心 4=担心，5=生气） */
+      const i = Math.min(this._tapN - 1, CONFIG.SENSE.TAP_FACES.length - 1);
+      Emo.set(CONFIG.SENSE.TAP_FACES[i], '你戳了戳她', now);
     }
     /* 「戳她一下」好感 +1（30 秒冷却 + 每天最多 5 次——连戳不刷分，见 CONFIG.LOVE.SOURCES） */
     if(typeof Love !== 'undefined') Love.gain('tap', Date.now());
@@ -5680,6 +5934,8 @@ const Mascot = {
     const t = Her.voice(kind, Her.ctx(Date.now()));
     if(!t) return false;
     this.say(t, ms || 2600);
+    /* 回应也配脸+动作（v1.7）；刚发生的事在 8 秒保护窗内 → reactFace 自动跳过覆盖 */
+    Her.reactFace(kind);
     return true;
   },
   say(text, ms){
@@ -5699,7 +5955,7 @@ const Mascot = {
   /* 爱心粒子：动画强度三档（关闭=0 / 轻度=3 / 完整=5）。
      以前动画关闭时只是不播放动画，元素仍会留在页面上，所以这里直接不生成 */
   hearts(){
-    const lv = S.settings.animLevel || 'light';
+    const lv = S.settings.animLevel || 'full';
     if(lv === 'off') return 0;
     const zone = document.querySelector('#view-root .mascot-zone');
     if(!zone) return 0;
@@ -5726,7 +5982,28 @@ const Mascot = {
     if(!b){
       b = document.createElement('button');
       b.className = 'portal-btn';
-      b.innerHTML = '<span class="pb-star">★</span>';
+      /* 她画的那张水晶球当按钮（v1.7.5）：图裂了/不在 → 自己摘掉，白圆黑星照旧顶上 */
+      const art = document.createElement('img');
+      art.className = 'pb-art'; art.alt = ''; art.draggable = false;
+      /* 数据到了就换（has-art）。理论上这中间可能有一两帧「白圆黑星已收起、画还没解码」，
+         但那张图开机就在后台温着（图早进了内存），实际看不到；
+         试过一版改成等 decode() 再换——那个 Promise 在无头环境里不落地，会变成「永远不换」，
+         得不偿失（理由同 HerBody.warm 上那条注释） */
+      art.addEventListener('load', ()=>{ try{ b.classList.add('has-art'); }catch(e){} });
+      /* v1.7.6：PNG 不在就试同名 .webp（data-alt 里存着还能试谁），都试完才摘掉 → 白圆黑星顶上 */
+      art.addEventListener('error', ()=>{
+        let L = [];
+        try{ L = JSON.parse(art.dataset.alt || '[]'); }catch(e){}
+        if(L.length){ art.src = L.shift(); art.dataset.alt = JSON.stringify(L); return; }
+        try{ art.remove(); }catch(e){}
+      });
+      const pbCand = artCands(PORTAL_UI_ART);
+      art.src = pbCand.shift();
+      art.dataset.alt = JSON.stringify(pbCand);
+      b.appendChild(art);
+      const star = document.createElement('span');
+      star.className = 'pb-star'; star.textContent = '★';
+      b.appendChild(star);
       this._wirePortalHold(b);
       zone.appendChild(b);
     }
@@ -5856,6 +6133,33 @@ const Mascot = {
      · 「冲动」加在 #mascot 上（keyframes，播完摘掉，与 mascot-hop 同一套手感）
      · 「姿势」加在 .mascot-anim 上（带过渡，可以停在某个姿势上）
    ══════════════════════════════════════════════════════════════ */
+/* ── 同一个名字的两种后缀（v1.7.6）：她画的 PNG 在前，我压的 .webp 在后 ──
+   为什么两套：她那批图 PNG 一共 63MB（提示卡插画只显示 88px 见方，她给的是 1254×1254；
+   PNG 存这种带渐变的画又最不划算），从国内传 GitHub 传不动。压成同名的 .webp 只剩约 1/10。
+   为什么**永远 PNG 在前**：反过来写的话，她新画一张「待办.png」丢进 mimi/，
+   会被旧的「待办.webp」悄悄盖住 —— 换图就白换了（换图零代码是红线，不能在这儿破）。
+   代价：部署那份 mimi/ 里只有 .webp 时，那一串 PNG 请求会各自 404 一次。
+   不占带宽（404 没有正文）、不报错，而且开机那次 warm 会提前把结果拿回来。 */
+const ART_EXT = ['.png', '.webp'];
+/* 换个后缀（认不出来就还 null，让调用方原样用） */
+function artTwin(u){
+  const s = String(u == null ? '' : u);
+  for(const e of ART_EXT) if(s.length > e.length && s.slice(-e.length).toLowerCase() === e)
+    return s.slice(0, -e.length) + (e === '.png' ? '.webp' : '.png');
+  return null;
+}
+/* 一个名字 → 该依次试的地址（**PNG 永远是第一个**）。传进来的是 .webp 也照样 PNG 打头 */
+function artCands(u){
+  const s = String(u == null ? '' : u);
+  if(!s) return [];
+  const t = artTwin(s);
+  if(!t) return [s];
+  const isWebp = s.slice(-5).toLowerCase() === '.webp';
+  return isWebp ? [t, s] : [s, t];
+}
+/* 接力名单里该跟的那半截：同一个名字的另一个后缀（如 mimi/x.png → ['mimi/x.webp']） */
+function artRest(u){ return artCands(u).slice(1); }
+
 const HerBody = {
   forms(){ return Object.keys(CONFIG.BODY.SLOTS); },
   assets(){ return S.settings.herAssets || {}; },
@@ -5887,6 +6191,46 @@ const HerBody = {
     const name = (form === 'q' && k ? 'q-' + k : k) || B[form];
     return CONFIG.BODY.BUILTIN_DIR + name + '.png';
   },
+  /* ── 「有没有都行」的动作图（v1.7.3 起：拉页面的小拉 / 用力拉）──
+     该用哪张：你传的 > mimi/<key>.png；都没有 = null（那就用回 Q版 + 姿势替身，什么都不影响）
+     back = 这张图裂了之后接力用哪张（永远先回到她平常的样子，不会变成一张不相干的图）
+     ⚠️ mimi/ 里那张要先被 warm() 探到才用：那种文件「不在」是常态，
+        不能探到一半先给她闪一张裂图（探之前一律当没有） */
+  _probe:{}, _img:{},        // _img = 正在探的那几张图：**得攥着引用**
+  warm(files){
+    /* v1.7.6：每个名字连它的另一个后缀一起探（mimi/ 里放的是 .webp 就先探到那张，
+       放的是 .png 就先探到那张）——两边都探过，probed(谁) 都答得上来 */
+    const all = [];
+    for(const f of (files || [])) for(const c of artCands(f)) all.push(c);
+    for(const f of all){
+      if(!f) continue;
+      if(this._probe[f] === true || this._img[f]) continue;   // 探到了 / 正在探 → 不用再来一次
+      this._probe[f] = false;
+      let im; try{ im = new Image(); }catch(e){ continue; }
+      /* ⚠️ 这个引用必须留着：只挂个 onload 就把 im 丢掉的话，
+         这张还没加载完的图会被当垃圾收走、连 onload 一起没了 —— 探到一半永远停在那儿
+         （e2e 里就撞见过：小拉探到了、用力拉没探到，于是「用力拉」一直显示小拉那张） */
+      this._img[f] = im;
+      const done = (ok)=>{ this._probe[f] = ok; delete this._img[f]; };
+      /* ⚠️ 就认 onload（= 数据到了），**别**改成等 decode()：
+         试过一版「等 decode 完才算探到」（想让 probed 真的=「现在贴上去就能看见」），
+         e2e 的无头环境里 decode() 的 Promise 根本不落地 → probed 永远是 false
+         → 整屏过渡图和传送图一辈子用不上，直接退回纯色块/白圆黑星。
+         那一版想修的是「解码没跟上会空一两帧」，代价却是「干脆永远不显示」，不值。
+         解码这点事交给开机那次 warm（图早就在内存里了）。 */
+      im.onload = ()=>done(true);                 // 在 → 待会儿拖动就换成它
+      im.onerror = ()=>done(false);
+      try{ im.src = f; }catch(e){ done(false); }
+    }
+  },
+  probed(f){ return !!this._probe[f]; },
+  /* 这一串地址里第一个**已经探到**的（v1.7.6，配合 artCands 用）——
+     进页的过渡图 / 传送图 / 拉页面那几张都是「探到了才用，没探到就照旧走兜底版」，
+     问的是「哪个后缀真有文件」，所以走这里而不是直接问 probed(那张 .png) */
+  warmed(list){
+    for(const f of (list || [])) if(f && this._probe[f]) return f;
+    return null;
+  },
   /* 她这会儿该用哪张图。form='normal'|'q'|'acts'（别的名字=只走回退链，给迷你看板娘用）
      返回 {src, shell, fb}：src=图片地址（null 表示只能用小可爱），shell=是否显示内置小可爱，
      fb=src 图裂了之后依次试的备用文件（系统默认层的逐级回退） */
@@ -5898,12 +6242,16 @@ const HerBody = {
     if(mId === 'placeholder') return {src:null, shell:true};
     if(mId){ const u = Store.getImage(mId); return u ? {src:u, shell:false} : {src:null, shell:true}; }
     /* 系统默认的她：这张脸的文件 → 普通 → 旧版「看板娘.png」（过渡兜底） */
-    const fb = [];
+    const names = [];
     const f = this.builtinFile(form, key);
     const b = this.builtinFile(form, 'base');
-    if(f && f !== b) fb.push(f);
-    if(b) fb.push(b);
-    fb.push('看板娘.png');
+    if(f && f !== b) names.push(f);
+    if(b) names.push(b);
+    names.push('看板娘.png');
+    /* 每个名字展开成「先 PNG 再 .webp」（v1.7.6，见 artCands）——
+       所以槽位图和普通图形裂时会先试自己那张的 .webp，再退到下一个名字 */
+    const fb = [];
+    for(const n of names) fb.push.apply(fb, artCands(n));
     return {src: fb.shift(), shell:false, fb};
   },
   /* 立绘 HTML：图和内置小可爱同时在场，缺图/图裂时自动换成兜底
@@ -5913,10 +6261,17 @@ const HerBody = {
     opt = opt || {};
     const p = this.pick(form, key);
     const fb = (p.fb && p.fb.length) ? ' data-fb="'+esc(JSON.stringify(p.fb))+'"' : '';
-    const onerr = "this.style.display='none';"+
-      "var s=this.nextElementSibling;if(s&&s.classList&&s.classList.contains('mascot-shell'))s.style.display='';"+
-      "var L=[];try{L=JSON.parse(this.dataset.fb||'[]')}catch(e){}"+
-      "if(L.length){this.src=L.shift();this.dataset.fb=JSON.stringify(L);this.style.display='';}";
+    /* 图裂了：**先把名单里的下一张试完，名单走空了才露出内置小可爱**（v1.7.6 修）
+       ⚠️ 这个顺序不能反：名单第一项永远是她画的 .png，而上传那份 mimi/ 里只有 .webp，
+          所以第一张**必然 404 一次**。要是写成「先亮小可爱、再换下一张」，
+          每次开机小可爱都会露出来——一直挂在那儿，直到某次换脸被 paintHer 顺手藏回去
+          （真机实测：主页立绘和角落 Q版都会露，e2e 是采样点选晚了才没抓到）。
+       图还没换上来那一瞬是空窗，但比露出一只粉色小可爱强得多；
+       开机那次 warm 已经把两张都探过，多半是直接从缓存拿。 */
+    const onerr = "var L=[];try{L=JSON.parse(this.dataset.fb||'[]')}catch(e){}"+
+      "if(L.length){this.src=L.shift();this.dataset.fb=JSON.stringify(L);return;}"+
+      "this.style.display='none';"+
+      "var s=this.nextElementSibling;if(s&&s.classList&&s.classList.contains('mascot-shell'))s.style.display='';";
     return '<img data-her-img="'+esc(form)+'" src="'+(p.src || '看板娘.png')+'" alt="'+esc(CONFIG.LOVE.NAME)+'" draggable="false"'+
              (p.shell ? ' style="display:none"' : '')+fb+
              ' onerror="'+onerr+'">'+
@@ -5983,8 +6338,11 @@ function handleBodyFile(files){
 
 /* ── 她的情绪 Emo（v1.6a）：事件驱动 + 时间衰减，不随机 ──
    优先级：刚发生的事（90 秒内的情绪）> 深夜她困了 > 平静。
-   情绪落到三处：头顶的小圆脸、她用哪张表情差分、台词池里的 c.emo 分支 */
+   情绪落到两处：她用哪张表情差分、台词池里的 c.emo 分支。
+   v1.7 加了「表情漂移」：平静时每 15~30 秒轻轻换一次微表情（纯 UI 层，
+   不写 herMood、不进台词与日记语义——漂移≠情绪） */
 const Emo = {
+  _w:{emo:null, nextAt:0},   // 漂移态（纯内存，不落库）
   get(now){
     now = now || Date.now();
     const m = S.settings.herMood;
@@ -5999,8 +6357,13 @@ const Emo = {
     return 'neutral';
   },
   /* 她这会儿该用哪张脸（缺这张差分会自动回落到「普通」）
-     now 可以传（测试/回看用）；渲染时不传 = 就用此刻 */
-  slot(now){ return CONFIG.BODY.EMO_SLOT[this.get(now)] || 'base'; },
+     now 可以传（测试/回看用）；渲染时不传 = 就用此刻。
+     v1.7：平静时才借位给漂移的微表情——事件情绪/深夜自动遮蔽漂移 */
+  slot(now){
+    const base = this.get(now);
+    const emo = (base === 'neutral' && this._w.emo) ? this._w.emo : base;
+    return CONFIG.BODY.EMO_SLOT[emo] || 'base';
+  },
   /* 头顶小圆脸的 emoji（空字符串 = 不显示浮标） */
   face(now){ return CONFIG.BODY.EMO_FACE[this.get(now)] || ''; },
   /* 落一笔情绪：任何让她高兴/生气/难过的瞬间都从这儿进 */
@@ -6008,6 +6371,8 @@ const Emo = {
     if(!CONFIG.BODY.EMO_SLOT[emo]) emo = 'neutral';
     now = now || Date.now();
     S.settings.herMood = {emo, why: why || '', at: now};
+    /* 事件来了 → 漂移让位，并重置漂移时钟（事件淡去后先平静一会儿再漂） */
+    this._w = {emo:null, nextAt: now + this._nextDrift()};
     saveSettings();
     paintHer();
     return emo;
@@ -6021,7 +6386,26 @@ const Emo = {
     saveSettings();
     paintHer();
     return true;
-  }
+  },
+  /* 表情漂移（v1.7）：平静时每隔一段随机时间在 开心/害羞/平静 间轻漂一次。
+     事件情绪或深夜（sleepy）时暂停并复位；漂移只借「平静」的位置，
+     get()/face()/herMood 全部不受影响——微表情不是情绪 */
+  wanderTick(now){
+    now = now || Date.now();
+    const cur = this.get(now);
+    if(cur !== 'neutral'){
+      if(this._w.emo){ this._w = {emo:null, nextAt: now + this._nextDrift()}; paintHer(); }
+      return false;
+    }
+    if(!this._w.nextAt) this._w.nextAt = now + this._nextDrift();
+    if(now < this._w.nextAt) return false;
+    const list = CONFIG.BODY.DRIFT.EMOS;
+    const emo = list[Math.floor(Math.random() * list.length)];
+    this._w = {emo, nextAt: now + this._nextDrift()};
+    paintHer();
+    return true;
+  },
+  _nextDrift(){ return CONFIG.BODY.DRIFT.MIN_MS + Math.random() * (CONFIG.BODY.DRIFT.MAX_MS - CONFIG.BODY.DRIFT.MIN_MS); }
 };
 /* 原地换脸（不整页重绘）：情绪一变就调用——首页立绘、角落 Q版、页面里的缩略图一起换 */
 function paintHer(){
@@ -6032,22 +6416,21 @@ function paintHer(){
       const p = HerBody.pick(form, form === 'normal' ? Emo.slot() : 'base');
       const sib = img.nextElementSibling;
       const shell = (sib && sib.classList && sib.classList.contains('mascot-shell')) ? sib : null;
-      if(p.src){ img.src = p.src; img.style.display = ''; if(shell) shell.style.display = 'none'; }
+      if(p.src){
+        /* v1.7 换脸过渡：src 真变了（首次渲染不算）且动画没关 → 0.28s 淡入，让「变」看得见 */
+        const prev = img.getAttribute('src');
+        img.src = p.src; img.style.display = ''; if(shell) shell.style.display = 'none';
+        if(prev && prev !== p.src && document.body && !document.body.classList.contains('anim-off')){
+          img.classList.remove('face-fade');
+          void img.offsetWidth;
+          img.classList.add('face-fade');
+          clearTimeout(img._faceFadeT);
+          img._faceFadeT = setTimeout(()=>{ try{ img.classList.remove('face-fade'); }catch(e){} }, 300);
+        }
+      }
       else { img.style.display = 'none'; if(shell) shell.style.display = ''; }
       /* 图裂接力名单跟着换（换脸换到系统默认层时，这张裂了还要会往下退） */
       img.dataset.fb = (p.fb && p.fb.length) ? JSON.stringify(p.fb) : '';
-    });
-  }catch(e){}
-  try{
-    const f = Emo.face();
-    document.querySelectorAll('.mood-dot').forEach(d=>{
-      const changed = d.textContent !== f;
-      if(changed) d.textContent = f;
-      d.classList.toggle('on', !!f);
-      /* 换了个表情就轻轻弹一下（同一张脸反复刷新时不要抖个不停） */
-      if(changed && f && d.classList.add){
-        d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
-      }
     });
   }catch(e){}
 }
@@ -6076,7 +6459,7 @@ function flash(){
 
 /* ── 动作导演 Director（v1.6a）：她什么时候动、动什么、说不说话，全从这儿出 ──
    ★ 演戏只在咱们俩的地方（首页 / 她的空间）；弹窗、传送、加载页的时候她不打扰
-   ★ animLevel：完整=全播；轻度（默认）=只播蹦跳/扭一扭这类轻动作；关闭=不动（换脸与浮标照旧）
+   ★ animLevel：完整（默认）=全播；轻度=只播蹦跳/扭一扭这类轻动作；关闭=不动（换脸照旧）
    ★ 时间线走单一定时器队列，任何一次触碰都能立刻收场（Director.stop） */
 const Director = {
   _timers:[], _plan:[], _playing:false, _lastAct:null, _lastShakeAsk:0, _poseNow:null,
@@ -6096,7 +6479,7 @@ const Director = {
       return document.getElementById('q-corner');
     }catch(e){ return null; }
   },
-  level(){ return S.settings.animLevel || 'light'; },
+  level(){ return S.settings.animLevel || 'full'; },
   /* 这个动作现在允许播吗（关闭=一个都不播；轻度=只播轻动作；完整=全播） */
   allowed(act){
     const lv = this.level();
@@ -6314,20 +6697,140 @@ const Shake = {
 
 /* ── 忙碌页面右下角的她 QCorner（v1.6a）：Q版小人一直在，你做什么她都陪着 ── */
 const QCorner = {
-  _built:false,
+  _built:false, _wired:false, _pts:new Map(), _drag:null, _pinch:null, _t0:0, _moved:0, _tapFired:false, _baseSrc:null,
   el(){ try{ return document.getElementById('q-corner'); }catch(e){ return null; } },
   /* 换页时同步：忙碌页出现；纯净页与她的页面不出现（那儿本来就是她的地方，不重复） */
   sync(){
     const el = this.el();
     if(!el || !el.classList) return false;
     if(!this._built){
-      el.innerHTML = '<div class="mood-dot"></div>' + HerBody.imgHtml('q', 'base', {small:true});
+      el.innerHTML = HerBody.imgHtml('q', 'base', {small:true});
       this._built = true;
+      this.applyPos();
+      this._wire();
     }
     const busy = (S.view !== 'home' && S.view !== 'mspace') && CONFIG.BODY.HER_PAGES.indexOf(S.view) < 0;
     el.classList.toggle('on', busy);
     if(busy) paintHer();
     return busy;
+  },
+  /* 摆位与大小（v1.7.1）：你把她拖到哪、捏多大都记在设置上（qPos/qScale，零迁移） */
+  applyPos(){
+    const el = this.el();
+    if(!el || !el.style) return;
+    const p = S.settings.qPos, s = clamp(S.settings.qScale || 1, 0.6, 2.2);
+    el.style.left = ''; el.style.right = ''; el.style.top = ''; el.style.bottom = '';
+    if(p && p.x != null){
+      const w = window.innerWidth || 390, h = window.innerHeight || 844;
+      el.style.left = clamp(p.x, -40, w - 30) + 'px';
+      el.style.top = clamp(p.y, 0, h - 30) + 'px';
+    }else{
+      el.style.right = '9px';
+      el.style.bottom = 'calc(13px + env(safe-area-inset-bottom))';
+    }
+    el.style.setProperty('--qs', s);
+  },
+  /* 她自己的小手接管（v1.7.1）：忙碌页手势引擎本来就休息，这里单指拖动、双指捏合、轻点有反应 */
+  _wire(){
+    if(this._wired) return;
+    const el = this.el();
+    if(!el || !el.addEventListener) return;
+    this._wired = true;
+    el.addEventListener('pointerdown', e=>{
+      try{ e.preventDefault(); }catch(err){}
+      try{ if(el.setPointerCapture) el.setPointerCapture(e.pointerId); }catch(err){}
+      this._pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if(this._pts.size === 1){
+        this._t0 = Date.now(); this._moved = 0; this._tapFired = false;
+        const r = el.getBoundingClientRect();
+        this._drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, bx:r.left, by:r.top};
+      }else if(this._pts.size === 2){
+        const arr = [...this._pts.values()];
+        this._endDrag();                     // 第二指落下 → 拖动收尾（位置照存），转捏合
+        this._pinch = {d0: Math.hypot(arr[0][0]-arr[1][0], arr[0][1]-arr[1][1]) || 1, s0: S.settings.qScale || 1};
+      }
+    });
+    el.addEventListener('pointermove', e=>{
+      if(!this._pts.has(e.pointerId)) return;
+      this._pts.set(e.pointerId, [e.clientX, e.clientY]);
+      const arr = [...this._pts.values()];
+      if(arr.length === 1 && this._drag && this._drag.id === e.pointerId) this._moveDrag(e.clientX, e.clientY);
+      else if(arr.length >= 2 && this._pinch) this._movePinch(Math.hypot(arr[0][0]-arr[1][0], arr[0][1]-arr[1][1]));
+    });
+    const end = e=>{
+      if(!this._pts.has(e.pointerId)) return;
+      this._pts.delete(e.pointerId);
+      if(this._drag && this._drag.id === e.pointerId) this._endDrag();
+      if(this._pinch && this._pts.size < 2) this._endPinch();
+      if(this._pts.size === 0 && !this._tapFired && Date.now() - this._t0 < 320 && this._moved < 8 && typeof Director !== 'undefined'){
+        this._tapFired = true;
+        Director.act('act-jiggle');          // 轻点一下 → 她扭一扭回应你
+      }
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  },
+  /* 拖动中：小人跟着手走；动起来就换「拖动图」（acts.pull 传过用图，没有就加个使劲儿姿势） */
+  _moveDrag(x, y){
+    const d = this._drag, el = this.el();
+    if(!d || !el || !el.style) return;
+    const dx = x - d.x0, dy = y - d.y0;
+    this._moved = Math.max(this._moved, Math.hypot(dx, dy));
+    if(this._moved >= 8){
+      el.classList.add('q-moving', 'q-drag');
+      this._dragImg(true);
+    }
+    const w = window.innerWidth || 390, h = window.innerHeight || 844;
+    el.style.left = clamp(d.bx + dx, -40, w - 30) + 'px';
+    el.style.top = clamp(d.by + dy, 0, h - 30) + 'px';
+    el.style.right = ''; el.style.bottom = '';
+  },
+  /* 拖动图：她「被拎着一只手拖走」那张（mimi/被拖.png，v1.7.5）——
+     没有这张文件 → 接力到拉页面那张（mimi/pull.png 或你传的 acts.pull）→ 再没有才是 q.png + 姿势替身。
+     接力名单走 img 自己的 data-fb（HerBody.imgHtml 挂的那个 onerror），裂一张换下一张 */
+  _dragImg(on){
+    const el = this.el();
+    if(!el) return;
+    const img = el.querySelector('img');
+    if(!img) return;
+    if(on){
+      if(this._baseSrc == null) this._baseSrc = img.getAttribute('src');
+      if(this._baseFb == null) this._baseFb = img.getAttribute('data-fb') || '';
+      const p = (typeof PullMini !== 'undefined') ? PullMini.art(false) : null;   // 拉页面那张（小拉）
+      /* v1.7.6：被拖.png 不在 → 先试被拖.webp → 再接力回她平常的样子（PNG 永远排最前） */
+      const fb = artRest(Q_DRAG_ART);
+      if(p && p.src) fb.push(p.src);
+      if(p && p.fb) fb.push.apply(fb, p.fb);
+      img.src = artCands(Q_DRAG_ART)[0];
+      img.dataset.fb = JSON.stringify(fb);
+    }else{
+      img.setAttribute('data-fb', this._baseFb || '');
+      if(this._baseSrc != null && img.getAttribute('src') !== this._baseSrc) img.src = this._baseSrc;   // 拖完了 → 换回平常那张脸
+    }
+  },
+  _endDrag(){
+    const el = this.el();
+    if(this._drag && this._moved >= 8 && el){
+      const r = el.getBoundingClientRect();
+      S.settings.qPos = {x: Math.round(r.left), y: Math.round(r.top)};
+      saveSettings();                        // 她记住新位置（跨刷新不忘）
+    }
+    if(el && el.classList){ el.classList.remove('q-moving', 'q-drag'); this._dragImg(false); }
+    this._drag = null;
+  },
+  _movePinch(d1){
+    const el = this.el();
+    if(!this._pinch || !el) return;
+    const s = clamp(this._pinch.s0 * (d1 / this._pinch.d0), 0.6, 2.2);
+    S.settings.qScale = Math.round(s * 100) / 100;
+    el.classList.add('q-moving');
+    this.applyPos();
+  },
+  _endPinch(){
+    const el = this.el();
+    if(el && el.classList) el.classList.remove('q-moving');
+    if(this._pinch && (S.settings.qScale || 1) !== this._pinch.s0) saveSettings();
+    this._pinch = null;
   }
 };
 
@@ -6347,10 +6850,21 @@ const Portal = {
     const a = this._anchor(anchorEl);
     ov.style.left = Math.round(a.x) + 'px';
     ov.style.top  = Math.round(a.y) + 'px';
-    ov.innerHTML = '<span class="po-ring"></span><span class="po-star">★</span>';
-    /* 外扩到铺满屏幕所需倍数：屏幕对角线 / 小圆直径（再留一点余量） */
+    ov.innerHTML = '<span class="po-ring"></span><span class="po-star">★</span><span class="po-art"></span>';
     const w = window.innerWidth || 390, h = window.innerHeight || 844;
-    ov.style.setProperty('--poscale', Math.ceil(Math.hypot(w, h) / 56 * 1.15));
+    /* 有她的传送图（mimi/她的空间过渡图.png，且已经探到）→ 整屏那张画从按钮上长出来：
+       .po-art 自己就是整屏大小，再跟着 overlay 从 56px 放到 1 倍 → 正好铺满，所以这档的倍数就是 1
+       （原来的白圆黑星是「小圆放到盖住屏幕」，倍数是屏幕对角线 / 小圆直径，两条路各算各的） */
+    /* v1.7.6：PNG 和 .webp 哪个真在就用哪个（见 artCands） */
+    const trans = (typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(artCands(PORTAL_TRANS_ART)) : null;
+    const useArt = !!trans;
+    if(useArt){
+      ov.classList.add('use-art');
+      ov.querySelector('.po-art').style.backgroundImage = 'url("'+trans.replace(/"/g, '%22')+'")';
+      ov.style.setProperty('--poscale', '1.04');
+    }else{
+      ov.style.setProperty('--poscale', Math.ceil(Math.hypot(w, h) / 56 * 1.15));
+    }
     document.body.appendChild(ov);
     this._active = true;
     const run = ()=>{ ov.classList.add('go'); };
@@ -6586,13 +7100,13 @@ const Grow = {
   },
   /* —— 粒子（动画关闭时一粒都不撒） —— */
   fxStars(){
-    if((S.settings.animLevel || 'light') === 'off') return 0;
+    if((S.settings.animLevel || 'full') === 'off') return 0;
     const zone = document.querySelector('#view-root .mascot-zone');
     if(!zone) return 0;
     return this._burst(zone, (S.settings.animLevel === 'full') ? 12 : 8);
   },
   fxStarsMini(){
-    if((S.settings.animLevel || 'light') === 'off') return 0;
+    if((S.settings.animLevel || 'full') === 'off') return 0;
     const root = document.getElementById('feed-root');
     if(!root) return 0;
     return this._burst(root.querySelector('.feed-mini') || root, (S.settings.animLevel === 'full') ? 12 : 8);
@@ -6628,7 +7142,7 @@ const Grow = {
   },
   /* 轻量经验飘字：写一条可能性确定 +5（从按钮处往上飘） */
   floatXp(anchorEl, xp){
-    if((S.settings.animLevel || 'light') === 'off') return 0;
+    if((S.settings.animLevel || 'full') === 'off') return 0;
     const root = document.getElementById('feed-root');
     if(!root) return 0;
     const p = this._anchorPoint(anchorEl);
@@ -6643,7 +7157,7 @@ const Grow = {
   },
   /* —— 投喂演出：完成待办 → 点心从卡片飞向左下角的迷你看板娘 —— */
   feed(anchorEl, xp){
-    const lv = S.settings.animLevel || 'light';
+    const lv = S.settings.animLevel || 'full';
     if(lv === 'off') return 0;                    // 动画关闭：不撒食物（经验照长，toast 里有文字）
     const root = document.getElementById('feed-root');
     const zone = this._ensureZone();
@@ -7146,12 +7660,54 @@ const MSPACE_PULL_META = {
   right:{page:'mcons',   edge:'left',   arrow:'→'},   // 向右拉 → 她眼中的我从左边来
   down: {page:'mdairy',  edge:'top',    arrow:'↓'}    // 向下拉 → 她的日记从上面来
 };
-const PULL_COMMIT = 0.36;   // 拉出进度达到这个比例，松手就进入（否则弹回）
+/* ⚠️ v1.7.6 起：下面这些函数返回的地址**一律是 .png 那个名字**，它只是「第一个候选」——
+   真去找图的是 artCands（同名 .webp 排第二）。所以别把这里的 .png 改成 .webp：
+   一改，她新画一张 PNG 丢进 mimi/ 就赢不了了（换图零代码靠的就是这个顺序） */
+/* 提示卡上的插画（v1.7.3）：默认看 mimi/<页面名>.png——
+   我们的共识.png / 待办.png / 节律表.png…（她的空间那四页同理：等级成长.png 等，放进去就有）
+   名字和页面名对不上的，在 FILE 里点一下名（比如「空间」这页的标题是「可能性空间」）
+   文件不在 = 那张卡自动退回「箭头 + 图标圈 + 名字」那一版，什么都不影响 */
+const CARD_IMG = {
+  DIR:'mimi/',
+  /* 图的名字 = 页面名（FILE 里点名的除外），后缀由下面几个函数自己补：
+     <名字>.png 提示卡插画 / <名字>松手.png 拉到刻度换的那张 / <名字>过渡图.png 进页时闪的整屏画 */
+  READY:'松手', TRANS:'过渡图',
+  FILE:{spaces:'可能性空间'}      // 只写名字，后缀统一由 cardImg 补
+};
+/* 这张卡片的图叫什么名字（页面名对不上就在 FILE 里点名） */
+function pageArtName(page){
+  const m = PAGE_META[page];
+  if(!m) return null;
+  return CARD_IMG.FILE[page] || m.name;
+}
+function cardImg(page){
+  const n = pageArtName(page);
+  return n ? CARD_IMG.DIR + n + '.png' : null;
+}
+/* 「松手就能进」那张（v1.7.5）：拉过刻度时把卡片插画整个换掉（mimi/待办松手.png …）
+   它是同一张卡片的另一个状态——不是叠一张贴纸上去，所以 CSS 里是「换」不是「叠」
+   找不到这一页的 → 试通用的 mimi/松手.png → 都没有就照旧只靠光晕和名字反白 */
+function cardReadyImg(page){
+  const n = pageArtName(page);
+  return n ? CARD_IMG.DIR + n + CARD_IMG.READY + '.png' : null;
+}
+const CARD_READY = CARD_IMG.DIR + CARD_IMG.READY + '.png';    // 通用兜底（她没做也行）
+/* 进页时闪一下的那张整屏画（mimi/待办过渡图.png …）：有就顶掉纯色块，没有就还是纯色 */
+function pageTransImg(page){
+  const n = pageArtName(page);
+  return n ? CARD_IMG.DIR + n + CARD_IMG.TRANS + '.png' : null;
+}
+/* 她的空间那两张（v1.7.5）：水晶球=入口按钮，整屏那张=传送过渡（都没有就退回白圆黑星） */
+const PORTAL_UI_ART = CARD_IMG.DIR + '她的空间.png';
+const PORTAL_TRANS_ART = CARD_IMG.DIR + '她的空间' + CARD_IMG.TRANS + '.png';
+/* 拖动 Q版小人时她「被拎着走」的样子（v1.7.5，mimi/被拖.png；没有就用拉页面那张顶着） */
+const Q_DRAG_ART = CARD_IMG.DIR + '被拖.png';
+const PULL_COMMIT = 0.46;   // 拉出进度达到这个比例，松手就进入（否则弹回）
 const SECTOR_HALF = 90;     // 半圆色块：张角 180°（平边贴着屏幕边缘，圆边朝画面里）
 
 const Gestures = {
   _t0:0, _x0:0, _y0:0, _mode:'none', _moved:0, _lastTap:0, _dblTapAt:0,
-  _lastX:0, _lastY:0, _dir:null, _holdT:null, _gvp:0, _builtView:null,
+  _lastX:0, _lastY:0, _dir:null, _holdT:null, _gvp:0, _ride:0, _builtView:null,
   /* 当前视图用的方向表：首页四向；她的空间三向 */
   _meta(){ return S.view === 'mspace' ? MSPACE_PULL_META : PULL_META; },
   /* 拉满所需的拖动距离 / 扇形的最大半径（都按屏幕短边缩放） */
@@ -7173,6 +7729,7 @@ const Gestures = {
     if(this._ptrs.size >= 2){
       clearTimeout(this._holdT);
       if(this._mode==='mdrag') Mascot.dragEnd(99);
+      if(typeof PullMini !== 'undefined') PullMini.restore();   // 第二指落下 = 捏合接管，变身收场
       this._mode = 'pinch';
       this._hideEdges();
       const arr = [...this._ptrs.values()];
@@ -7226,6 +7783,9 @@ const Gestures = {
       if(this._mode!=='maybe') return;
       if(this._moved > 30) return;      // 手指轻微抖动不打断长按（手机常见）
       this._mode = 'hold';
+      /* v1.7：长按成功 → 她「砰」地变成小人在你指尖，替你拉页面 */
+      if(typeof Director !== 'undefined') Director.stop();
+      if(typeof PullMini !== 'undefined') PullMini.out(e.clientX, e.clientY);
       this._showEdges(e.clientX, e.clientY);
     }, 700);                            // 长按 0.7 秒判定成功
   },
@@ -7243,6 +7803,8 @@ const Gestures = {
       const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
       this._dir = dir;
       this._pullTo(dir, Math.max(Math.abs(dx), Math.abs(dy)));
+      /* v1.7：小人跟着你的手，和提示卡贴成一簇把页面从那条边拉出来 */
+      if(typeof PullMini !== 'undefined') PullMini.dragTo(dir, this._gvp, this._ride);
     }else if(this._mode==='maybe' && this._moved > 14 && this._onMascot){
       /* 按住立绘滑动 = 单指拖动位置（位移触发，不占单击/双击/长按） */
       clearTimeout(this._holdT);
@@ -7270,10 +7832,12 @@ const Gestures = {
       const d = this._dir, p = this._gvp;
       this._mode = 'none';
       this._hideEdges();
-      if(d && p >= PULL_COMMIT){                 // 拉够了：进加载页 → 目标子页
+      if(d && p >= PULL_COMMIT){                 // 拉够了：小人替你把页面拉出来 → 加载页 → 目标子页
         S.sumDay = null;
         this._launch(d);
-      }                                          // 没拉够 = 弹回，什么也不发生
+      }else if(typeof PullMini !== 'undefined'){ // 没拉够：小人弹掉，大立绘「砰」地变回来
+        PullMini.back();
+      }
       return;
     }
     if(this._mode!=='maybe'){ this._reset(); return; }
@@ -7315,6 +7879,7 @@ const Gestures = {
   _reset(){
     if(this._mode==='mdrag'){ this._mode='none'; Mascot.dragEnd(Math.max(99, this._moved)); return; }
     this._mode='none'; this._dir=null; this._gvp=0; clearTimeout(this._holdT); this._hideEdges();
+    if(typeof PullMini !== 'undefined') PullMini.restore();   // 任何异常收场都把小人与立绘还回去
   },
   /* 当前视图的可用方向各一个扇形色块 + 边缘提示（她的空间只有 3 个方向） */
   _buildEdges(){
@@ -7329,11 +7894,38 @@ const Gestures = {
       '<div class="gv-wedge '+edge+'" data-edge="'+edge+'">'+
         '<svg viewBox="0 0 200 200"><path d="'+sectorPath(DEG[edge], SECTOR_HALF, 100)+'"/></svg>'+
       '</div>').join('');
+    /* 提示卡上那张插画（mimi/ 里的四张）：文件不在 / 图裂了 → 摘掉插画退回原版
+       v1.7.6：先看 data-alt 里还有没有别的后缀（mimi/待办.png 不在 → 试 mimi/待办.webp），
+       都试完了才摘。⚠️ 顺序还是 PNG 在前——她新丢一张 PNG 进去必须立刻赢过旧的 .webp */
+    const GW = (typeof PullMini !== 'undefined' && PullMini.CARD_W) ? PullMini.CARD_W : 88;
+    const ART_ERR = "var L=[];try{L=JSON.parse(this.dataset.alt||'[]')}catch(e){}"+
+      "if(L.length){this.src=L.shift();this.dataset.alt=JSON.stringify(L);return;}"+
+      "var e=this.parentNode;e.classList.remove('has-art');e.classList.add('img-miss');this.remove();";
+    /* 「松手」那张：载出来了才换（has-ready），没有就静悄悄——不占位、不报错、不闪裂图 */
+    const RDY_OK = "this.parentNode.classList.add('has-ready')";
+    /* 这一页没有 → 试通用那张（mimi/松手.png）→ 再没有就把自己摘掉（退回「原图 + 光晕」）
+       ⚠️ 换成功那一刻**不能**先加 has-ready：has-ready 会让原图变透明，
+          万一通用那张也裂了就会「原图没了、新图也没来」= 卡片整块空掉。加到 onload 里最稳 */
+    const RDY_ERR = "var L=[];try{L=JSON.parse(this.dataset.alt||'[]')}catch(e){}"+
+      "if(L.length){this.src=L.shift();this.dataset.alt=JSON.stringify(L);}"+
+      "else{this.remove();}";
     h += Object.keys(meta).map(d=>{
       const pm = meta[d], m = PAGE_META[pm.page];
-      return '<div class="gv-edge '+pm.edge+'" data-dir="'+d+'" style="--gvc:'+m.color+'">'+
-               '<span class="gve-arrow">'+pm.arrow+'</span>'+
-               '<span class="gve-ring">'+m.ico+'</span>'+
+      const art = cardImg(pm.page), ready = cardReadyImg(pm.page);
+      /* v1.7.6：每张图后面跟一串「还能试谁」——先是同名另一个后缀（.webp），再是通用那张。
+         例子：待办.png 不在 → 待办.webp → 松手.png → 松手.webp */
+      const artAlt = artRest(art).filter(x => x !== art);
+      const rdyAlt = artRest(ready).concat(artCands(CARD_READY))
+                        .filter((x, i, a) => a.indexOf(x) === i && x !== ready);
+      return '<div class="gv-edge '+pm.edge+(art?' has-art':'')+'" data-dir="'+d+'" style="--gvc:'+m.color+';--gw:'+GW+'px">'+
+               (art ? '<img class="gve-img" src="'+esc(art)+'" alt="" draggable="false"'+
+                        (artAlt.length ? ' data-alt="'+esc(JSON.stringify(artAlt))+'"' : '')+
+                        ' onerror="'+ART_ERR+'">' : '')+
+               (art && ready ? '<img class="gve-ready" src="'+esc(ready)+'" alt="" draggable="false" data-alt="'+esc(JSON.stringify(rdyAlt))+'" onload="'+RDY_OK+'" onerror="'+RDY_ERR+'">' : '')+
+               '<span class="gve-stack">'+
+                 '<span class="gve-arrow">'+pm.arrow+'</span>'+
+                 '<span class="gve-ring">'+m.ico+'</span>'+
+               '</span>'+
                '<span class="gve-name">'+esc(m.name)+'</span>'+
              '</div>';
     }).join('');
@@ -7344,7 +7936,8 @@ const Gestures = {
   _showEdges(x, y){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    this._gvp = 0;
+    this._gvp = 0; this._ride = 0;
+    root.style.setProperty('--ride', '0px');
     root.classList.add('on');
     /* 长按成功圆圈：出现在按压点，由浅渐实 */
     const c = root.querySelector('.gv-hold');
@@ -7359,6 +7952,11 @@ const Gestures = {
     const m = PAGE_META[pm.page];
     const p = Math.max(0, Math.min(1, len / this._pullMax()));
     this._gvp = p;
+    /* v1.7.2：她和提示卡这一簇往屏幕里走多远——1:1 跟手，屏幕装不下就封顶
+       （同一个数既喂她（PullMini.dragTo）也喂卡片（CSS --ride），两人才走得一样齐） */
+    const L = (typeof PullMini !== 'undefined' && PullMini.lane) ? PullMini.lane(dir, p, len) : null;
+    this._ride = L ? L.ride : 0;
+    root.style.setProperty('--ride', this._ride + 'px');
     root.style.setProperty('--gvp', p.toFixed(3));
     root.style.setProperty('--gvc', m.color);
     root.classList.toggle('locked', p >= PULL_COMMIT);
@@ -7374,16 +7972,256 @@ const Gestures = {
     const pm = this._meta()[dir];
     if(!pm) return;
     const page = pm.page;
+    /* 她替你拉出页面 = 你回应了她的表演 → 好感 +1（预留来源 v1.5 起就等着这一天） */
+    if(typeof Love !== 'undefined') Love.gain('pull', Date.now());
+    if(typeof PullMini !== 'undefined') PullMini.away();   // 拉成了：小人收场（新页面会重建大立绘）
     pageLoad(PAGE_META[page], ()=>{ goView(page); });   // 加载页闪一下再进目标页
   },
   _hideEdges(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    this._gvp = 0;
+    this._gvp = 0; this._ride = 0;
     root.classList.remove('on','locked');
     root.style.setProperty('--gvp', '0');
+    root.style.setProperty('--ride', '0px');
     root.querySelectorAll('.gv-edge.on').forEach(a=>a.classList.remove('on'));
     root.querySelectorAll('.gv-wedge').forEach(w=>{ w.classList.remove('on'); });
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.8b 长按变身 PullMini（v1.7）：她「砰」地变成 Q版小人在你指尖，
+   滑动时先你一步滑到页面要出来的那条边去拉——四向手势的表演化
+   v1.7.2：站位与行程重做——她站在提示卡「朝屏幕中间」的那一侧，
+   和卡片贴成一小簇；你划多远，这一簇就往屏幕里走多远（1:1 跟手，屏幕装不下为止） */
+const PullMini = {
+  _el:null, _x0:0, _y0:0, _edge:null, _artKey:null,   // _artKey = 现在用的是哪张图（'soft|left' 往左拉用小拉…）
+  _key:null, _swapped:false,                          // _key = 真图的名字（null = 只能用 Q版 + 姿势替身）
+  /* ── 站位几何（v1.7.2，纯函数：给方向/进度/划动距离，算出这一簇走多远、她站哪）──
+     提示卡（.gv-edge：箭头 / 图标圈 / 名字，竖排小卡）停在页面要来的那条边上，
+     她站在卡片「朝屏幕中间」的那条边外面：
+       上面来的 UI → 她在卡片下面；左边来的 UI → 她在卡片右边；反过来同理。
+     所以她永远压在卡片旁边的空处，不会盖住 UI；卡片和她又一起跟着你的手走。 */
+  MINI_W:110, MINI_H:156,       // 小人尺寸（与 #pull-mini 的 CSS 对齐）
+  IMG_UP:.08, IMG_DOWN:1.08,    // 她的图以「脚下」为锚点往上画（translate(-50%,-108%)）：占 [y-1.08H, y-0.08H]
+  CARD_W:88, CARD_H:117,        // 提示卡（竖排）的宽高：88 = 插画那格（--gw，就是 CARD_W）+ 名字那一条
+                                // 117 是 e2e 拿真卡片量出来的（插画在不在都一样高：CSS 把那一格定死成 --gw）
+                                // 哪天改了字号 / 间距 / 卡的排法 → 跑 e2e，它会报出差了多少
+  GAP:10,                       // 她与卡片之间的缝
+  PAD:8,                        // 离屏幕边的安全距离
+  RIDE_RATE:.4,                 // 最多走屏幕短边的四成（剩下的交给屏幕容不容得下）
+  lane(dir, p, len){
+    const meta = (typeof Gestures !== 'undefined' && Gestures._meta) ? Gestures._meta() : PULL_META;
+    const pm = meta && meta[dir];
+    if(!pm) return null;
+    const n = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+    const w = Math.max(220, window.innerWidth || 390), h = Math.max(340, window.innerHeight || 844);
+    const edge = pm.edge, CW = this.CARD_W, CH = this.CARD_H;
+    /* 屏幕容得下的最大行程：整簇（卡片 + 缝 + 她）都得留在屏幕里 */
+    const room = (edge === 'left' || edge === 'right')
+      ? w - this.PAD*2 - CW - this.GAP - this.MINI_W
+      : (edge === 'top'
+         ? h - this.PAD*2 - h*.15 - CH - this.GAP - this.MINI_H*this.IMG_DOWN
+         : h*.84 - this.PAD - CH - this.GAP - this.MINI_H);
+    const rideMax = Math.max(48, Math.min(Math.min(w, h) * this.RIDE_RATE, room));
+    const ride = n(len == null ? p * rideMax : len, 0, rideMax);
+    /* 卡片朝屏幕中间的那条边在哪 —— 她就在它外面 GAP 处 */
+    let x, y, cl, ct;
+    if(edge === 'left' || edge === 'right'){
+      const out = this.PAD + ride + CW;                        // 卡片朝中间那条边离屏幕边的距离
+      cl = edge === 'left' ? this.PAD + ride : w - this.PAD - ride - CW;
+      ct = h/2 - CH/2;
+      x = edge === 'left' ? out + this.GAP + this.MINI_W/2 : w - out - this.GAP - this.MINI_W/2;
+      y = h/2 + this.MINI_H * (this.IMG_UP + this.IMG_DOWN)/2; // 她和卡片一样在屏幕中线上
+    }else{
+      cl = w/2 - CW/2;
+      ct = edge === 'top' ? h*.15 + ride : h*.84 - ride - CH;
+      x = w/2;
+      y = edge === 'top'
+        ? ct + CH + this.GAP + this.MINI_H*this.IMG_DOWN            // 她整个身子在卡片下面
+        : ct - this.GAP + this.MINI_H*this.IMG_UP;                  // 她整个身子在卡片上面
+    }
+    const hx = n(x, this.MINI_W/2 + 2, w - this.MINI_W/2 - 2);
+    const hy = n(y, this.MINI_H*this.IMG_UP + 2, h - 2);
+    return {
+      edge, p, ride, rideMax, x:hx, y:hy,
+      card:{l:cl, t:ct, r:cl + CW, b:ct + CH},
+      her:{l:hx - this.MINI_W/2, r:hx + this.MINI_W/2, t:hy - this.MINI_H*this.IMG_DOWN, b:hy - this.MINI_H*this.IMG_UP}
+    };
+  },
+  /* 「砰」：大立绘原地缩小淡出，Q版小人在按压点上方 pop 出来 */
+  out(x, y){
+    this.restore(true);
+    const el = document.createElement('div');
+    el.id = 'pull-mini'; el.className = 'pop';
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.innerHTML = HerBody.imgHtml('q', 'base', {small:true});   // mimi/q.png（缺图走回退链兜底）
+    document.body.appendChild(el);
+    this._el = el; this._x0 = x; this._y0 = y;
+    const m = document.getElementById('mascot');
+    if(m && m.classList){ m.classList.remove('mascot-hop','mascot-squish'); m.classList.add('pop-down'); }
+    return true;
+  },
+  /* 拉页面（v1.7.2）：方向一确定 → 她「瞬移」到提示卡旁边站定；
+     之后你划多远，她和卡片就一起往屏幕里走多远（1:1 跟手），
+     划过 PULL_COMMIT 那个刻度（够松手进页的刻度）→ 姿势从「小拉」换成「用力拉」 */
+  dragTo(dir, p, ride){
+    if(!this._el || !dir) return;
+    const L = this.lane(dir, p, ride);
+    if(!L) return;
+    const edge = L.edge;
+    if(this._edge !== edge){
+      /* 定方向：瞬移（无过渡）到卡片旁边，从「小拉」重新开始 */
+      this._edge = edge;
+      if(this._el.classList) this._el.classList.remove('pull-soft', 'pull-hard');
+    }
+    if(this._el.style){
+      this._el.style.left = L.x + 'px';
+      this._el.style.top = L.y + 'px';
+    }
+    if(this._el.classList){
+      /* 划到一定程度（= 松手能进页的那个刻度）→ 换成「用力拉」 */
+      this._el.classList.toggle('pull-soft', p > 0 && p < PULL_COMMIT);
+      this._el.classList.toggle('pull-hard', p >= PULL_COMMIT);
+    }
+    /* 姿势：划到哪儿用哪张图（小拉 / 用力拉），往哪个方向拉就用哪一套 */
+    const real = this._pose(p >= PULL_COMMIT, dir);
+    if(this._el.style){
+      /* 拉的方向写进 CSS 变量：倾斜与拽劲儿都朝屏幕里面。
+         ⚠️ 用的是你自己的图（已经画好了朝哪边拉）→ 倾斜收成 0：
+            再拧她 16° 等于把画好的姿势又歪一遍，连她手里那根杆子都会跟着斜 */
+      const k = real ? 0 : 1;
+      this._el.style.setProperty('--lean', (16 * {left:1, right:-1, top:.2, bottom:.2}[edge] * k) + 'deg');
+      this._el.style.setProperty('--tugx', (edge === 'left' ? 7 : edge === 'right' ? -7 : 0) * k + 'px');
+      this._el.style.setProperty('--tugy', (edge === 'top' ? 7 : edge === 'bottom' ? -7 : 0) * k + 'px');
+    }
+  },
+  /* ── 拉页面的图（v1.7.4：按方向分开）──
+     你的图是朝哪边拉的，就该在哪边用——往左拉用朝左的那张，往上拉用朝上的那张。
+     名字（dir = 你划的方向，不是卡片在哪条边）：
+       小拉    不分方向 mimi/pull.png       分方向 mimi/pull-left.png / -right.png / -up.png / -down.png
+       用力拉  不分方向 mimi/pull-hard.png  分方向 mimi/pull-hard-left.png / -right.png / -up.png / -down.png
+     找的顺序：
+       小拉   ① 这个方向的小拉  ② 不分方向的小拉
+       用力拉 ① 这个方向的用力拉 ② 不分方向的用力拉 ③ 这个方向的小拉 ④ 不分方向的小拉
+     一句话：**「用力拉」实在没有才会去借「小拉」；轻轻一拉绝不会拿到一张使劲的脸。**
+     在「她的身体 → 动作图」里传过那两张（不分方向的）→ 全听你的，压过 mimi/ 里任何一个文件。
+     只画了 pull.png 一张 = 四个方向都用它，跟以前一样；只画了朝左的、没画朝右的 →
+     往右拉退回那张不分方向的（不会空着）。图裂了 → 先接力回她平常的样子（fb 名单） */
+  DIRS:['left','right','up','down'],               // 你划的方向（不是卡片在哪条边）
+  dirOf(dir){ return this.DIRS.indexOf(dir) >= 0 ? dir : null; },
+  fileKey(hard, dir){                              // 这个名字也直接当 mimi/ 的文件名用
+    const d = this.dirOf(dir);
+    return (hard ? 'pull-hard' : 'pull') + (d ? '-' + d : '');
+  },
+  allFiles(){                                      // 开机要探的那 10 个名字（4 方向 × 2 档 + 2 张通用的）
+    const out = [];
+    [false, true].forEach(h=>{
+      out.push(this.fileKey(h, null));
+      this.DIRS.forEach(d=>out.push(this.fileKey(h, d)));
+    });
+    return out;
+  },
+  keys(hard, dir){                                 // 上面那条「找的顺序」
+    const d = this.dirOf(dir), out = [];
+    const push = k => { if(k && out.indexOf(k) < 0) out.push(k); };
+    if(hard){ push(this.fileKey(true, d)); push('pull-hard'); push(this.fileKey(false, d)); push('pull'); }
+    else    { push(this.fileKey(false, d)); push('pull'); }
+    return out;
+  },
+  art(hard, dir){
+    const q = HerBody.pick('q','base');
+    const fb = [];                                  // 图裂之后接力回她平常的样子
+    if(q && q.src) fb.push(q.src);
+    if(q && q.fb) fb.push.apply(fb, q.fb);
+    const keys = this.keys(hard, dir);
+    for(const k of keys){                           // ① 你在「她的身体」里传过的
+      const id = HerBody.id('acts', k);
+      const u = id ? Store.getImage(id) : null;
+      if(u) return {src:u, fb, key:k};
+    }
+    for(const k of keys){                           // ② mimi/ 里的文件（探到了才算数）
+      const f = HerBody.builtinFile('acts', k);
+      const hit = f ? HerBody.warmed(artCands(f)) : null;   // v1.7.6：.png 不在就看同名 .webp
+      if(hit) return {src:hit, fb, key:k};
+    }
+    return {src:null, fb, key:null};                // ③ 都没有 → Q版 + 姿势替身
+  },
+  /* 换到这一档 + 这个方向该用的图。回 true = 用的是真图（姿势替身该收起来） */
+  _pose(hard, dir){
+    const el = this._el;
+    /* 换图的钥匙 = 哪一档 + 哪个方向（方向变了也得换：朝左拉和朝上拉是两张图） */
+    const key = (hard ? 'hard' : 'soft') + '|' + (this.dirOf(dir) || '-');
+    if(this._artKey === key) return !!this._key;   // 同一档同一方向不重复换（换来换去会闪）
+    this._artKey = key;
+    if(!el || !el.querySelector) return false;
+    const a = this.art(hard, dir);
+    this._key = a.key;
+    const img = el.querySelector('img');
+    if(a.src && img){
+      try{ img.removeAttribute('data-her-img'); }catch(e){}   // 拉页面期间它不是「表情」，别被换脸顺手带走
+      img.dataset.fb = JSON.stringify(a.fb || []);
+      img.style.display = '';
+      const sib = img.nextElementSibling;
+      if(sib && sib.classList && sib.classList.contains('mascot-shell')) sib.style.display = 'none';
+      img.src = a.src;
+      this._swapped = true;
+    }else if(this._swapped){
+      /* 这一档没图、上一档有（比如只放了 pull-hard.png 没放 pull.png）→ 把她还原成 Q版 */
+      try{ el.innerHTML = HerBody.imgHtml('q', 'base', {small:true}); }catch(e){}
+      this._swapped = false;
+    }
+    return !!this._key;
+  },
+  /* 没拉够：小人弹掉、大立绘「砰」地变回来 */
+  back(){
+    if(this._el){ this._el.classList.add('out'); setTimeout(()=>this.restore(), 240); }
+    else this.restore();
+  },
+  /* 拉够：进加载页前清场（新页面的 renderView 会重建大立绘） */
+  away(){ this.restore(true); },
+  restore(keepPopDown){
+    try{ if(this._el) this._el.remove(); }catch(e){}
+    this._el = null; this._edge = null; this._artKey = null;
+    this._key = null; this._swapped = false;
+    const m = document.getElementById('mascot');
+    if(m && m.classList && !keepPopDown){
+      m.classList.remove('pop-down');
+      m.classList.add('pop-back');
+      setTimeout(()=>{ try{ m.classList.remove('pop-back'); }catch(e){} }, 400);
+    }
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.8c 她的房间（v1.7.3）：她的空间的背景按时间段换
+   清晨 / 白天 / 黄昏 / 晚上 / 深夜——图都住在 mimi/（时段表见 CONFIG.DAY_BG）
+   这里只干一件事：算出「现在算哪个时段」，在 body 上打个标记（data-daypart），
+   背景交给 CSS 去换（哪张图不在，那段时间就还是原来那套紫夜渐变，什么都不影响）
+   ══════════════════════════════════════════════════════════════ */
+const DayBg = {
+  _k:null,
+  /* 这会儿是哪个时段：from/to 是「当天第几分钟」，from > to 的那一段是跨夜的 */
+  info(now){
+    const d = new Date(now == null ? Date.now() : now);
+    const min = d.getHours() * 60 + d.getMinutes();
+    for(const b of CONFIG.DAY_BG.BUCKETS){
+      const inIt = (b.from <= b.to) ? (min >= b.from && min < b.to) : (min >= b.from || min < b.to);
+      if(inIt) return b;
+    }
+    return CONFIG.DAY_BG.BUCKETS[0];        // 表没写全时的兜底（永远不会没背景）
+  },
+  /* 这会儿该用哪张图（给测试和以后要用的人看） */
+  file(now){ return CONFIG.DAY_BG.DIR + this.info(now).file; },
+  /* 每秒跟着主循环走：时段没变就什么都不做（不碰 DOM，不重排） */
+  tick(now){
+    const k = this.info(now).k;
+    if(k === this._k) return k;
+    this._k = k;
+    try{
+      if(typeof document !== 'undefined' && document.body && document.body.dataset) document.body.dataset.daypart = k;
+    }catch(e){}
+    return k;
   }
 };
 
@@ -7503,6 +8341,7 @@ function renderView(){
   document.getElementById('back-btn').classList.toggle('hidden', isPure);
   document.body.classList.toggle('pure-mode', isPure);
   document.body.classList.toggle('mspace-mode', S.view==='mspace');   // 她的世界：换一套背景
+  if(typeof DayBg !== 'undefined') DayBg.tick();       // 她的房间：这会儿该是清晨还是深夜（v1.7.3）
   /* 长按方向提示随视图变化（首页 4 向 / 她的空间 3 向），只在视图真的换了时重建 */
   if(typeof Gestures !== 'undefined' && Gestures._builtView !== S.view){
     Gestures._builtView = S.view;
@@ -7571,6 +8410,30 @@ function bootMain(){
   reconcileNow();
   applyBg();                // 应用自定义背景
   applyAnimLevel();         // 动画强度三档
+  /* 拉页面那几张图（mimi/pull*.png，见 PullMini.allFiles）先探一次在不在：
+     在 → 待会儿长按拖动就换成它；不在 → 一直用 Q版 + 姿势替身，不会闪一张裂图 */
+  if(typeof HerBody !== 'undefined' && HerBody.warm && typeof PullMini !== 'undefined'){
+    try{ HerBody.warm(PullMini.allFiles().map(k=>HerBody.builtinFile('acts', k))); }catch(e){}
+  }
+  /* v1.7.5 那几张「过一会儿才要」的（进页时的过渡图 / 她的空间入口与传送 / 被拖）：
+     开机先别抢带宽，等首页安顿下来再在后台温一遍（探到了才用，没探到就照旧走兜底版）。
+     探的是「文件在不在 + 解码过没有」——用过一次浏览器就缓存了，之后再开机几乎不花流量 */
+  try{
+    if(typeof setTimeout === 'function' && typeof HerBody !== 'undefined' && HerBody.warm){
+      setTimeout(function(){
+        try{
+          const list = [];
+          /* 每个页面都按名字算一遍（她往 mimi/ 里丢一张「等级成长过渡图.png」就自动生效，零代码）——
+             没有那几页的文件就是几个很小的 404，不占带宽也不报错 */
+          Object.keys(PAGE_META).forEach(function(k){
+            const t = pageTransImg(k); if(t) list.push(t);
+          });
+          list.push(PORTAL_UI_ART, PORTAL_TRANS_ART, Q_DRAG_ART);
+          HerBody.warm(list);
+        }catch(e){}
+      }, 2600);
+    }
+  }catch(e){}
   renderView();
   /* 感情线先结账（感情会凉：好几天没打开，每天 -1）——必须排在 Her.onBoot 之前，
      因为它要读的是「上一次打开」的日期，而 Her.onBoot 一进来就把今天记上了 */

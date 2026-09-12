@@ -8,9 +8,12 @@
      浏览器会自动跳过，功能整体降级，不会报错。）
    ══════════════════════════════════════════════════════════════ */
 
-const CACHE = 'ps-v1.6.1';
-/* 系统默认的她（v1.6.1）：普通与 Q版两张最关键的先预缓存，其余表情差分随抓随存 */
-const SHELL = ['./', './index.html', './manifest.json', './apple-touch-icon.png', './favicon.png', './mimi/normal.png', './mimi/q.png'];
+const CACHE = 'ps-v1.7.6';
+/* 系统默认的她（v1.6.1）：普通与 Q版两张最关键的先预缓存，其余表情差分随抓随存
+   ⚠️ v1.7.6 起这两张是 .webp（上传的那份 mimi/ 全是压过的 .webp，PNG 原图在家里的「原图备份/」）。
+      以后你要是把 mimi/ 里的图换成别的格式，这里两条也要跟着改 —— 改错了不影响使用
+      （下面 addAll 有 catch，装不上就跳过），只是那两张失去了「断网也能开」的待遇 */
+const SHELL = ['./', './index.html', './manifest.json', './apple-touch-icon.png', './favicon.png', './mimi/normal.webp', './mimi/q.webp'];
 
 self.addEventListener('install', function(e){
   self.skipWaiting();
