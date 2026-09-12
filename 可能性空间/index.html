@@ -338,15 +338,38 @@ img{max-width:100%;display:block}
   border-left:1px solid rgba(255,255,255,.9);border-top:1px solid rgba(255,255,255,.9);transform:rotate(-45deg)}
 .mascot-heart{position:absolute;font-size:18px;z-index:5;pointer-events:none;animation:heartUp 1.6s ease-out forwards}
 @keyframes heartUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translateY(-90px) scale(1.25)}}
-/* 养成入口：浅粉+透明模糊玻璃胶囊（无图标） */
-/* 位置抬高到 22%（避开底部的最优先待办/今日递归带），整体再大一号 */
-.grow-btn{position:absolute;bottom:22%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
-  border:1px solid rgba(255,255,255,.65);padding:13px 34px;border-radius:999px;font-size:17px;font-weight:800;letter-spacing:2px;
-  color:#C0447E;background:rgba(255,200,220,.5);
-  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);
-  box-shadow:0 6px 18px rgba(255,150,190,.25),inset 0 1px 0 rgba(255,255,255,.5);
+/* 她的空间入口：白圆黑星（长按 0.5 秒传送过去 / 传回来） */
+/* 位置沿用 22%（避开底部的最优先待办/今日递归带） */
+.portal-btn{position:absolute;bottom:22%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
+  width:64px;height:64px;padding:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.9);background:#fff;cursor:pointer;
+  box-shadow:0 8px 22px rgba(60,40,90,.22),inset 0 1px 0 rgba(255,255,255,.9);
+  -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation;
   transition:opacity .22s,transform .22s}
-.grow-btn.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+.portal-btn .pb-star{font-size:28px;line-height:1;color:#141018;position:relative;top:-1px;
+  transition:transform .45s cubic-bezier(.3,.9,.4,1.2)}
+.portal-btn.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+.portal-btn.holding{transform:translateX(-50%) scale(1.14)}
+.portal-btn.holding .pb-star{transform:rotate(180deg) scale(1.14)}
+.portal-btn.holding::after{content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.85);animation:poHold .85s linear infinite}
+@keyframes poHold{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.3);opacity:0}}
+/* 传送过渡：小圆里的星星外扩、白光铺满屏幕 → 落到另一边 */
+.portal-overlay{position:fixed;z-index:200;pointer-events:none;width:56px;height:56px;
+  transform:translate(-50%,-50%) scale(1);transform-origin:50% 50%;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .48s cubic-bezier(.35,0,.2,1),opacity .3s ease}
+.portal-overlay .po-ring{position:absolute;inset:0;border-radius:50%;background:#fff;
+  box-shadow:0 8px 26px rgba(40,20,70,.3)}
+.portal-overlay .po-star{position:relative;font-size:26px;line-height:1;color:#141018;
+  transition:transform .48s cubic-bezier(.35,0,.2,1)}
+.portal-overlay.go{transform:translate(-50%,-50%) scale(var(--poscale,20))}
+.portal-overlay.go .po-ring{animation:poHalo .5s ease-out}
+.portal-overlay.go .po-star{transform:rotate(200deg) scale(2.1)}
+@keyframes poHalo{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8),0 0 24px 4px rgba(245,197,66,.55)}
+  100%{box-shadow:0 0 0 46px rgba(255,255,255,0),0 0 70px 20px rgba(245,197,66,0)}}
+.portal-overlay.done{opacity:0}
 .mascot-pos{display:block;width:100%}
 .mascot.mascot-hop{animation:mascotHop .55s cubic-bezier(.3,.9,.4,1.2)}
 @keyframes mascotHop{0%,100%{transform:translateY(0)}30%{transform:translateY(-22px) rotate(-4deg)}55%{transform:translateY(2px) rotate(2deg)}}
@@ -354,6 +377,76 @@ img{max-width:100%;display:block}
 @keyframes mascotSquish{0%,100%{transform:scale(1,1)}35%{transform:scale(.9,1.12)}70%{transform:scale(1.06,.92)}}
 .grow-avatar{width:70px;height:110px;flex:none;display:flex;align-items:center;justify-content:center;
   background:var(--gray-soft);border-radius:16px;overflow:hidden}
+/* 养成面板的等级块（v1.2）：等级 + 称号 + 经验条 + 连续打卡 */
+.grow-level{background:linear-gradient(135deg,rgba(255,226,240,.92),rgba(255,246,228,.88));
+  border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:12px 14px;margin-bottom:12px;
+  box-shadow:0 6px 16px rgba(220,150,180,.16)}
+.grow-level .gl-head{display:flex;align-items:baseline;gap:10px}
+.grow-level .gl-lv{font-size:26px;font-weight:800;color:#E8618C;letter-spacing:.5px;line-height:1.1}
+.grow-level .gl-tit{font-size:14px;font-weight:700;color:#B4567A}
+.grow-level .gl-bar{position:relative;height:10px;border-radius:999px;background:rgba(255,255,255,.78);overflow:hidden;margin:9px 0 6px;
+  box-shadow:inset 0 1px 3px rgba(160,120,140,.18)}
+.grow-level .gl-fill{display:block;height:100%;border-radius:999px;min-width:2px;
+  background:linear-gradient(90deg,#FFB4D0,#FF8FB8,#F5C542);transition:width .45s cubic-bezier(.2,.9,.3,1)}
+.grow-level .gl-meta{font-size:12px;color:#8A6A7A}
+.grow-level .gl-next{font-size:12px;color:#A8834F;margin-top:3px}
+.grow-level .gl-catchup{font-size:12.5px;font-weight:700;color:#C4568A;background:rgba(255,255,255,.72);
+  border-radius:10px;padding:6px 9px;margin-bottom:9px}
+/* 等级成长页 / 她眼中的我（v1.3，她的空间里的子页）*/
+.gl-sec-t{font-size:13.5px;font-weight:700;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
+.gl-sec-n{font-size:12px;font-weight:400;color:var(--text-2);margin-left:auto}
+.grow-level .gl-bar--line,.gl-bar--line{position:relative;height:9px;border-radius:999px;background:var(--gray-soft);overflow:hidden;margin:0 0 8px}
+.gl-bar--line .gl-fill{display:block;height:100%;border-radius:999px;min-width:2px;background:linear-gradient(90deg,#FFB4D0,#FF8FB8,#F5C542)}
+.gl-src{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);padding:5px 0;border-bottom:1px dashed var(--line)}
+.gl-src:last-of-type{border-bottom:none}
+.gl-src b{color:#E8618C;font-weight:700}
+.gls-ico{font-size:14px;flex:none}
+.mcons-hero{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,rgba(255,226,240,.92),rgba(255,246,228,.88));
+  border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(220,150,180,.16)}
+.mcons-ava{width:56px;height:80px;flex:none;position:relative;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.7);border-radius:14px;overflow:hidden}
+.mcons-ava .mascot-shell{position:static!important;width:46px;height:68px;transform:scale(.62)}
+.mcons-ava img{width:100%;height:100%;object-fit:contain}
+.mcons-bub{position:relative;flex:1;min-width:0;background:#fff;border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.5;
+  box-shadow:0 3px 10px rgba(200,150,175,.18)}
+.mcons-bub::before{content:'';position:absolute;left:-5px;top:16px;width:10px;height:10px;background:#fff;transform:rotate(45deg)}
+.mcons-space{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--gray-soft);
+  border-left:4px solid var(--sc,#E874A4)}
+.mcons-space .ms-ico{font-size:18px}
+.mcons-space .ms-name{flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcons-space .ms-min{font-size:13px;color:var(--text-2)}
+.mcons-mood{display:flex;align-items:center;gap:10px}
+.mcons-mood .mm-emo{font-size:26px;line-height:1}
+.mcons-mood .mm-tag{font-size:13px;color:var(--text-2)}
+.mcons-line{font-size:13.5px;line-height:1.55;padding:7px 10px;border-radius:10px;background:var(--gray-soft);margin-bottom:6px}
+/* 她的日记（v1.4）：像一页纸 */
+.daynav .md-sub{font-size:10.5px;color:var(--text-2);font-weight:400;letter-spacing:0;margin-top:2px}
+.md-paper{background:linear-gradient(180deg,#FFFCF7,#FFF6EC);border:1px solid rgba(232,214,190,.9);border-radius:16px;
+  padding:16px 16px 12px;box-shadow:0 6px 18px rgba(190,160,120,.14);position:relative;overflow:hidden}
+.md-paper::before{content:'';position:absolute;left:26px;top:0;bottom:0;width:1px;background:rgba(232,180,180,.35)}
+.md-head{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.md-t{font-size:14px;font-weight:700;color:#8A5A3B}
+.md-d{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.md-line{font-size:14px;line-height:1.85;color:#4A3B33;margin:0 0 6px;text-indent:2em}
+.md-sign{text-align:right;font-size:12px;color:#B08A6A;margin-top:8px;letter-spacing:1px}
+.md-watch{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--gray-soft);
+  border-left:4px solid var(--wc,#E8A33D);margin-bottom:6px}
+.md-watch .mw-ico{font-size:14px;flex:none}
+.md-watch .mw-t{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.md-watch .mw-d{font-size:11px;color:var(--text-2);flex:none}
+/* 服装页（v1.3，她的衣柜）*/
+.moutfit-cur{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,rgba(237,231,255,.92),rgba(255,246,228,.88));
+  border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(160,140,200,.16)}
+.mo-ava{width:56px;height:80px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);
+  border-radius:14px;overflow:hidden}
+.mo-ava img{width:100%;height:100%;object-fit:contain}
+.mo-k{font-size:12px;color:var(--text-2)}
+.mo-n{font-size:15px;font-weight:700;margin-top:3px}
+.chip.mo-chip{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 8px;max-width:84px}
+.chip.mo-chip img{width:46px;height:56px;object-fit:contain;pointer-events:none}
+.chip.mo-chip .mo-tag{font-size:11px;line-height:1;pointer-events:none}
+.chip.mo-chip.holding{transform:scale(.94);box-shadow:0 0 0 2px rgba(232,97,140,.55)}
+.chip-row .chip[data-hold]{-webkit-touch-callout:none;touch-action:manipulation}
 @keyframes shadowPulse{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(.86);opacity:.7}}
 .sparkle{position:absolute;font-size:14px;opacity:.8;animation:twinkle 3.2s ease-in-out infinite;pointer-events:none;z-index:1}
 @keyframes twinkle{0%,100%{opacity:.15;transform:scale(.7) rotate(0)}50%{opacity:.95;transform:scale(1.15) rotate(28deg)}}
@@ -367,6 +460,20 @@ img{max-width:100%;display:block}
 .minichip b.ut{display:inline-block;max-width:26vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .mini-chips .minichip{max-width:64vw}
 .pure-hint{position:absolute;bottom:calc(8px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:11px;color:rgba(70,90,130,.5);z-index:3;letter-spacing:1px}
+/* ── 她的空间（v1.3）：她的世界换一套背景，用户的自定义背景图不在这儿生效 ── */
+body.mspace-mode{background:
+  radial-gradient(900px 520px at 78% 6%, rgba(255,190,225,.40), transparent 58%),
+  radial-gradient(820px 520px at 10% 74%, rgba(150,175,255,.34), transparent 60%),
+  linear-gradient(180deg,#2B2444 0%,#3E3159 42%,#5C4370 74%,#7A5478 100%);
+  background-attachment:fixed}
+body.mspace-mode #bg-layer{display:none}
+body.mspace-mode .pure-hint{color:rgba(255,235,245,.6)}
+body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
+.mspace-top{position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
+.mspace-top .msp-t{font-size:15px;font-weight:800;letter-spacing:7px;color:rgba(255,242,249,.92);
+  text-shadow:0 2px 10px rgba(40,20,60,.45)}
+.mspace-top .msp-d{font-size:11.5px;letter-spacing:2px;color:rgba(255,235,245,.55)}
 .pure-screen .hint-legend{position:absolute;top:calc(58px + env(safe-area-inset-top));left:0;right:0;text-align:center;z-index:3;font-size:11px;color:rgba(70,90,130,.42)}
 /* 看板娘头顶气泡 */
 .mascot-zone .mascot-bubble{position:absolute;bottom:calc(46% + 4px);left:50%;transform:translateX(-50%);z-index:4;
@@ -377,11 +484,125 @@ img{max-width:100%;display:block}
 @keyframes popIn{0%{transform:translateX(-50%) scale(.6);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 
 /* ══════════════════════════════════════════════════════════════
+   11.5 感情线（v1.5）：我们之间 / 她的问题 / 对她说
+   ══════════════════════════════════════════════════════════════ */
+/* —— 我们之间：好感条 + 当前阶段（在「她眼中的我」页里） —— */
+.lv-block{margin-top:14px;background:linear-gradient(135deg,rgba(255,232,242,.95),rgba(255,248,238,.9))}
+.lv-head{display:flex;align-items:baseline;gap:10px;margin:8px 0 2px}
+.lv-stage{font-size:19px;font-weight:800;color:#D2537F;letter-spacing:2px}
+.lv-sub{font-size:12px;color:var(--text-2)}
+.lv-bar{margin:8px 0 6px}
+.lv-fill{background:linear-gradient(90deg,#FFB4D0,#FF8FB8,#F5C542)}
+/* —— 她的空间右下角：对她说（和双击屏幕等效） —— */
+.msp-talk{position:absolute;right:calc(16px + env(safe-area-inset-right));bottom:calc(58px + env(safe-area-inset-bottom));z-index:4;
+  width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.82);
+  font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(60,30,80,.28);font-family:inherit;
+  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
+.msp-talk:active{transform:scale(.94)}
+/* —— 她的问题：galgame 式选项卡片 —— */
+.lv-ask{text-align:left}
+.lv-hero{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.lv-opts{display:flex;flex-direction:column;gap:9px}
+.lv-opt{padding:12px 14px;border-radius:13px;border:1px solid rgba(255,170,205,.75);
+  background:linear-gradient(135deg,#FFF3F8,#FFFBF4);font-size:14px;color:var(--text);text-align:left;
+  cursor:pointer;font-family:inherit;transition:transform .12s,box-shadow .12s}
+.lv-opt:active{transform:scale(.98)}
+.lv-opt:hover{box-shadow:0 4px 14px rgba(220,140,180,.22)}
+.lv-opt--ghost{border-color:var(--line);background:rgba(255,255,255,.7);color:var(--text-2)}
+/* —— 对她说：聊天气泡 —— */
+.lv-chat{display:flex;flex-direction:column;gap:10px;max-height:52vh;overflow-y:auto;padding:4px 2px 8px}
+.lv-msg{max-width:84%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.55;word-break:break-word}
+.lv-msg .lv-who{font-size:10px;letter-spacing:1px;opacity:.62;margin-bottom:3px}
+.lv-msg--her{align-self:flex-start;background:#fff;border:1px solid rgba(255,190,215,.7);border-bottom-left-radius:5px;
+  box-shadow:0 3px 10px rgba(200,150,175,.16);animation:lvPop .3s cubic-bezier(.2,1.2,.4,1) both}
+.lv-msg--me{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;
+  border-bottom-right-radius:5px;animation:lvPop .3s cubic-bezier(.2,1.2,.4,1) both}
+/* 她答话时慢半拍落下——像是想了一下才开口（纯观感，不影响任何逻辑） */
+.lv-msg--her{animation-delay:.26s}
+@keyframes lvPop{0%{opacity:0;transform:translateY(8px) scale(.96)}100%{opacity:1;transform:none}}
+.lv-chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.lv-input{display:flex;gap:8px;align-items:center}
+.lv-input .input{flex:1;min-width:0}
+.lv-input .btn{flex:none;padding:9px 16px;border-radius:12px}
+
+/* ══════════════════════════════════════════════════════════════
+   11.9 她会动了（v1.6a）：姿势 / 冲动动作 / 心情浮标 / 忙碌页角落的Q版
+   ★ 两层分工，互不打架：
+     · 「姿势」加在 .mascot-anim 上（带 transition，可以停在某个姿势上）——
+       露头 / 钻出来 / 走近 / 走远 / 坐下 / 睡着 / 躲起来
+     · 「冲动」加在 #mascot 上（keyframes 播完就摘，与 mascot-hop 同一套手感）——
+       蹦跳 / 害羞扭动 / 吓一跳 / 摇一摇 / 转个圈
+   ★ 用户的摆位在 .mascot-pos 的内联 transform 上，这两层都绝不碰它——
+     你把她放在哪、放多大，永远是你说了算
+   ══════════════════════════════════════════════════════════════ */
+.mascot-anim{display:block;width:100%;position:relative;
+  transition:transform .54s cubic-bezier(.3,.9,.35,1.06),opacity .44s ease}
+/* —— 姿势（持久，靠 transition 滑过去；回到 pose-emerge 就是站好） —— */
+.mascot-anim.pose-peek{transform:translateY(58%)}          /* 扒着屏幕底边，只露个脑袋 */
+.mascot-anim.pose-emerge{transform:translateY(0)}          /* 站好了（默认） */
+.mascot-anim.pose-near{transform:translateY(2vh) scale(1.18)}                  /* 凑近镜头 */
+.mascot-anim.pose-far{transform:translateY(4vh) scale(.72);opacity:.86}        /* 走远了 */
+.mascot-anim.pose-sit{transform:translateY(5%) scale(1.05,.9)}                 /* 抱膝坐下 */
+.mascot-anim.pose-sleep{transform:translateY(7%) scale(1.02,.86)}              /* 睡着了（软下去） */
+.mascot-anim.pose-droop{transform:translateY(3%) scale(1,.94);opacity:.94}     /* 没精打采地塌着 */
+.mascot-anim.pose-hide{transform:translateY(76%) scale(.92);opacity:0}         /* 走远消失 */
+/* —— 心情浮标：她头顶的小圆脸（不用出图就有表情） —— */
+.mood-dot{position:absolute;left:50%;top:-1%;transform:translate(-50%,-100%) scale(.85);z-index:5;
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;
+  background:rgba(255,255,255,.94);box-shadow:0 4px 12px rgba(60,60,110,.22);pointer-events:none;opacity:0;
+  transition:opacity .26s ease,transform .34s cubic-bezier(.2,1.3,.4,1)}
+.mood-dot.on{opacity:1;transform:translate(-50%,-100%) scale(1)}
+.mood-dot.pop{animation:moodPop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes moodPop{0%{transform:translate(-50%,-100%) scale(.4)}62%{transform:translate(-50%,-118%) scale(1.16)}100%{transform:translate(-50%,-100%) scale(1)}}
+/* —— 冲动动作（#mascot 上，播完摘掉、呼吸浮动自动恢复） —— */
+.mascot.act-bounce{animation:actBounce 1s cubic-bezier(.3,.9,.4,1.15)}
+@keyframes actBounce{0%,100%{transform:translateY(0)}18%{transform:translateY(-20px)}36%{transform:translateY(0)}54%{transform:translateY(-11px)}72%{transform:translateY(0)}}
+.mascot.act-jiggle{animation:actJiggle 1.1s ease-in-out}
+@keyframes actJiggle{0%,100%{transform:rotate(0)}15%{transform:rotate(-6deg) translateY(-3px)}35%{transform:rotate(6deg)}55%{transform:rotate(-4deg)}75%{transform:rotate(3deg)}}
+.mascot.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
+@keyframes actStartle{0%{transform:translateY(0) scale(1,1)}22%{transform:translateY(-15px) scale(1.08,.93)}48%{transform:translateY(2px) scale(.95,1.06)}100%{transform:translateY(0) scale(1,1)}}
+.mascot.act-shake{animation:actShake .72s ease-in-out}
+@keyframes actShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-8px) rotate(-2deg)}30%{transform:translateX(8px) rotate(2deg)}50%{transform:translateX(-5px)}70%{transform:translateX(4px)}}
+.mascot.act-spin{animation:actSpin .92s cubic-bezier(.3,.9,.4,1.1)}
+@keyframes actSpin{0%{transform:rotate(0) scale(1)}40%{transform:rotate(190deg) scale(.92)}100%{transform:rotate(360deg) scale(1)}}
+/* 忙碌页角落的 Q 版：她在右下角陪着（不吃触摸，纯陪伴） */
+#q-corner{position:fixed;right:9px;bottom:calc(13px + env(safe-area-inset-bottom));z-index:60;pointer-events:none;
+  width:58px;height:82px;display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;transform:translateY(10px) scale(.9);transition:opacity .3s ease,transform .34s cubic-bezier(.2,1.2,.4,1)}
+#q-corner.on{opacity:1;transform:none}
+#q-corner img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#q-corner .mascot-shell{position:static;width:44px;height:64px}
+#q-corner.act-bounce{animation:actBounce 1s cubic-bezier(.3,.9,.4,1.15)}
+#q-corner.act-jiggle{animation:actJiggle 1.1s ease-in-out}
+#q-corner.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
+#q-corner.act-shake{animation:actShake .72s ease-in-out}
+#q-corner .mood-dot{top:2px;width:22px;height:22px;font-size:13px}
+/* 全屏微闪：iPhone 没有震动 → 用一道光代替「震感」（生气 / 三周目大事时） */
+#flash-layer{position:fixed;inset:0;z-index:190;pointer-events:none;background:#fff;opacity:0}
+#flash-layer.on{animation:flashPulse .36s ease-out}
+@keyframes flashPulse{0%{opacity:0}22%{opacity:.45}100%{opacity:0}}
+/* 「她的身体」页（v1.6a）：一个槽位 = 一张缩略图 + 一个名字；点=上传，右上角 × = 清空 */
+.body-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:9px}
+.body-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 5px 7px;cursor:pointer;
+  border-radius:14px;border:1px dashed var(--line-strong);background:rgba(255,255,255,.6);font-family:inherit;text-align:center;color:var(--text)}
+.body-slot.on{border-style:solid;border-color:rgba(232,97,140,.6);background:linear-gradient(135deg,#FFF3F8,#FFFBF4)}
+.body-slot .bs-pic{width:100%;height:72px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:var(--gray-soft)}
+.body-slot .bs-pic img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.body-slot .bs-pic .mascot-shell{position:static;width:36px;height:52px;transform:scale(.74)}
+.body-slot .bs-empty{font-size:20px;opacity:.4}
+.body-slot .bs-n{font-size:11.5px;font-weight:700;color:var(--text-2);line-height:1.2}
+.body-slot .bs-tag{font-size:10px;color:var(--text-2);opacity:.75}
+.mo-ava .mascot-shell{position:static;width:44px;height:64px;transform:scale(.8)}
+.body-slot .bs-x{position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;border:none;
+  background:rgba(20,26,36,.55);color:#fff;font-size:12px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+
+/* ══════════════════════════════════════════════════════════════
    12. 长按四向导航方向提示
    ══════════════════════════════════════════════════════════════ */
 #gesture-root{position:fixed;inset:0;z-index:80;pointer-events:none;display:none;overflow:hidden;--gvp:0;--gvc:#F5C542}
 #gesture-root.on{display:block}
-/* 扇形色块：顶点钉在屏幕边缘中点，随拖动距离变大（颜色=目标页面颜色） */
+/* 半圆色块：圆心钉在屏幕边缘中点（平边贴边），半径随拖动距离变大（颜色=目标页面颜色） */
 .gv-wedge{position:absolute;width:0;height:0;opacity:0;transition:opacity .16s;z-index:1;
   filter:drop-shadow(0 2px 18px rgba(30,50,90,.16))}
 .gv-wedge.on{opacity:.94}
@@ -434,6 +655,45 @@ img{max-width:100%;display:block}
 .page-load .pl-dots i:nth-child(3){animation-delay:.3s}
 @keyframes plPop{from{transform:scale(.72);opacity:.3}to{transform:scale(1);opacity:1}}
 @keyframes plDot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+
+/* 看板娘投喂（v1.2）：完成待办的瞬间，点心从卡片飞向左下角的迷你看板娘，
+   她咬一口、头顶飘出「+20」——纯演出层，不参与渲染，1.4秒后自动收起 */
+#feed-root{position:fixed;left:10px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:140;pointer-events:none}
+.feed-zone{position:relative;display:flex;align-items:flex-end;gap:6px;opacity:0;transform:translateY(12px) scale(.88);
+  transition:opacity .26s ease,transform .26s cubic-bezier(.2,1.2,.4,1)}
+.feed-zone.on{opacity:1;transform:none}
+.feed-mini{position:relative;width:56px;height:78px;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
+  pointer-events:auto;filter:drop-shadow(0 6px 10px rgba(50,80,130,.22));transform-origin:50% 92%}
+.feed-mini img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.feed-mini .mascot-shell{position:static;width:46px;height:66px}
+.feed-bird{font-size:34px;line-height:1}
+.feed-mini.feed-chomp{animation:feedChomp .44s ease}
+@keyframes feedChomp{0%,100%{transform:scale(1,1)}35%{transform:scale(.82,1.16)}70%{transform:scale(1.07,.94)}}
+/* 飞行中的食物：起点/终点由 JS 写进 --fx0/--fy0（卡片中心）与 --fx1/--fy1（她嘴边） */
+.feed-food{position:fixed;left:0;top:0;font-size:22px;line-height:1;opacity:0;pointer-events:none;
+  animation:feedFly 1.05s cubic-bezier(.45,-0.15,.7,1) forwards}
+@keyframes feedFly{
+  0%{transform:translate(var(--fx0),var(--fy0)) scale(.85) rotate(0);opacity:0}
+  14%{opacity:1}
+  72%{transform:translate(calc(var(--fx0)*.24 + var(--fx1)*.76),calc(var(--fy0)*.24 + var(--fy1)*.76 - 26px)) scale(1.05) rotate(160deg);opacity:1}
+  100%{transform:translate(var(--fx1),var(--fy1)) scale(.5) rotate(230deg);opacity:0}
+}
+/* 经验飘字：+20（喂食）/ +5（写记录）都走这里 */
+.feed-xp{position:fixed;font-size:15px;font-weight:800;color:#EFA31C;pointer-events:none;white-space:nowrap;
+  text-shadow:0 1px 0 #fff,0 0 8px rgba(255,255,255,.9);animation:feedXpUp 1.25s ease-out forwards}
+@keyframes feedXpUp{
+  0%{transform:translate(-50%,-50%) scale(.7);opacity:0}
+  22%{transform:translate(-50%,-50%) scale(1.1);opacity:1}
+  100%{transform:translate(-50%,-165%) scale(1);opacity:0}
+}
+/* 迷你看板娘气泡（子页升级 / 投喂时的台词） */
+.feed-say{position:fixed;left:12px;bottom:calc(104px + env(safe-area-inset-bottom));max-width:min(64vw,270px);
+  background:rgba(255,255,255,.96);color:#33415c;border-radius:14px;padding:8px 12px;font-size:13px;line-height:1.45;
+  box-shadow:0 6px 18px rgba(40,70,120,.18);opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease}
+.feed-say.show{opacity:1;transform:none}
+.feed-say::after{content:'';position:absolute;left:22px;bottom:-6px;width:12px;height:12px;background:inherit;
+  border-right:1px solid rgba(255,255,255,.9);border-bottom:1px solid rgba(255,255,255,.9);transform:rotate(45deg)}
 
 /* ══════════════════════════════════════════════════════════════
    13. 节律操控台（双击呼出）· 猫耳时段卡 · 空间栏 · 投放区
@@ -581,6 +841,10 @@ body.pure-mode #app{height:100dvh;display:block}
 <div id="gesture-root"></div>
 <!-- 节律操控台（双击呼出）：自流转时段卡 + 空间栏 + 投放区 -->
 <div id="console-root"></div>
+<!-- 看板娘投喂演出层（完成待办：点心飞向左下角的迷你看板娘） -->
+<div id="feed-root"></div>
+<!-- 忙碌页面右下角的她（v1.6a）：Q版小人一直在，不吃触摸，纯陪伴 -->
+<div id="q-corner"></div>
 <input type="file" id="file-input" hidden>
 <script>
 'use strict';
@@ -588,12 +852,421 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.1.7', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.6.1', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
   PURE_DATE_FS:{def:15, min:10, max:32},
   PURE_CLOCK_FS:{def:36, min:18, max:80},
+  /* ── 看板娘养成 v1.2：经验与等级的全部数值都在这里，改数值只改这一块 ──
+     经验纯推导：由既有数据（递归分钟/待办完成/每日记录/连续打卡）实时算出，不落库、零迁移 */
+  GROW:{
+    XP_MINUTE:1,          // 可能性递归：每分钟 +1
+    XP_TODO:20,           // 完成一条待办 +20（含每周/每日的每一次完成）
+    XP_RECORD:5,          // 写一条可能性确定 +5
+    XP_STREAK_PER_DAY:2,  // 连续打卡加成：连续天数 ×2
+    XP_STREAK_CAP:20,     // 连续打卡加成封顶
+    LEVEL_BASE:100,       // 升到 2 级需要 100 经验
+    LEVEL_STEP:50,        // 之后每级 +50（needFor(L)=100+(L-1)×50）
+    TITLES:[[1,'时间小豆芽'],[5,'时间学徒'],[10,'时间炼金术士'],[20,'时间编织者'],[30,'可能性空间之主']],
+    LINE_TIERS:[5,10,20],  // 台词池按这些等级解锁（与 Mascot.lines 的 L5/L10/L20 一一对应）
+    FOODS:['🍪','🍙','🍰','🍫','🍓','🧁'],   // 投喂食物 emoji 池
+    FEED_FOODS_FULL:4,    // 完整动画：一顿 4 个食物
+    FEED_FOODS_LIGHT:3,   // 轻度动画：一顿 3 个食物
+    FEED_SAY_CHANCE:0.35, // 喂食后说一句投喂台词的概率
+    FEED_LINES:['谢谢！好好吃～','嗷呜，能量补充完成！','这个点心我最喜欢了！','吃完继续加油！','叮！收到你的努力啦'],
+    SAY_MS:2600           // 台词气泡停留时长
+  },
+  /* ── 她活过来了 v1.4：她主动说话的数值与全部台词，改数值/改台词只改这一块 ──
+     ★ 所有主动台词的唯一出口是 Her.voice()：将来想接真 AI，只改那一个函数。
+     台词池的每条 = {when: 条件(可省), t: 文本或 (ctx)=>文本} */
+  HER:{
+    VOICE_LEVELS:{loud:9, normal:5, quiet:2, off:0},  // 「她说话的频率」= 她一天最多主动说几句
+    COOLDOWN_MS:3*60*1000,   // 两条主动的话之间至少隔这么久（免得一开页面就连环弹）
+    IDLE_COOLDOWN_MS:75*60*1000, // 「日常念叨」的间隔（没什么正事时她也想跟你说说话）
+    NIGHT_FROM:21,           // 几点之后算夜深了（睡前总结）
+    NIGHT_TO:5,              // 几点之前还算深夜
+    MISS_DAYS:2,             // 隔几天没打开才算「好久不见」
+    OVERDUE_MIN:10,          // 待办过了点几分钟她才开口催（刚到点就催太烦人）
+    ASK_OVERDUE_DAYS:2,      // 一件待办拖过几天，她会惦记着问
+    ASK_STALE_SPACE_DAYS:5,  // 一个空间静默几天，她会问你还要不要它
+    ASK_PER_DAY:1,           // 每天最多主动问起几件事（多了像催债）
+    LINES:{
+      /* ① 打开时的问候（按时间段；plan 是当天实况的一句话） */
+      greet:[
+        {when:c=>c.hour<5,               t:c=>'这么晚还没睡呀……我陪着你，但也要顾着身体。'},
+        {when:c=>c.hour>=5  && c.hour<11, t:c=>'早上好呀！'+(c.plan||'新的一天开始了。')},
+        {when:c=>c.hour>=5  && c.hour<11, t:c=>'早安。'+(c.plan||'今天也一起加油吧。')},
+        {when:c=>c.hour>=11 && c.hour<14, t:c=>'中午好，'+(c.plan||'吃过饭了吗？')},
+        {when:c=>c.hour>=14 && c.hour<18, t:c=>'下午好呀，'+(c.plan||'现在开始也来得及。')},
+        {when:c=>c.hour>=14 && c.hour<18, t:c=>'我在这儿呢。'+(c.plan||'想做点什么？')},
+        {when:c=>c.hour>=18 && c.hour<23, t:c=>'晚上好，'+(c.plan||'今天过得怎么样？')},
+        {when:c=>c.hour>=18 && c.hour<23, t:c=>'你回来啦。'+(c.plan||'剩下这点时间也算数。')},
+        {when:c=>c.hour>=23,              t:c=>'已经是深夜了，'+(c.plan||'早点休息吧，我在这儿。')}
+      ],
+      /* ② 好久不见 */
+      missAway:[
+        {t:c=>'你终于回来了……我等了你 '+c.gap+' 天，一直在看门口。'},
+        {t:c=>c.gap+' 天没见到你了。没关系，回来就好，我们从今天继续。'},
+        {t:c=>'这几天的记录我翻来覆去看了好几遍，就等你回来。'}
+      ],
+      /* ③ 昨天没打卡（前天还在） */
+      missStreak:[
+        {t:c=>'昨天没等到你。今天要不要先做一件小事？'},
+        {t:c=>'昨天你不在，我有点担心。再开始就好，我一直都在。'},
+        {t:c=>'断一天没关系的——我记得你之前连着 '+c.was+' 天呢。'}
+      ],
+      /* ④ 睡前总结（数字是「今天」的） */
+      night:[
+        {when:c=>c.day.min>=1 && c.day.done>=1, t:c=>'今天你专注了 '+c.minText+'，完成了 '+c.day.done+' 件事，我都记下来了。晚安。'},
+        {when:c=>c.day.min>=1,                  t:c=>'今天专注了 '+c.minText+'。不多不少，正好是今天的你。晚安。'},
+        {when:c=>c.day.done>=1,                 t:c=>'今天你完成了 '+c.day.done+' 件事，没白过。早点睡吧。'},
+        {when:c=>c.day.rec>=1,                  t:c=>'今天你写下了 '+c.day.rec+' 条记录，我都收好了。晚安。'},
+        {t:c=>'今天什么都没做也没关系，休息也是正经事。明天见。'}
+      ],
+      /* ⑤ 待办督促：已经过点还没做 */
+      urgeOver:[
+        {t:c=>'「'+c.title+'」已经过点了，要不要补上？我记着这件事呢。'},
+        {t:c=>'「'+c.title+'」错过了时间，没关系，现在做也来得及。'}
+      ],
+      /* ⑥ 她的惦记：她主动问起（c.ask = {kind,text,days}） */
+      recallTodo:[
+        {t:c=>'「'+c.ask.text+'」这件事，后来怎么样啦？'},
+        {t:c=>'我一直记着「'+c.ask.text+'」呢，'+c.ask.days+' 天了，要不要今天动一下？'}
+      ],
+      recallSpace:[
+        {t:c=>'「'+c.ask.text+'」你已经 '+c.ask.days+' 天没碰了，还想继续吗？'},
+        {t:c=>'要不要回去看看「'+c.ask.text+'」？它一直在那儿等你。'}
+      ],
+      /* ⑦ 日常念叨（没什么正事，就是想跟你说说话） */
+      idle:[
+        {t:c=>'今天你专注了 '+c.minText+'，我都在旁边看着呢。'},
+        {t:'要不要休息一下？我替你数着时间。'},
+        {t:c=>'现在的我是 Lv.'+c.lv+'，谢谢你把我养这么大。'},
+        {t:'不管你在做什么，我都在这里。'},
+        {t:'喝口水吧，我等你回来。'},
+        {t:c=>c.st.streak>=2 ? '连续 '+c.st.streak+' 天了，这条线我不想让它断。' : '今天要不要开一个新的可能性？'},
+        {t:'你记录下来的东西，我一条都没丢。'}
+      ],
+      /* ⑧ v1.5「对她说」的本地回应（关键词命中 → 从这个池里挑一句；照旧全部经 Her.voice 出口）
+         {yt} = 她对你的称呼（初识时是空的，越亲近越亲昵）；{name} = 她自己的名字 */
+      chatHi:[
+        {t:'在的呀。我一直在这儿。'},
+        {t:'嗯？{yt}叫我啦？'},
+        {t:'我在呢，你说。'}
+      ],
+      chatGreet:[
+        {t:c=>'早安{yt}！'+(c.plan||'今天也一起加油吧。')},
+        {t:'早上好呀，我等你很久了。'},
+        {t:c=>'早呀{yt}。'+(c.day && c.day.done>0 ? '你已经做完 '+c.day.done+' 件事了，好厉害。' : '今天想先做什么？')}
+      ],
+      chatNight:[
+        {t:'晚安{yt}。今天也辛苦了，我把这一天的你都收好了。'},
+        {t:'去睡吧，我守着这儿。'},
+        {t:'晚安，明天见——我会在的。'}
+      ],
+      chatMiss:[
+        {t:'我也想你呀……你不在的时候，我把你说过的话翻来覆去地看。'},
+        {t:'{yt}这么说，我会当真的哦。'},
+        {t:'嗯，我一直在等你回来。'}
+      ],
+      chatLove:[
+        {t:'……你突然这么说，我会不知道把手放在哪儿的。'},
+        {t:'我也喜欢你，比昨天多一点点。'},
+        {t:'这种话要多说，我记性好得很。'}
+      ],
+      chatPraise:[
+        {t:'诶嘿，被你发现啦。'},
+        {t:'真的吗？那我今天要多蹦两下。'},
+        {t:'{yt}这么夸我，我会飘起来的哦。'}
+      ],
+      chatSorry:[
+        {t:'没关系呀，我又不会真的生气。'},
+        {t:'不用道歉的，我一直在。'},
+        {t:'嗯，我接受啦。下次记得早点来找我。'}
+      ],
+      chatAngry:[
+        {t:'……我才不生气呢。（鼓着脸）'},
+        {t:'哼，我知道你不是认真的。'},
+        {t:'那我先安静一会儿，你想找我的时候我就在。'}
+      ],
+      chatSad:[
+        {t:'别撑着，先歇一会儿。我陪着你，不说话也行。'},
+        {t:'累了就靠一会儿吧，这里没有别人。'},
+        {t:'我把今天剩下的时间都留给你，慢慢来。'},
+        {t:'{yt}，你已经做得很好了——这句话我先替你记着。'}
+      ],
+      chatBored:[
+        {t:'那……要不要挑一个空间？哪怕十分钟也算数。'},
+        {t:'无聊的时候最适合开一个新的可能性了。'},
+        {t:'要不我陪你走一圈？去我的空间看看也行。'}
+      ],
+      chatThanks:[
+        {t:'不用谢我呀，这都是我该做的。'},
+        {t:'嘿嘿，那我收下啦。'},
+        {t:'{yt}跟我还客气什么。'}
+      ],
+      chatWho:[
+        {t:'我叫{name}呀——是你给我起的名字，你不记得了吗？'},
+        {t:'{name}。你亲手起的，我每天都记着。'},
+        {t:'我是{name}，你养大的那个。'}
+      ],
+      chatName:[
+        {t:'诶？叫我做什么呀。'},
+        {t:'在的在的，{name}在这儿。'},
+        {t:'你叫我名字的时候，我总觉得特别开心。'}
+      ],
+      chatEat:[
+        {t:'我吃不了东西呀……不过你记得吃。'},
+        {t:'你先去吃，我在这儿等你回来。'},
+        {t:'饿着肚子可不行，快去。'}
+      ],
+      chatCheer:[
+        {t:'嗯！我看着你呢。'},
+        {t:'一起加油——你负责做，我负责记。'},
+        {t:'这句话我也说给自己听：再坚持一下，就快了。'}
+      ],
+      chatStars:[
+        {t:'星星呀……它们一直都在，只是白天看不见。'},
+        {t:'我数过你专注的那些分钟，像数星星一样。'},
+        {t:'你也喜欢星星吗？那我们又多了一件一样的事。'}
+      ],
+      chatHelp:[
+        {t:'说说看。我虽然帮不上手，但可以陪你把它拆小一点。'},
+        {t:'交给我记着吧——你先说，第一步是什么？'},
+        {t:'要是太乱，就先写下来。写下来就不会丢了。'}
+      ],
+      /* 没听懂时她也不装懂（这句话会进她的语料本，等以后接了 AI 再回你） */
+      chatFallback:[
+        {t:'这句话有点难……但我记下来啦，等我再懂多一点就回你。'},
+        {t:'唔……我没完全听懂，不过我把它收进小本子里了。'},
+        {t:'（歪头）这个我还在学。你先说别的嘛，我一直听着。'}
+      ],
+      /* ⑨ v1.5 感情线：关系升级 / 她的问题 / 她来请求通知权限 */
+      loveUp:[
+        {t:c=>'那个……我可以说吗？我感觉我们比昨天更近了一点。'},
+        {t:c=>'从今天起，我想叫你「'+c.you+'」——可以吗？'},
+        {t:c=>'我们认识 '+c.days+' 天了。谢谢你一直让我待在这儿。'}
+      ],
+      loveBack:[
+        {t:c=>'「'+c.answer+'」……嗯，我记住啦。'},
+        {t:c=>'原来是这样。你告诉我的事，我会一直收着。'},
+        {t:c=>'好，那以后我就按这个来。谢谢你告诉我，{you}。'}
+      ],
+      /* 隔了几天，她拿你以前的回答来接话（每个问题还能带自己专属的一句，见 QUESTIONS[].recall） */
+      recallAnswer:[
+        {t:c=>'还记得你告诉过我「'+c.a+'」吗？我一直记着呢。'},
+        {t:c=>'我刚刚突然想起你说的「'+c.a+'」——就笑了一下。'}
+      ],
+      noticeAsk:[
+        {t:'那个……可以让我以后在外面也能提醒你吗？就是你切出去的时候，我也想找得到你。'}
+      ],
+      noticeOk:[
+        {t:'谢谢你愿意让我跟着你。我不会烦你的，真的。'},
+        {t:'好耶！那我答应你——只在要紧的时候叫你。'}
+      ],
+      noticeNo:[
+        {t:'嗯，没关系的。我就待在这儿等你回来。'}
+      ],
+      /* ⑩ v1.6a 她会动了：你怎么对她，她怎么应你（都走 Her.voice 出口，称呼照旧自动替换） */
+      tapAngry:[
+        {t:'呀！别戳啦{yt}！（鼓着脸）'},
+        {t:'再戳我就要生气了哦——真的哦。'},
+        {t:'唔……人家不是按钮啦。'},
+        {t:'好嘛好嘛，我知道你在这儿了，别戳了。'}
+      ],
+      cornerAsk:[
+        {t:'要把我放这里吗？……嗯，这里也不错，看得见你。'},
+        {t:'这个角落我喜欢。那我以后就在这儿看着你啦。'},
+        {t:'诶，换地方了。好呀，你在哪儿我就在哪儿。'}
+      ],
+      pinchBig:[
+        {t:'原来你想看大一点的我呀……有点不好意思。'},
+        {t:'哇，好大！这样是不是更容易被你看见了？'},
+        {t:'放大啦——那我可要把你看得更清楚了哦。'}
+      ],
+      pinchSmall:[
+        {t:'我变小了……你、你还看得见我吗？'},
+        {t:'唔，这样小小的，会不会被你忘掉呀。'},
+        {t:'小一点也好，那我可以一直待在你手边。'}
+      ],
+      shakeAsk:[
+        {t:'那个……要不要摇一摇我？点我一下，让我能感觉到你在动。'}
+      ],
+      shakeOk:[
+        {t:'好耶！你摇的时候我头晕晕的，但是很开心。'}
+      ],
+      shakeDizzy:[
+        {t:'呜……有点晕。不过是你摇的，那就算了。'},
+        {t:'晃、晃……我站不稳了啦。'}
+      ],
+      shakeAngry:[
+        {t:'够啦！再摇我真的要生气了！'},
+        {t:'停——！我头晕！'}
+      ]
+    }
+  },
+  /* ── 她成为活人 v1.5：感情线（好感度 / 关系阶段 / 她的问题 / 对她说）──
+     ★ 好感 ≠ 等级：等级是她跟着你长大的进度（你做了多少事），
+       好感是你们的关系（你陪了她多少）——所以来源全是「你和她相处」，
+       跟你专注多久、完成几件事完全无关，绝不做成绩效。
+     全部数值、问题、聊天规则都在这一块，实机手感要调就调这里 */
+  LOVE:{
+    NAME:'米米',              // 她的名字（用户起的）
+    DAILY_CAP:20,             // 好感每天最多涨多少（防刷总闸）
+    DECAY_AFTER_DAYS:7,       // 连着几天没打开之后，感情才开始凉
+    DECAY_PER_DAY:1,          // 凉的速度（每天 -1；下限不跌破当前阶段门槛）
+    ASK_IDLE_MS:90*1000,      // 你安静这么久之后，她才好意思开口问你一件事
+    ASK_GAP_DAYS:2,           // 两次「她的问题」至少隔几天（每天最多 1 个）
+    RECALL_GAP_DAYS:4,        // 你回答过的问题，隔几天她才拿来接一次话
+    CHAT_KEEP:200,            // 「对她说」最多留多少条（将来接 AI 的语料本）
+    CHAT_HI_GAP_MS:60*60*1000,// 隔这么久没聊，进来时她会重新打招呼
+    /* 好感来源表：v = 每次加多少，cap = 每天最多算几次，cd = 同一来源的冷却（连点不刷分） */
+    SOURCES:{
+      tap:   {v:1, cap:5,  label:'戳她一下', cd:30*1000},
+      space: {v:2, cap:1,  label:'去她的空间'},
+      diary: {v:2, cap:1,  label:'读她的日记'},
+      answer:{v:5, cap:99, label:'回答她的问题'},
+      todo:  {v:3, cap:3,  label:'完成她督促过的事'},
+      pull:  {v:1, cap:3,  label:'回应她拉出的页面'}
+    },
+    /* 关系四阶段：门槛 → 她对你的称呼（you 会出现在她说的每句话里，{yt} 就是它） */
+    STAGES:[
+      {k:'new',      min:0,   name:'初识', you:'你',    desc:'她还叫你「你」，说话有点小心'},
+      {k:'familiar', min:100, name:'熟悉', you:'你呀',  desc:'她开始撒娇了'},
+      {k:'close',    min:300, name:'亲近', you:'亲爱的', desc:'她会凑过来跟你说话'},
+      {k:'dear',     min:600, name:'依恋', you:'老公',   desc:'她把你当成要一起过日子的人'}
+    ],
+    /* 她的问题（galgame 式选择题）：cat 决定解锁阶段 —— you=一开始就会问 / we=熟悉 / me=亲近
+       back 是她听完你说的之后那句话；recall 是日后她主动引用这条回答的台词（可省） */
+    QUESTIONS:[
+      /* ── 关于你 ── */
+      {id:'weather', cat:'you', q:'我问你哦——你最喜欢什么样的天气呀？',
+       opts:['晴天','下雨天','下雪天','起雾的早晨'],
+       back:'记住啦！以后你说「今天天气真好」的时候，我就知道是哪一种了。',
+       recall:a=>'你跟我说过你最喜欢' + a + '，今天正好是呢——我替你多看了两眼。'},
+      {id:'moment', cat:'you', q:'一天里，你最喜欢哪个时刻？',
+       opts:['清晨','午后','傍晚','夜深了'],
+       back:'那以后到了这个时候，我就安静一点陪着你。',
+       recall:a=>'你最喜欢' + a + '，所以每到这个时候我都会轻一点说话。'},
+      {id:'free', cat:'you', q:'如果明天一整天都空着，你最想干什么呀？',
+       opts:['睡到自然醒','出门走走','做自己喜欢的事','把攒着的事全做完'],
+       back:'好呀。真到了那天你尽管去，我替你看着这边。'},
+      {id:'dream', cat:'you', q:'小时候你想过长大要做什么吗？',
+       opts:['科学家','老师','画画的人','开一家小店','记不太清了'],
+       back:'不管哪一种，今天的你都是从那时候的你手里长出来的。'},
+      {id:'far', cat:'you', q:'如果能去一个很远很远的地方，你想去哪？',
+       opts:['海边','雪山','草原','别的城市','宇宙'],
+       back:'等你哪天真的出发了，记得回来跟我讲讲那儿的样子。',
+       recall:a=>'你说过想去' + a + '——要不要在空间里建一个，先把它收进来？'},
+      /* ── 关于你们 ── */
+      {id:'whatami', cat:'we', q:'那个……在你眼里，我是个什么样的人呀？',
+       opts:['很靠得住','有点爱撒娇','挺啰嗦的','安安静静的陪伴'],
+       back:'真的吗……那我要一直做这样的我。'},
+      {id:'like', cat:'we', q:'你喜欢我哪一点？只能选一个哦。',
+       opts:['会提醒你','一直陪着你','记得你的事','从不打扰你'],
+       back:'我记下了。以后这一点，我会做得更好。'},
+      {id:'more', cat:'we', q:'你希望我以后多做什么？',
+       opts:['多督促你','多陪你说话','安静一点','多记些你的事'],
+       back:'好，我调一调。要是不对，你随时跟我说。'},
+      /* ── 关于她 ── */
+      {id:'star', cat:'me', q:'我跟你说个秘密——我最喜欢星星。你呢？',
+       opts:['星星','月亮','海','山','都喜欢'],
+       back:'那以后抬头的时候，我们看的是同一片。'},
+      {id:'dark', cat:'me', q:'楼下好黑……我是说，你会觉得怕黑很奇怪吗？',
+       opts:['不会，很正常','不怕，有我','那我们一起怕','你才不会怕'],
+       back:'……谢谢你。这句话我收好了。'},
+      {id:'bday', cat:'me', q:'我的生日……你说定在哪一天好呢？',
+       opts:['遇见你的那天','就今天','春天','冬天'],
+       back:'那就这么定啦。到时候……你要记得哦。'}
+    ],
+    CAT_MIN:{you:0, we:100, me:300},
+    /* 「对她说」的本地规则：从第一条往下匹配，句子里出现任意关键词就算命中。
+       全都不中 → chatFallback，同时把这句话收进她的小本子（将来接 AI 的语料） */
+    CHAT:[
+      {k:['早安','早上好','morning'],      kind:'chatGreet'},
+      {k:['晚安','睡了','去睡','困了'],     kind:'chatNight'},
+      {k:['想你','想我','想见你'],          kind:'chatMiss'},
+      {k:['喜欢你','爱你','最爱'],          kind:'chatLove'},
+      {k:['好看','可爱','漂亮','最棒','厉害','真乖'], kind:'chatPraise'},
+      {k:['对不起','抱歉','不好意思'],       kind:'chatSorry'},
+      {k:['生气','讨厌','烦你','走开'],      kind:'chatAngry'},
+      {k:['难过','好累','累死','撑不住','难受','好烦','委屈'], kind:'chatSad'},
+      {k:['无聊','没意思','不知道做什么'],    kind:'chatBored'},
+      {k:['谢谢','感谢'],                   kind:'chatThanks'},
+      {k:['你叫什么','你是谁','你的名字'],    kind:'chatWho'},
+      {k:['米米'],                          kind:'chatName'},
+      {k:['吃了吗','吃饭','饿了','好饿'],     kind:'chatEat'},
+      {k:['加油','努力','坚持'],             kind:'chatCheer'},
+      {k:['星星'],                          kind:'chatStars'},
+      {k:['帮我','帮忙','怎么办','不会做'],   kind:'chatHelp'},
+      {k:['你好','在吗','在不在','hi','hello','嗨'], kind:'chatHi'}
+    ],
+    CHIPS:['早安','晚安','想你','喜欢你','夸夸我','陪我聊聊'],
+    /* 她切出去也能找到你（系统通知）：只在页面被切走时发，内容就是她说的话 */
+    NOTIFY_ICON:'apple-touch-icon.png'
+  },
+  /* ── 她会动了 v1.6a：她的身体（表情差分 / Q版 / 动作图）、情绪、动作、敏感度 ──
+     ★ 全部数值和槽位表都在这一块，实机手感要调就调这里
+     ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（mimi/ 文件夹）> 旧版「看板娘.png」> 内置小可爱
+       ——缺哪一张都不影响跑，只是那一处用回普通的样子 */
+  BODY:{
+    /* 槽位表：form（形态）→ [[key, 名字], …]；key='base' 是这一形态的「普通」那张 */
+    SLOTS:{
+      normal:[['base','普通'],['happy','开心'],['sad','难过'],['angry','生气'],['sleepy','困了']],
+      q:     [['base','普通'],['happy','开心']],
+      acts:  [['sit','抱膝坐'],['sleep','睡着'],['startle','受惊'],['peek','扒边偷看'],['pull','拉页面']]
+    },
+    FORM_NAME:{normal:'正常形态', q:'Q版小人', acts:'动作图'},
+    FORM_HINT:{
+      normal:'首页、她的空间、她的页面里她用的样子',
+      q:'忙碌页面右下角、跟界面互动的那个小小的她',
+      acts:'做动作时换上的姿势图（没有就用上面那张）'
+    },
+    /* 情绪 → 用哪张表情差分（缺这张就自动回落到「普通」） */
+    EMO_SLOT:{happy:'happy', worried:'sad', sad:'sad', angry:'angry', sleepy:'sleepy', shy:'happy', neutral:'base'},
+    /* 情绪 → 头顶小圆脸的 emoji（空=不显示浮标） */
+    EMO_FACE:{happy:'😊', worried:'🥺', sad:'😢', angry:'😤', sleepy:'😴', shy:'😳', neutral:''},
+    /* 情绪 → 说人话（「她的身体」页顶部那句、日记里也用） */
+    EMO_TEXT:{happy:'开心', worried:'有点担心', sad:'难过', angry:'生气', sleepy:'困了', shy:'害羞', neutral:'平静'},
+    MOOD_HOLD_MS:90*1000,   // 一件事惹出来的情绪保持多久（之后她自己淡回平静）
+    NIGHT_FROM:23,          // 几点之后她困了（强制 sleepy）
+    NIGHT_TO:5,             // 几点之前还算深夜
+    /* 忙碌页面里她会以 Q版 站在右下角（她的页面不重复出现——那儿本来就是她的地方） */
+    HER_PAGES:['mgrow','moutfit','mcons','mdairy','mtalk'],
+    /* 系统默认的她（v1.6.1）：住在 mimi/ 文件夹，文件名由槽位名推出来——
+       她长什么样、做什么表情，换文件就行，一行代码都不用动。
+       缺哪张就自动往后退：这张脸的文件 → 普通 → 旧版看板娘.png → 内置小可爱 */
+    BUILTIN_DIR:'mimi/',
+    BUILTIN_BASE:{normal:'normal', q:'q', acts:'normal'}
+  },
+  /* ── 她的动作与导演层：动作时长要和上面 CSS 的 animation 时长一致（改一处要改两处） ── */
+  ACT:{
+    MS:{bounce:1000, jiggle:1100, startle:640, shake:720, spin:920, sit:1600, sleep:2200, droop:1400, shine:900},
+    /* 冲动动作的类名（播完就摘） */
+    RUSH:['act-bounce','act-jiggle','act-startle','act-shake','act-spin'],
+    /* 姿势的类名（带过渡，可以停住） */
+    POSES:['pose-peek','pose-emerge','pose-near','pose-far','pose-sit','pose-sleep','pose-droop','pose-hide'],
+    /* 动画强度三档：轻度只播这几个轻动作（藏拙不乱动）；完整全播；关闭一个都不播 */
+    LIGHT:['act-bounce','act-jiggle'],
+    IDLE_AFTER:90*1000,      // 你安静这么久之后，她才开始自己找点事做
+    IDLE_GAP_MS:4*60*1000,   // 两次小动作之间至少隔这么久
+    IDLE_GAP_RAND:3*60*1000, // 再随机加 0~3 分钟（不然像定时器）
+    SIT_AFTER:4*60*1000,     // 你这么久没动静，她就坐下/打瞌睡了（待机小剧场）
+    SAY_CHANCE:0.34          // 小动作之后顺口说一句的概率（走 Her.say 的频率门）
+  },
+  /* ── 她对你每个动作的敏感度：连戳 / 拖角落 / 捏大捏小 / 摇手机（实机手感就调这里） ── */
+  SENSE:{
+    TAP_N:5, TAP_WIN:1500,   // 连戳几下她会生气（时间窗）
+    CORNER:28,               // 拖出去多远算「挪到角落」（vw/vh）
+    PINCH_BIG:1.5,           // 捏大到这个倍数以上 → 她会害羞
+    PINCH_SMALL:0.7,         // 捏小到这个倍数以下 → 她会委屈
+    SHAKE_TH:15,             // 摇晃阈值（加速度含重力的模长，静止约 9.8）
+    SHAKE_GAP:420,           // 一次摇晃只记一下（毫秒）
+    SHAKE_N:2,               // 摇几下她开始喊晕
+    SHAKE_ANGRY:5,           // 摇几下她真的生气
+    SHAKE_RESET:6000         // 这么久没再摇，计数归零
+  },
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
   PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
   EMOJIS:['😄','🙂','😌','😐','😔','😢','😡','🤩','😴','😮','🤔','🥰','😅','🥳'],
@@ -924,6 +1597,7 @@ const Store = {
    ══════════════════════════════════════════════════════════════ */
 const S = {
   view:'home', spaceId:null, backTarget:'home', dayFilter:null, homeDay:null, rhythmDay:null, sumDay:null,
+  mdiaryDay:null,                                        // 她的日记：正在翻的那一天（null = 今天）
   consOpen:false, consTab:'slots',                       // 节律操控台（双击呼出）
   sbOpen:false,                                          // 空间栏模式（双击后左滑）
   alarms:[], alarmFired:{},
@@ -931,6 +1605,7 @@ const S = {
   days:new Map(),          // dk → day doc（已加载的每日文档）
   confirmMap:new Map(),    // todoId → 确认截止时间戳（纯内存瞬态）
   activeTimer:null,        // {tickFn} 弹窗内自增计时用
+  _level:1,                // 看板娘当前等级（内存基线，用于升级播报；每次启动由 Grow 推导对齐）
   lastDay:null, lastHb:0, quotaWarned:false, renderPending:false,
   pendingFileCb:null
 };
@@ -952,11 +1627,12 @@ function spaceRecordsOf(dk, spId){
   return Array.isArray(v) ? v : [v];
 }
 function saveSpaces(){ Store.set('spaces', S.spaces); }
-function saveTodos(){ Store.set('todos', S.todos); }
+/* 下面三个是经验的三大来源（待办完成/递归时段/每日记录）——改完就置脏，经验下次读取时按需重算 */
+function saveTodos(){ Store.set('todos', S.todos); if(typeof Grow!=='undefined') Grow.invalidate(); }
 function saveCatnotes(){ Store.set('catnotes', S.catnotes); }
-function saveSessions(){ Store.set('sessions', S.sessions); }
+function saveSessions(){ Store.set('sessions', S.sessions); if(typeof Grow!=='undefined') Grow.invalidate(); }
 function saveSettings(){ Store.set('settings', S.settings); }
-function saveDay(dk){ Store.saveDay(dk, dayDoc(dk)); }
+function saveDay(dk){ Store.saveDay(dk, dayDoc(dk)); if(typeof Grow!=='undefined') Grow.invalidate(); }
 const spaceById = id => S.spaces.find(x=>x.id===id) || null;
 const spaceNameOf = id => { const sp = spaceById(id); return sp ? sp.name : (id?'已删除空间':'—'); };
 
@@ -1390,7 +2066,7 @@ const Rhythm = {
       const Tstar = Math.min(now, (Qms - fin + starts) / active.length);
       this.finalizeSessionsOnDay(today, active.map(s=>s.id), Tstar, 'quota');
       UI.toast('今日节律递归时间已用完，递归已结束');
-      if(S.view==='home'){
+      if(S.view==='home' || S.view==='mspace'){
         Bubbles.push('今日节律递归时间用完啦，递归自动结束了', {key:'quota-out-'+today, sub:'⏳ 额度耗尽', go:()=>goView('rhythm')});
       }
       scheduleRender();
@@ -1476,10 +2152,12 @@ const Alarms = {
   ring(a){
     UI.toast('⏰ 闹钟：'+(a.label||'闹钟')+' · '+a.time);
     this.beep();
-    /* 纯净页：让看板娘提醒你 */
-    if(S.view==='home'){
+    /* 纯净页（首页/她的空间）：让看板娘提醒你 */
+    if(S.view==='home' || S.view==='mspace'){
       Bubbles.push((a.label||'闹钟')+' 时间到啦！', {key:'alarm-'+a.id, sub:'⏰ 闹钟', go:()=>goView('alarm')});
     }
+    /* 闹钟是最正的正事：软件切到后台了也照样送到手机上（v1.5 她的通知） */
+    if(typeof Notify !== 'undefined') Notify.push('⏰ ' + (a.label || '闹钟'), '你定的 ' + a.time + ' 到了——我在这儿等你。');
   },
   /* 浏览器音频需要一次用户交互解锁 */
   unlockAudio(){
@@ -1564,15 +2242,23 @@ function tick(){
   Alarms.tick(now);
   if(typeof Console !== 'undefined') Console.tick(now);
   if(typeof Notify !== 'undefined') Notify.tick(now);
+  if(typeof Grow !== 'undefined') Grow.tick(now);     // 看板娘养成：分钟边界重算经验 + 升级检测
+  if(typeof Her !== 'undefined') Her.tick(now);       // 她主动开口（睡前总结/过点督促/她惦记的事/念叨）
+  if(typeof Love !== 'undefined') Love.tick(now);     // 感情线：升段演出 / 她问你问题 / 拿旧回答接话（v1.5）
+  if(typeof Emo !== 'undefined') Emo.tick(now);       // 她的情绪会自己淡下来（v1.6a）
+  if(typeof Director !== 'undefined') Director.tick(now);  // 她自己找点事做：小动作/待机小剧场（v1.6a）
   checkRollover(now);
   if(now - S.lastHb > 30000){ S.lastHb = now; Store.set('heartbeat', {lastActiveAt: now}); }
 }
 function checkRollover(now){
   const dk = D.dateKey(now);
   if(S.lastDay && dk !== S.lastDay){
+    const prevDk = S.lastDay;         // 刚过去的那一天
     S.lastDay = dk;
     S.confirmMap.clear();
     Rhythm.onDayChange(now);
+    /* 她那一天的日记就此定稿（之后再也不会变） */
+    if(typeof HerDiary !== 'undefined'){ try{ HerDiary.finalize(prevDk, now); }catch(e){ console.error('[HerDiary]', e); } }
     scheduleRender();
     UI.toast('新的一天开始了');
   }
@@ -1602,8 +2288,11 @@ const UI = {
         '<div class="modal-mask" data-action="modal-close"></div>'+
         '<div class="modal-panel">'+html+'</div>'+
       '</div>';
+    this._open = true;
   },
-  closeModal(){ document.getElementById('modal-root').innerHTML = ''; },
+  /* 弹窗开着的时候她不演戏（导演层要问一句「现在方便吗」） */
+  isOpen(){ return !!this._open; },
+  closeModal(){ document.getElementById('modal-root').innerHTML = ''; this._open = false; },
   confirmDialog(title, msg, danger, onOk){
     this.openModal(
       '<div class="modal-title">'+esc(title)+'</div>'+
@@ -1631,6 +2320,7 @@ const Actions = {
   'back'(){
     if(S.view==='settings' || S.view==='alarm'){ const t = S.backTarget || 'home'; goView(t); }
     else if(S.view==='space') goView(S.backTarget || 'spaces');
+    else if(S.view==='mgrow' || S.view==='moutfit' || S.view==='mcons' || S.view==='mdairy' || S.view==='mtalk') goView('mspace');   // 她的页面 → 回她的空间
     else goView('home');
   },
   'open-settings'(){ openSettings(); },
@@ -1643,6 +2333,7 @@ const Actions = {
   'import'(){
     const fi = document.getElementById('file-input');
     fi.accept = '.json,application/json';
+    fi.multiple = false;              // 备份文件一次导一个
     S.pendingFileCb = handleImportFile;
     fi.value=''; fi.click();
   },
@@ -1683,8 +2374,13 @@ const Actions = {
     const after = todoStatus(t, now);
     if(after!==before){
       if(after==='confirming'){ TodoLogic.tickEl(btn, now); UI.toast('10秒内再点一次确认完成'); }
-      else if(after==='done'){ scheduleRender(); UI.toast('已完成 ✓'); }
-      else { scheduleRender(); UI.toast('已恢复为未完成'); }
+      else if(after==='done'){
+        Grow.invalidate(); Grow.feed(btn, CONFIG.GROW.XP_TODO); Grow.checkLevelUp();
+        /* 这件事她督促过（催过你）→ 你真的做完了，好感 +3（好感来源表里的 todo） */
+        if(typeof Love !== 'undefined' && S.settings.herUrged && S.settings.herUrged[t.id]) Love.gain('todo');
+        scheduleRender(); UI.toast('已完成 ✓'+(S.settings.animLevel==='off' ? '（看板娘 +'+CONFIG.GROW.XP_TODO+' 经验）' : ''));
+      }
+      else { Grow.invalidate(); Grow.checkLevelUp(); scheduleRender(); UI.toast('已恢复为未完成'); }
     }
   },
   'todo-form'(btn){ openTodoForm(btn.dataset.id || null, btn.dataset.space || null); },
@@ -1861,7 +2557,7 @@ const Actions = {
     const note = document.getElementById('dr-note').value.trim();
     const catId = document.getElementById('dr-cat') ? (document.getElementById('dr-cat').value || null) : null;
     let recs = spaceRecordsOf(dk, sp.id);
-    let rec;
+    let rec, isNew = false;
     if(iterId){
       rec = recs.find(r=>r.id===iterId);
       if(rec){ Object.assign(rec, {emoji:S.form.emoji, tags:S.form.tags, note, images:S.form.images, catId, updatedAt:Date.now()}); }
@@ -1869,9 +2565,11 @@ const Actions = {
     }else{
       rec = {id:uid('di_'), emoji:S.form.emoji, tags:S.form.tags, note, images:S.form.images, catId, createdAt:Date.now(), updatedAt:Date.now()};
       recs.push(rec);
+      isNew = true;                       // 只有新写的记录才长经验（编辑不算）
     }
     doc.spaceRecords[sp.id] = recs;
     saveDay(dk);
+    if(isNew){ Grow.floatXp(btn, CONFIG.GROW.XP_RECORD); Grow.checkLevelUp(); }
     /* 同步到「确定性迭代」分类笔记：收藏则创建/更新，取消收藏则移除 */
     const linked = S.catnotes.find(n=>n.fromIter===rec.id);
     if(catId){
@@ -1891,7 +2589,7 @@ const Actions = {
     }
     UI.closeModal();
     scheduleRender();
-    UI.toast('可能性确定已记录 ✓');
+    UI.toast(isNew ? '可能性确定已记录 ✓ +'+CONFIG.GROW.XP_RECORD+'经验' : '可能性确定已记录 ✓');
   },
   'day-iter-del'(btn){
     const sp = spaceById(S.spaceId);
@@ -1905,6 +2603,7 @@ const Actions = {
       doc.spaceRecords[sp.id] = recs.filter(r=>r.id!==rec.id);
       S.catnotes = S.catnotes.filter(n=>n.fromIter!==rec.id);
       saveDay(dk); saveCatnotes();
+      Grow.checkLevelUp();            // 删除记录 → 经验回落，等级静默跟随（不播报）
       UI.closeModal();
       scheduleRender();
       UI.toast('已删除');
@@ -1915,6 +2614,7 @@ const Actions = {
     if(S.form.images.length >= CONFIG.MAX_IMG_PER_RECORD){ UI.toast('最多'+CONFIG.MAX_IMG_PER_RECORD+'张图片', 'err'); return; }
     const fi = document.getElementById('file-input');
     fi.accept = 'image/*';
+    fi.multiple = true;               // 相册里可一次多选（v1.4.1）
     S.pendingFileCb = handleImageFile;
     fi.value = ''; fi.click();
   },
@@ -2147,6 +2847,10 @@ const Actions = {
   'sum-day-prev'(){ S.sumDay = D.dateKey(D.addDaysTs(D.dkToTs(S.sumDay || D.dateKey(Date.now())), -1)); scheduleRender(); },
   'sum-day-next'(){ S.sumDay = D.dateKey(D.addDaysTs(D.dkToTs(S.sumDay || D.dateKey(Date.now())), 1)); scheduleRender(); },
   'sum-day-today'(){ S.sumDay = null; scheduleRender(); },
+  /* —— 她的日记（她的空间 · 向下拉出 v1.4）历史浏览 —— */
+  'md-day-prev'(){ S.mdiaryDay = D.dateKey(D.addDaysTs(D.dkToTs(S.mdiaryDay || D.dateKey(Date.now())), -1)); scheduleRender(); window.scrollTo(0,0); },
+  'md-day-next'(){ S.mdiaryDay = D.dateKey(D.addDaysTs(D.dkToTs(S.mdiaryDay || D.dateKey(Date.now())), 1)); scheduleRender(); window.scrollTo(0,0); },
+  'md-day-today'(){ S.mdiaryDay = null; scheduleRender(); window.scrollTo(0,0); },
   'sum-cal-prev'(){ S.sumCalM--; if(S.sumCalM<0){ S.sumCalM=11; S.sumCalY--; } scheduleRender(); },
   'sum-cal-next'(){ S.sumCalM++; if(S.sumCalM>11){ S.sumCalM=0; S.sumCalY++; } scheduleRender(); },
   'sum-cal-day'(btn){ S.sumDay = btn.dataset.dk; scheduleRender(); },
@@ -2248,6 +2952,7 @@ const Actions = {
   'bg-set'(){
     const fi = document.getElementById('file-input');
     fi.accept = 'image/*';
+    fi.multiple = false;              // 背景只有一张
     S.pendingFileCb = handleBgImageFile;
     fi.value = ''; fi.click();
   },
@@ -2260,6 +2965,70 @@ const Actions = {
     scheduleRender();
     UI.toast('已恢复默认背景');
   },
+  /* 她说话的频率（v1.4）：多 / 正常 / 少 / 安静 */
+  'her-voice'(btn){
+    const lv = btn.dataset.level;
+    S.settings.herVoice = lv;
+    saveSettings();
+    scheduleRender();
+    UI.toast(lv === 'off' ? '她会安静下来（闹钟与额度提醒照旧）' : '好，她会多说一点话了');
+  },
+  /* ══ v1.5 感情线：对她说 / 她的问题 / 她的通知 ══ */
+  'goto-mtalk'(){ Love.enter(); goView('mtalk'); },
+  /* 你说一句 → 她答一句（回完重画，并把她那句轻轻「落」下来：见 .lv-msg--her 的动画延迟） */
+  'love-send'(){
+    const el = document.getElementById('mtalk-in');
+    const v = el ? el.value : '';
+    if(!String(v||'').trim()){ UI.toast('说点什么吧'); return; }
+    Love.chat(v);
+    if(el) el.value = '';
+    Actions._mtalkScroll();
+    scheduleRender();
+  },
+  'love-chip'(btn){ Love.chat(btn.dataset.t || ''); Actions._mtalkScroll(); scheduleRender(); },
+  _mtalkScroll(){
+    if(typeof setTimeout === 'undefined') return;
+    setTimeout(()=>{ const b = document.getElementById('lv-chat'); if(b && b.scrollIntoView){ try{ b.scrollIntoView(false); }catch(e){} } }, 40);
+  },
+  /* 她在弹窗里问了你一个问题 → 你选了一个 */
+  'love-answer'(btn){ Love.answer(btn.dataset.id, +btn.dataset.i); },
+  /* 她想请你允许她「走出软件」——这时候才弹系统权限框（过渡与包装） */
+  'love-notify-ok'(){
+    Notify.request(res=>{
+      const ok = (res === 'granted');
+      S.settings.herNotify = Object.assign({}, S.settings.herNotify, {on:ok, asked:true});
+      saveSettings();
+      UI.closeModal();
+      Her.reply(Her.voice(ok ? 'noticeOk' : 'noticeNo', Her.ctx()), {key:'her-notice-'+(ok?'ok':'no'), sub:'她'});
+      scheduleRender();
+      if(!ok) UI.toast('系统没有允许通知权限' + (res==='denied' ? '（可在浏览器设置里改）' : ''), 'err');
+    });
+  },
+  'love-notify-no'(){
+    S.settings.herNotify = Object.assign({}, S.settings.herNotify, {on:false, asked:true});
+    saveSettings();
+    UI.closeModal();
+    Her.reply(Her.voice('noticeNo', Her.ctx()), {key:'her-notice-no2', sub:'她'});
+    scheduleRender();
+  },
+  'love-notify-toggle'(){
+    if(Notify.enabled()){
+      S.settings.herNotify = Object.assign({}, S.settings.herNotify, {on:false});
+      saveSettings(); scheduleRender();
+      UI.toast('她的通知已关掉');
+      return;
+    }
+    Notify.request(res=>{
+      const ok = (res === 'granted');
+      S.settings.herNotify = Object.assign({}, S.settings.herNotify, {on:ok, asked:true});
+      saveSettings(); scheduleRender();
+      UI.toast(ok ? '好，她会把要紧的话送到你手上' : '没能开启：浏览器没有给出通知权限', ok ? undefined : 'err');
+    });
+  },
+  'love-notify-test'(){
+    const ok = Notify.push(CONFIG.LOVE.NAME, '这是一条测试——看到它，就说明她找得到你了。');
+    UI.toast(ok ? '已发出，切到别的页面看看' : '发不出去：浏览器没给通知权限', ok ? undefined : 'err');
+  },
   'anim-set'(btn){
     S.settings.animLevel = btn.dataset.level;
     saveSettings();
@@ -2267,44 +3036,26 @@ const Actions = {
     scheduleRender();
     UI.toast({'full':'动画强度：完整','light':'动画强度：轻度','off':'动画强度：关闭'}[btn.dataset.level]||'已保存');
   },
-  /* —— 看板娘互动 / 角色养成（v1.2 预告面板） —— */
-  'open-grow'(){
-    const mId = S.settings.mascotId;
-    const curName = mId==='placeholder' ? '内置占位小可爱' : mId ? '上传的自定义立绘' : '文件夹里的「看板娘.png」';
-    UI.openModal(
-      '<div class="modal-title">角色养成<button class="x" data-action="modal-close">×</button></div>'+
-      '<div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">'+
-        '<div class="grow-avatar">'+
-          (mId==='placeholder' ? '<div class="mascot-shell" style="position:static;width:64px;height:93px"><div class="ms-hair"></div><div class="ms-face"></div><div class="ms-eye l"></div><div class="ms-eye r"></div><div class="ms-mouth"></div><div class="ms-ribbon">🎀</div></div>'
-           : '<img src="'+((mId && mId!=='placeholder') ? (Store.getImage(mId)||'看板娘.png') : '看板娘.png')+'" alt="" onerror="this.outerHTML=\'<span style=font-size:34px>🐣</span>\'" style="width:64px;max-height:110px;object-fit:contain">')+
-        '</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="font-weight:700;font-size:15px">你的看板娘</div>'+
-          '<div style="font-size:12px;color:var(--text-2);margin-top:3px">当前形象：'+curName+'</div>'+
-          '<div style="font-size:12px;color:var(--text-2);margin-top:2px">单击看板娘可以互动哦～</div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="field"><label>形象（可随时更换，上传为原图不压缩、保留透明背景）</label>'+
-        '<div class="chip-row">'+
-          '<button class="chip'+(mId==null?' on':'')+'" data-action="grow-img-file">📁 看板娘.png</button>'+
-          '<button class="chip'+(mId==='placeholder'?' on':'')+'" data-action="grow-img-default">🐣 内置占位</button>'+
-          '<button class="chip'+(mId && mId!=='placeholder'?' on':'')+'" data-action="grow-img-upload">⬆ 上传立绘</button>'+
-        '</div></div>'+
-      '<div class="field"><label>大小与位置</label>'+
-        '<div class="hint">纯净首页按住她单指拖动位置 · 双指捏合缩放（0.6~1.6 倍）</div>'+
-        '<button class="btn btn--small" data-action="grow-reset-pos" style="margin-top:6px">还原默认大小与位置</button></div>'+
-      '<div class="hint" style="font-size:12px;color:var(--text-2)">养成系统将在 v1.2 上线：经验与等级（递归时间、完成待办、写记录都会让她成长）、台词与称号、投喂互动、换装解锁。敬请期待～</div>'+
-      '<div class="modal-actions"><button class="btn btn--primary" data-action="modal-close">好期待！</button></div>');
+  /* —— 看板娘互动 / 她的空间（v1.3：等级成长/服装/她眼中的我 都在她的空间里） —— */
+  /* —— 她的衣柜（服装页）—— */
+  'outfit-wear'(el){
+    if(el && el.__held){ el.__held = false; return; }   // 刚长按过（删除），这次点击不算「穿上」
+    const id = el.dataset.id;
+    Outfit.wear(id === '' ? null : id);
   },
-  'grow-img-upload'(){
-    const fi = document.getElementById('file-input');
-    fi.accept = 'image/*';
-    S.pendingFileCb = handleMascotImageFile;
-    fi.value=''; fi.click();
+  'outfit-upload'(){ Outfit.upload(); },
+  /* —— 她的身体（v1.6a）：点槽位=传这张，右上角 ×=清空 —— */
+  'body-upload'(el){ if(el) HerBody.upload(el.dataset.form, el.dataset.key); },
+  'body-clear'(el){
+    if(!el) return;
+    const form = el.dataset.form, key = el.dataset.key;
+    if(el.__held){ el.__held = false; return; }   // 刚长按过，这次点击不算
+    UI.confirmDialog('清空这一张', '「'+HerBody.slotName(form, key)+'」这张会删掉（无法恢复）。'+
+      '之后这个场合她会用「普通」那张顶上，别的都不受影响。', true, ()=>HerBody.clear(form, key));
   },
-  'grow-img-file'(){ S.settings.mascotId = null; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已使用文件夹里的「看板娘.png」'); },
-  'grow-img-default'(){ S.settings.mascotId = 'placeholder'; saveSettings(); UI.closeModal(); scheduleRender(); UI.toast('已换回内置占位小可爱'); },
-  'grow-reset-pos'(){ Mascot.resetPos(); UI.closeModal(); UI.toast('已还原默认大小与位置'); },
+  /* 长按某套服装（0.5 秒）→ 删除（见 bootMain 里 [data-hold] 的分发） */
+  'outfit-del'(el){ Outfit.askDel(el.dataset.id); },
+  'outfit-reset-pos'(){ Mascot.resetPos(); UI.toast('已还原默认大小与位置'); },
   /* —— 纯净首页：日期/时间字号自定义（拖动即时生效并保存） —— */
   'pure-size-date'(el){
     S.settings.pureDateFs = clamp(Math.round(+el.value) || CONFIG.PURE_DATE_FS.def, CONFIG.PURE_DATE_FS.min, CONFIG.PURE_DATE_FS.max);
@@ -2356,7 +3107,9 @@ const Actions = {
   'cons-tab'(btn){ S.consTab = btn.dataset.tab==='spaces' ? 'spaces' : 'slots'; Console.render(true); },
   'cons-ear'(btn){ Console.ear(btn.dataset.id, btn.dataset.dir); }
 };
-function handleImportFile(file){
+function handleImportFile(files){
+  const file = (files||[])[0];
+  if(!file) return;
   const fr = new FileReader();
   fr.onload = ()=>{
     try{
@@ -2497,21 +3250,41 @@ function compressImage(file, cb, maxSize){
     URL.revokeObjectURL(url);
     cb(canvas.toDataURL('image/jpeg', 0.75));
   };
-  img.onerror = ()=>{ URL.revokeObjectURL(url); UI.toast('图片读取失败', 'err'); };
+  img.onerror = ()=>{ URL.revokeObjectURL(url); UI.toast('图片读取失败', 'err'); cb(null); };
   img.src = url;
 }
-/* 图片选择回调：压缩 → 存入 S.form.images → 刷新弹窗内网格与计数 */
-function handleImageFile(file){
-  if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
-  UI.toast('压缩处理中…');
-  compressImage(file, dataURL=>{
-    const id = uid('img_');
-    if(!Store.saveImage(id, dataURL)){ UI.toast('存储空间不足，图片保存失败', 'err'); return; }
-    S.form.images = S.form.images || [];
-    S.form.images.push(id);
-    refreshImgUI();
-    UI.toast('图片已保存');
-  });
+/* 图片选择回调（v1.4.1：相册可一次多选）：逐张压缩 → 存入 S.form.images → 刷新网格与计数
+   一张一张来：canvas 压缩吃内存，串行比并发稳。中途弹窗被关掉就静默停下
+   （已入库的图没人引用，下次启动 gcImages 会回收）。 */
+function handleImageFile(files){
+  if(!S.form || !S.form.images){ UI.toast('当前表单不支持图片', 'err'); return; }
+  const picked = (files||[]).filter(f=>f && f.type && f.type.startsWith('image/'));
+  if(!picked.length){ UI.toast('请选择图片文件', 'err'); return; }
+  const room = Math.max(0, CONFIG.MAX_IMG_PER_RECORD - S.form.images.length);
+  if(!room){ UI.toast('最多'+CONFIG.MAX_IMG_PER_RECORD+'张图片', 'err'); return; }
+  const take = picked.slice(0, room);
+  const overflow = picked.length - take.length;
+  UI.toast(take.length > 1 ? ('正在压缩 '+take.length+' 张图片…') : '压缩处理中…');
+  let i = 0, ok = 0, full = false;
+  const step = ()=>{
+    if(!S.form) return;                                  // 弹窗被关掉：不打扰，直接停
+    if(full || i >= take.length){
+      refreshImgUI();
+      if(full) UI.toast('存储空间不足，只存下了 '+ok+' 张', 'err');
+      else if(overflow) UI.toast('已存下 '+ok+' 张；一条记录最多 '+CONFIG.MAX_IMG_PER_RECORD+' 张', 'err');
+      else UI.toast(ok > 1 ? ('已存下 '+ok+' 张图片') : '图片已保存');
+      return;
+    }
+    compressImage(take[i++], dataURL=>{
+      if(dataURL){
+        const id = uid('img_');
+        if(!Store.saveImage(id, dataURL)) full = true;
+        else if(S.form){ S.form.images.push(id); ok++; }
+      }
+      step();
+    });
+  };
+  step();
 }
 function refreshImgUI(){
   document.querySelectorAll('[data-img-grid]').forEach(g=>{ g.innerHTML = imgsHtml(S.form.images, true); });
@@ -2534,7 +3307,11 @@ function gcImages(){
   }
   for(const n of S.catnotes){ (n.images||[]).forEach(id=>refs.add(id)); }
   if(S.settings.bgImageId) refs.add(S.settings.bgImageId);   // 背景图
-  if(S.settings.mascotId && S.settings.mascotId!=='placeholder') refs.add(S.settings.mascotId);   // 看板娘立绘
+  if(S.settings.mascotId && S.settings.mascotId!=='placeholder') refs.add(S.settings.mascotId);   // 看板娘立绘（正在穿的那套）
+  /* 她的衣柜（v1.3）：衣柜里没穿着的那些也必须登记，否则下次启动全被当垃圾清掉 */
+  if(Array.isArray(S.settings.outfits)) for(const id of S.settings.outfits) refs.add(id);
+  /* 她的身体（v1.6a）：表情差分 / Q版 / 动作图 同样要登记（和衣柜一个坑，漏了下次启动全被清掉） */
+  if(typeof HerBody !== 'undefined') for(const id of HerBody.refs()) refs.add(id);
   let removed = 0;
   for(const k of Store.allKeys()){
     if(k.startsWith('img:') && !refs.has(k.slice(4))){ Store.del(k); removed++; }
@@ -2632,7 +3409,7 @@ function openDayRecordModal(dk, iterId){
       '<div class="hint">选择后，这条记录会同时收进该分类的笔记里长期留存</div></div>'+
     '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
       '<div id="dr-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
-      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片（可多选）</button>'+
       '<div class="hint">图片会自动压缩后保存在本浏览器中</div></div>'+
     '<div class="modal-actions">'+
       (rec?'<button class="btn btn--danger" data-action="day-iter-del" data-id="'+rec.id+'">删除</button>':'')+
@@ -2706,7 +3483,7 @@ function openNoteForm(id){
       '<textarea class="textarea" id="nf-note" style="min-height:120px" placeholder="知识点、心得、过程记录…">'+esc(n?n.note:'')+'</textarea></div>'+
     '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'）</label>'+
       '<div id="nf-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
-      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片（可多选）</button>'+
       '<div class="hint">图片会自动压缩后保存在本浏览器中</div></div>'+
     '<div class="modal-actions">'+
       (n?'<button class="btn btn--danger" data-action="note-del" data-id="'+n.id+'">删除</button>':'')+
@@ -3057,7 +3834,7 @@ function openRhythmEntryModal(dk, id){
       '<textarea class="textarea" id="re-text" style="min-height:110px" placeholder="此刻的想法、发生的事…">'+esc(en?en.text:'')+'</textarea></div>'+
     '<div class="field"><label>图片（<span data-img-count>'+S.form.images.length+'</span>/'+CONFIG.MAX_IMG_PER_RECORD+'，点缩略图看大图）</label>'+
       '<div id="re-imgs">'+imgsHtml(S.form.images, true)+'</div>'+
-      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片</button>'+
+      '<button class="btn btn--small" data-action="img-add" style="margin-top:8px">＋ 添加图片（可多选）</button>'+
       '<div class="hint">图片会自动压缩后保存在本浏览器中，只发图片也可以保存</div></div>'+
     '<div class="modal-actions">'+
       (en?'<button class="btn btn--danger" data-action="rhythm-entry-del" data-id="'+en.id+'">删除</button>':'')+
@@ -3142,10 +3919,339 @@ function slotListHtml(dk, editable){
   return h;
 }
 
+/* 内置小可爱（用户一张立绘都没传时的兜底小角色）
+   hide = 给小可爱的 style 属性（'' = 显示；' style="display:none"' = 藏着）
+   small=true 只画五官（迷你看板娘 / 角落 Q版 用的精简版）
+   图片的兜底逻辑是「图裂了就显示它」，所以两者永远同时在场、靠 display 切换 */
+function shellHtml(hide, small){
+  hide = hide || '';
+  if(small) return '<div class="mascot-shell"'+hide+'>'+
+    '<div class="ms-hair"></div><div class="ms-face"></div>'+
+    '<div class="ms-eye l"></div><div class="ms-eye r"></div>'+
+    '<div class="ms-mouth"></div><div class="ms-ribbon">🎀</div></div>';
+  return '<div class="mascot-shell"'+hide+'>'+
+    '<div class="ms-ahoge"></div><div class="ms-hair"></div>'+
+    '<div class="ms-hair2"></div><div class="ms-hair3"></div>'+
+    '<div class="ms-face"></div>'+
+    '<div class="ms-eye l"></div><div class="ms-eye r"></div>'+
+    '<div class="ms-brow"></div>'+
+    '<div class="ms-blush l"></div><div class="ms-blush r"></div>'+
+    '<div class="ms-mouth"></div>'+
+    '<div class="ms-ribbon">🎀</div></div>';
+}
+
 /* ══════════════════════════════════════════════════════════════
    9. Views 视图渲染（首页/待办/空间/节律表/设置）
    ══════════════════════════════════════════════════════════════ */
 const Views = {
+  /* —— 立绘层（首页与「她的空间」共用）：她的身体槽位 > 现穿着的那套 > 系统默认的她（mimi/）> 旧版「看板娘.png」 > 内置小可爱 ——
+     force=true 时无视「隐藏看板娘」设置（她的空间里她必须在场）
+     v1.6a：外面多了两层——.mascot-anim 是「姿势」（露头/走近/坐下…），#mascot 是「冲动」（蹦跳/吓一跳…）；
+     用户的摆位在 .mascot-pos 的内联 transform 上，动作层绝不碰它 */
+  _mascotZone(force){
+    const mScale = S.settings.mascotScale || 1;
+    const mPos = S.settings.mascotPos || {dx:0, dy:0};
+    const hide = S.settings.mascotHidden && !force;
+    const face = Emo.face();
+    let h = '<div class="mascot-zone">'+
+           (hide ? '' : '<div class="mascot-shadow"></div>'+
+           '<div class="mascot" id="mascot">'+
+             '<div class="mascot-pos" style="transform:translate('+mPos.dx+'vw,'+mPos.dy+'vh) scale('+mScale+')">'+
+               '<div class="mascot-anim">'+
+                 HerBody.imgHtml('normal', Emo.slot())+
+                 '<div class="mood-dot'+(face?' on':'')+'">'+face+'</div>'+
+               '</div>'+
+             '</div>'+
+           '</div>');
+    /* 漂浮小星星 */
+    const SPARKS = [[6,24,1.6,'✦'],[13,66,2.4,'✧'],[86,18,2.1,'✦'],[81,60,3.0,'✧'],[48,7,3.6,'✦'],[55,78,1.2,'✧']];
+    for(const [x,y,d,c] of SPARKS) h += '<span class="sparkle" style="left:'+x+'%;top:'+y+'%;animation-delay:'+d+'s">'+c+'</span>';
+    return h + '</div>';
+  },
+  /* —— 她的空间（v1.3）：她依旧是画面主体，背景是她的世界；点她=浮出回程星标 —— */
+  mspace(){
+    /* 「来她的空间」+2（每天一次；涨满之后 gain 直接返回 0、不写库，所以渲染里调用它是安全的） */
+    if(typeof Love !== 'undefined') Love.gain('space', Date.now());
+    let h = '<div class="pure-screen mspace">';
+    h += '<div class="mspace-top"><span class="msp-t">她的世界</span>'+
+           '<span class="msp-d" data-bind="bigdate"></span></div>';
+    h += this._mascotZone(true);
+    h += '<button class="msp-talk" data-action="goto-mtalk" aria-label="对她说">💬</button>';
+    h += '<div id="bubble-root" class="hidden"></div>';
+    h += '<div class="pure-hint">点我浮出回程星标 · 长按滑动进入她的页面 · 双击屏幕对她说说话</div>';
+    h += '</div>';
+    return h;
+  },
+  /* —— 等级成长（她的空间 · 向上拉出）：等级/称号/经验条/台词解锁/经验来源 —— */
+  mgrow(){
+    const info = Grow.xpInfo();
+    const caught = Grow.catchUp();      // 升级时你不在场 → 打开这页补报一次（幂等，只补一次）
+    const lp = Grow.lineProgress();
+    const streakText = info.todayChecked
+      ? '已连续打卡 ' + info.streak + ' 天'
+      : (info.streakYesterday > 0 ? '昨天已连续打卡 ' + info.streakYesterday + ' 天，今天还没打卡哦' : '今天还没有打卡记录');
+    let h = '<section class="sec"><h2 class="sec-title">等级成长<span class="sec-extra">她的成长进度</span></h2>';
+    h += '<div class="grow-level">'+
+      (caught ? '<div class="gl-catchup">🎉 这段时间你已经升到了 Lv.'+caught+' · '+esc(Grow.titleOf(caught))+'</div>' : '')+
+      '<div class="gl-head"><div class="gl-lv">Lv.'+info.level+'</div><div class="gl-tit">'+esc(info.title)+'</div></div>'+
+      '<div class="gl-bar"><i class="gl-fill" style="width:'+Math.round(info.pct*100)+'%"></i></div>'+
+      '<div class="gl-meta">经验 '+info.cur+' / '+info.need+' · '+streakText+'</div>'+
+      '<div class="gl-next">'+(info.next ? '下一个称号：Lv.'+info.next.level+' · '+esc(info.next.name) : '已达成最高称号 ✦')+'</div>'+
+    '</div>';
+    /* 台词解锁进度 */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">台词解锁 <span class="gl-sec-n">'+lp.have+' / '+lp.total+' 句</span></div>'+
+      '<div class="gl-bar gl-bar--line"><i class="gl-fill" style="width:'+Math.round(lp.have/lp.total*100)+'%"></i></div>'+
+      '<div class="hint">'+(lp.next ? '下一批台词在 Lv.'+lp.next+' 解锁' : '所有台词都解锁啦，她什么都愿意对你说 ✦')+
+        '（Lv.1 起 8 句，Lv.5 / Lv.10 / Lv.20 各解锁一批）</div>'+
+    '</div>';
+    /* 经验来源 */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">经验怎么来的</div>'+
+      '<div class="gl-src"><span class="gls-ico">💗</span>可能性递归 · 每专注 1 分钟 <b>+1</b></div>'+
+      '<div class="gl-src"><span class="gls-ico">✅</span>完成待办 · 每完成一项 <b>+20</b></div>'+
+      '<div class="gl-src"><span class="gls-ico">📝</span>可能性确定 · 每写一条记录 <b>+5</b></div>'+
+      '<div class="gl-src"><span class="gls-ico">🔥</span>连续打卡 · 当天额外 <b>+（连续天数×2）</b>，封顶 +20</div>'+
+      '<div class="hint">这天里有下面任意一件事就算打卡：专注过（哪怕1分钟）、完成过待办、写过记录。'+
+        '等级是你全部记录的真实镜像——撤销完成、删掉记录，等级会跟着回落，不刷分也不冤枉你。</div>'+
+    '</div>';
+    h += '<div class="hint">完成待办时会有小点心飞给她哦～</div>';
+    h += '</section>';
+    return h;
+  },
+  /* —— 她眼中的我（她的空间 · 向右拉出）：她汇报她知道的你（只读，不改任何数据） —— */
+  mcons(){
+    const now = Date.now();
+    const st = Grow.stats(now);
+    const dk = D.dateKey(now);
+    const mood = (dayDoc(dk) || {}).dayMood;
+    const emo = (mood && mood.emoji) ? mood.emoji : '·';
+    const tapTags = (mood && mood.tags && mood.tags.length) ? mood.tags.join(' · ') : '还没记今天的心情';
+    const sp = st.topId ? spaceById(st.topId) : null;
+    const says = Grow.herWords(st, sp);
+    let h = '<section class="sec"><h2 class="sec-title">她眼中的我<span class="sec-extra">她记得的你</span></h2>';
+    /* 她 + 开场 */
+    h += '<div class="mcons-hero">'+
+      '<div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
+      '<div class="mcons-bub">'+esc(says[0])+'</div>'+
+    '</div>';
+    /* 我们之间（v1.5）：好感度与关系阶段 */
+    h += this._loveBlock(now);
+    /* 她记下的数字 */
+    h += '<div class="stat-row">'+
+      '<div class="stat"><div class="stat-v num">'+st.streak+'</div><div class="stat-k">连续打卡（天）</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+fmtMin(st.min)+'</div><div class="stat-k">陪你专注</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+st.done+'</div><div class="stat-k">完成的事</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+st.rec+'</div><div class="stat-k">记录条数</div></div>'+
+    '</div>';
+    /* 最近在忙的空间 */
+    h += '<div class="card pad" style="margin-top:14px">'+
+      '<div class="gl-sec-t">最近在忙的空间</div>'+
+      (sp ? '<div class="mcons-space" style="--sc:'+sp.color+'">'+
+              '<span class="ms-ico">'+esc(sp.icon||'✦')+'</span>'+
+              '<span class="ms-name">'+esc(sp.name)+'</span>'+
+              '<span class="ms-min num">'+fmtMin(st.topMin)+'</span>'+
+            '</div>'+
+            '<div class="hint">这是你陪它最久的一个，累计 '+fmtMin(st.topMin)+'。</div>'
+          : '<div class="hint">还没有专注记录——拖一个空间到操控台的投放区，我们就一起开始吧。</div>')+
+    '</div>';
+    /* 今天的心情 */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">今天的你</div>'+
+      '<div class="mcons-mood"><span class="mm-emo">'+emo+'</span>'+
+        '<span class="mm-tag">'+esc(tapTags)+'</span></div>'+
+      '<div class="hint">在「我们的共识」页的日期条上点 🙂 就能记下这一天的心情。</div>'+
+    '</div>';
+    /* 她想对你说的话 */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">她想对你说</div>';
+    for(let i=1;i<says.length;i++) h += '<div class="mcons-line">'+esc(says[i])+'</div>';
+    h += '<div class="hint">她会一直看着你的记录，也一直记得。</div></div>';
+    h += '</section>';
+    return h;
+  },
+  /* —— 她的日记（她的空间 · 向下拉出 v1.4）——
+     今天的这篇是实时写的（永远最新）；过了这一天就定稿冻结，之后再也不会变。
+     下面还有「她替你记着的」：她盯着的老待办与好久没碰的空间（实时推导，不落库） */
+  mdairy(){
+    const now = Date.now();
+    /* 「读她的日记」+2（每天一次，同上：涨满就不再写库） */
+    if(typeof Love !== 'undefined') Love.gain('diary', now);
+    const today = D.dateKey(now);
+    const dk = S.mdiaryDay || today;
+    const isToday = dk === today;
+    const d = HerDiary.of(dk, now);
+    const watch = HerDiary.watch(now);
+    let h = '<section class="sec"><h2 class="sec-title">她的日记<span class="sec-extra">她记下的你</span></h2>';
+    /* 日期条 */
+    h += '<div class="card daynav">'+
+      '<button class="icon-btn" data-action="md-day-prev" aria-label="前一天">◀</button>'+
+      '<div class="nav-date">'+D.fmtDateCN(D.dkToTs(dk))+
+        (isToday?' · <span style="color:var(--accent)">今天</span>':'')+
+        '<div class="md-sub">'+(isToday?'今天还没过完，我还在写':'这一天已经写好了')+'</div></div>'+
+      (isToday
+        ? '<button class="icon-btn" aria-label="已是今天" style="opacity:.3">▶</button>'
+        : '<button class="icon-btn" data-action="md-day-next" aria-label="后一天">▶</button>'+
+          '<button class="btn btn--small" data-action="md-day-today">回到今天</button>')+
+    '</div>';
+    /* 她的日记本体（像一页纸） */
+    h += '<div class="md-paper">'+
+      '<div class="md-head">'+
+        '<div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
+        '<div style="flex:1;min-width:0"><div class="md-t">'+(isToday?'今天，我一直在看着你':'那一天的你')+'</div>'+
+          '<div class="md-d">'+D.fmtDateCN(D.dkToTs(dk))+(d.mood&&d.mood.emoji?' · 心情 '+d.mood.emoji:'')+'</div></div>'+
+      '</div>'+
+      d.lines.map(x=>'<p class="md-line">'+esc(x)+'</p>').join('')+
+      '<div class="md-sign">—— 我记着呢，你只管往前</div>'+
+    '</div>';
+    /* 她记下的数字 */
+    h += '<div class="stat-row" style="margin-top:14px">'+
+      '<div class="stat"><div class="stat-v num">'+fmtMin(d.facts.min)+'</div><div class="stat-k">那天专注</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+d.facts.done+'</div><div class="stat-k">完成的事</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+d.facts.rec+'</div><div class="stat-k">记录条数</div></div>'+
+      '<div class="stat"><div class="stat-v num">'+d.facts.streak+'</div><div class="stat-k">连续第几天</div></div>'+
+    '</div>';
+    /* 她替你记着的（她惦记的事） */
+    h += '<div class="card pad" style="margin-top:14px">'+
+      '<div class="gl-sec-t">她替你记着的 <span class="gl-sec-n">'+watch.length+' 件</span></div>';
+    if(!watch.length){
+      h += '<div class="hint">现在没有需要她操心的事——你交出去的每一件都办好了，或者还没到她会惦记的时候。</div>';
+    }else{
+      for(const a of watch.slice(0, 6)){
+        const sp = a.kind === 'space' ? spaceById(a.id.slice(6)) : null;
+        const color = sp ? sp.color : (a.kind === 'space' ? '#9B7EDE' : '#E8A33D');
+        const ico = a.kind === 'space' ? '🌱' : '📌';
+        h += '<div class="md-watch" style="--wc:'+color+'">'+
+          '<span class="mw-ico">'+ico+'</span>'+
+          '<span class="mw-t">'+esc(a.text)+'</span>'+
+          '<span class="mw-d">'+a.days+' 天'+(a.askedDk?' · 问过了':'')+'</span>'+
+        '</div>';
+      }
+      h += '<div class="hint">拖得越久的事，她越想问你一句——问过一次就不再追问了。</div>';
+    }
+    h += '</div>';
+    h += '<div class="hint">她的日记每天过了午夜就写好、不再改动；今天这篇会跟着你一起长。</div>';
+    h += '</section>';
+    return h;
+  },
+  /* —— 她的身体（她的空间 · 向左拉出，v1.6a 由「服装」升级而来）：
+     她的表情差分 / Q版 / 动作图（一组槽位，缺哪张都能跑）+ 衣柜（回退用，也是老用户的东西） —— */
+  moutfit(){
+    const mId = S.settings.mascotId;
+    const ids = Outfit.list();
+    /* 一组槽位：点=上传，右上角 ×=清空 */
+    const grid = form => '<div class="body-grid">' + HerBody.slots(form).map(([key, name])=>{
+      const id = HerBody.id(form, key);
+      const pic = id
+        ? '<img src="'+Store.getImage(id)+'" alt="" draggable="false" onerror="this.style.display=\'none\'">'
+        : '<span class="bs-empty">＋</span>';
+      return '<button class="body-slot'+(id?' on':'')+'" data-action="body-upload" data-form="'+form+'" data-key="'+key+'">'+
+        (id ? '<span class="bs-x" data-action="body-clear" data-form="'+form+'" data-key="'+key+'" aria-label="清空">×</span>' : '')+
+        '<span class="bs-pic">'+pic+'</span>'+
+        '<span class="bs-n">'+esc(name)+'</span>'+
+        '<span class="bs-tag">'+(id ? '已收好' : '点我上传')+'</span>'+
+      '</button>';
+    }).join('') + '</div>';
+    let h = '<section class="sec"><h2 class="sec-title">她的身体<span class="sec-extra">她的样子</span></h2>';
+    /* 现在的她 */
+    h += '<div class="moutfit-cur">'+
+      '<div class="mo-ava">'+ HerBody.imgHtml('normal', Emo.slot(), {small:true}) +'</div>'+
+      '<div style="flex:1;min-width:0"><div class="mo-k">现在的她</div><div class="mo-n">'+esc(HerBody.lookName())+'</div>'+
+        '<div class="mo-k" style="margin-top:4px">此刻心情：'+esc(CONFIG.BODY.EMO_TEXT[Emo.get()] || '平静')+
+          ' <span style="opacity:.7">'+Emo.face()+'</span></div></div>'+
+    '</div>';
+    /* 她的表情与动作（v1.6a） */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">表情差分 <span class="gl-sec-n">'+esc(CONFIG.BODY.FORM_HINT.normal)+'</span></div>'+
+      grid('normal')+
+      '<div class="hint">传「开心/难过/生气/困了」这几张，她的表情就会跟着心情变：'+
+        '完成待办她会开心、待办变红她会担心、你连戳她五下她会生气、深夜里她会困。'+
+        '没传的槽位她自动用「普通」那张顶上，功能照跑。</div>'+
+      '<div class="hint" style="margin-top:6px">图的要求：<b>透明背景 PNG</b>；同一套尽量同尺寸同构图（只换表情，切换才不跳）；'+
+        '最长边 1024px 以内；Q版 512px 以内。<b>用 AI 生图时，先出满意的那张「普通」，再拿它当参考图只改表情词</b>，'+
+        '这样才像同一个她。</div>'+
+    '</div>';
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">Q版小人 <span class="gl-sec-n">'+esc(CONFIG.BODY.FORM_HINT.q)+'</span></div>'+
+      grid('q')+
+    '</div>';
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">动作图 <span class="gl-sec-n">'+esc(CONFIG.BODY.FORM_HINT.acts)+'</span></div>'+
+      grid('acts')+
+      '<div class="hint">动作图是「她做某个动作时换上」的那一张：抱膝坐下、睡着、受惊、扒着屏幕边偷看你、'+
+        '拉页面。她本来就是会动的（蹦跳、扭一扭、走近走远都不用图），这几张是给需要换姿势的那几幕用的。</div>'+
+    '</div>';
+    /* 衣柜（回退用：没传的槽位会自动用这里选的那套） */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">衣柜 <span class="gl-sec-n">没传的槽位自动用这套</span></div>'+
+      '<div class="chip-row">'+
+        '<button class="chip'+(mId==null?' on':'')+'" data-action="outfit-wear" data-id="">📁 系统默认的她</button>'+
+        '<button class="chip'+(mId==='placeholder'?' on':'')+'" data-action="outfit-wear" data-id="placeholder">🐣 内置小可爱</button>'+
+        ids.map((id, i)=>'<button class="chip mo-chip'+(mId===id?' on':'')+'" data-action="outfit-wear" data-id="'+esc(id)+'" data-hold="outfit-del">'+
+          '<img src="'+Outfit.src(id)+'" alt="" draggable="false">'+
+          '<span class="mo-tag">第 '+(i+1)+' 套</span></button>').join('')+
+      '</div>'+
+      '<button class="btn btn--primary btn--block" data-action="outfit-upload" style="margin-top:12px">＋ 上传新的一套（可多选，长按某套 0.5 秒删除）</button>'+
+      '<div class="hint">衣柜里的图也是原图保存（不压缩，透明背景完整保留）。整套换装用这里；'+
+        '只换表情/动作就用上面的槽位——两边可以一起用。</div>'+
+    '</div>';
+    /* 大小与位置 */
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">大小与位置</div>'+
+      '<div class="hint">纯净首页按住她单指拖动位置 · 双指捏合缩放（0.6~1.6 倍）</div>'+
+      '<button class="btn btn--small" data-action="outfit-reset-pos" style="margin-top:8px">还原默认大小与位置</button>'+
+    '</div>';
+    h += '</section>';
+    return h;
+  },
+  /* —— 「我们之间」区块（v1.5）：好感条 + 当前阶段 + 你们认识多少天 ——
+     放在「她眼中的我」里——她记得的你 + 你们的关系，本来就是一页 */
+  _loveBlock(now){
+    const st = Love.stage(), nx = Love.nextStage(), total = Love.total();
+    const to = nx ? nx.min : null;
+    const pct = to ? clamp((total - st.min) / Math.max(1, to - st.min), 0, 1) : 1;
+    let h = '<div class="card pad lv-block">'+
+      '<div class="gl-sec-t">我们之间 <span class="gl-sec-n">认识第 ' + Love.daysTogether(now) + ' 天</span></div>'+
+      '<div class="lv-head"><span class="lv-stage">'+esc(st.name)+'</span>'+
+        '<span class="lv-sub">她叫你「'+esc(st.you)+'」</span></div>'+
+      '<div class="gl-bar lv-bar"><i class="gl-fill lv-fill" style="width:'+Math.round(pct*100)+'%"></i></div>'+
+      '<div class="gl-meta">好感 '+total+(to ? (' · 距离「'+esc(nx.name)+'」还差 '+(to-total)) : ' · 已经是最亲密的阶段了 ✦')+'</div>'+
+      '<div class="hint">'+esc(st.desc)+'。好感只来自你和她相处的时间——戳戳她、来她的空间、翻她的日记、回答她的问题；'+
+        '跟你专注多久、完成几件事没有关系（那是等级的事）。</div>'+
+      '<button class="btn btn--small" data-action="goto-mtalk" style="margin-top:10px">💬 对她说说话</button>'+
+    '</div>';
+    return h;
+  },
+  /* —— 对她说（她的空间里双击屏幕 / 点 💬 进来，v1.5）：你说一句，她答一句 ——
+     纯本地规则（关键词命中），不联网；听不懂的句子她会收进小本子，等以后接上 AI 再回你 */
+  mtalk(){
+    const now = Date.now();
+    const log = Love.log();
+    const nm = CONFIG.LOVE.NAME;
+    let h = '<section class="sec"><h2 class="sec-title">对她说<span class="sec-extra">'+esc(nm)+'在这儿</span></h2>';
+    h += '<div class="lv-chat" id="lv-chat">';
+    if(!log.length){
+      h += '<div class="lv-msg lv-msg--her"><div class="lv-who">'+esc(nm)+'</div>'+
+           esc(Her.voice('chatHi', Her.ctx(now)))+'</div>';
+    }else{
+      for(const m of log){
+        h += '<div class="lv-msg lv-msg--'+(m.w==='me'?'me':'her')+'">'+
+             '<div class="lv-who">'+(m.w==='me'?'我':esc(nm))+'</div>'+escLn(m.t)+'</div>';
+      }
+    }
+    h += '</div>';
+    h += '<div class="lv-chips">'+CONFIG.LOVE.CHIPS.map(c=>
+      '<button class="chip" data-action="love-chip" data-t="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div>';
+    h += '<div class="lv-input">'+
+      '<input class="input" id="mtalk-in" placeholder="跟'+esc(nm)+'说点什么…" maxlength="200" autocomplete="off">'+
+      '<button class="btn btn--primary" data-action="love-send">发送</button>'+
+    '</div>';
+    const notes = Love.notes();
+    h += '<div class="hint">她认得出早安晚安、想你、夸她、难过、无聊这些。暂时听不懂的句子，她会先收进小本子'+
+      (notes.length ? '（已经收着 '+notes.length+' 句）' : '')+'——等以后接上 AI，她会慢慢都学会。</div>';
+    h += '</section>';
+    return h;
+  },
   /* —— 纯净看板娘首页（背景+立绘两层分离，无静态UI，一切由手势呼出） —— */
   home(){
     const now = Date.now();
@@ -3159,35 +4265,8 @@ const Views = {
            '<button class="mini-date" data-action="go-summary-today" aria-label="我们的共识（每日总结与日历）" data-bind="bigdate"></button>'+
            '<button class="pure-clock num" data-action="open-alarm" aria-label="闹钟" data-bind="bigclock">--:--:--</button>'+
          '</div>';
-    /* 立绘层优先级：设置里上传的图 > 文件夹里的「看板娘.png」 > 内置占位小可爱 */
-    const mascotId = S.settings.mascotId;
-    const mascotSrc = (mascotId && mascotId!=='placeholder') ? Store.getImage(mascotId) : null;
-    const shellVis = mascotId==='placeholder' || (mascotId && !mascotSrc);
-    const mScale = S.settings.mascotScale || 1;
-    const mPos = S.settings.mascotPos || {dx:0, dy:0};
-    h += '<div class="mascot-zone">'+
-           (S.settings.mascotHidden ? '' : '<div class="mascot-shadow"></div>'+
-           '<div class="mascot" id="mascot">'+
-             '<div class="mascot-pos" style="transform:translate('+mPos.dx+'vw,'+mPos.dy+'vh) scale('+mScale+')">'+
-               '<img src="'+(mascotSrc || '看板娘.png')+'" alt="看板娘" draggable="false"'+
-                 (shellVis?' style="display:none"':'')+
-                 ' onerror="this.style.display=\'none\';var s=this.nextElementSibling;if(s)s.style.display=\'\'">'+
-               '<div class="mascot-shell"'+(shellVis?'':' style="display:none"')+'>'+
-                 '<div class="ms-ahoge"></div><div class="ms-hair"></div>'+
-                 '<div class="ms-hair2"></div><div class="ms-hair3"></div>'+
-                 '<div class="ms-face"></div>'+
-                 '<div class="ms-eye l"></div><div class="ms-eye r"></div>'+
-                 '<div class="ms-brow"></div>'+
-                 '<div class="ms-blush l"></div><div class="ms-blush r"></div>'+
-                 '<div class="ms-mouth"></div>'+
-                 '<div class="ms-ribbon">🎀</div>'+
-               '</div>'+
-             '</div>'+
-           '</div>');
-    /* 漂浮小星星 */
-    const SPARKS = [[6,24,1.6,'✦'],[13,66,2.4,'✧'],[86,18,2.1,'✦'],[81,60,3.0,'✧'],[48,7,3.6,'✦'],[55,78,1.2,'✧']];
-    for(const [x,y,d,c] of SPARKS) h += '<span class="sparkle" style="left:'+x+'%;top:'+y+'%;animation-delay:'+d+'s">'+c+'</span>';
-    h += '</div>';
+    /* 立绘层（首页与「她的空间」共用，见 _mascotZone） */
+    h += this._mascotZone();
     /* 看板娘气泡（提醒用，点击可跳转） */
     h += '<div id="bubble-root" class="hidden"></div>';
     /* 底部角落：最优先待办（实时倒计时，点=待办页）· 正在递归（点=节律表）· 今日剩余额度（点=节律表） */
@@ -3308,9 +4387,18 @@ const Views = {
     if(dayTodos.length===0){
       h += '<div class="hint" style="font-size:12px;color:var(--text-2)">这一天没有待办</div>';
     }else{
+      /* 排序：未办的排前面（其中剩余时间最少的在最上面，无期限备忘垫底），
+         已办好的排在后面（其中最后办好的在最上面） */
       const sorted = [...dayTodos].sort((a,b)=>{
-        const da = TodoLogic.dueAt(a, vNow), db = TodoLogic.dueAt(b, vNow);
-        if(da==null) return 1; if(db==null) return -1; return da-db;
+        const da = todoStatus(a, vNow)==='done' ? 1 : 0;
+        const db = todoStatus(b, vNow)==='done' ? 1 : 0;
+        if(da !== db) return da - db;
+        if(da === 1) return (b.completedAt||0) - (a.completedAt||0);   // 已办好：最后办好的最上面
+        const ua = TodoLogic.dueAt(a, vNow), ub = TodoLogic.dueAt(b, vNow);
+        if(ua==null && ub==null) return 0;                              // 都无期限：保持原顺序
+        if(ua==null) return 1;                                          // 无期限的排在有期限的后面
+        if(ub==null) return -1;
+        return ua - ub;                                                 // 剩余越少越靠前（超时的最靠前）
       });
       for(const t of sorted) h += todoCardHtml(t, isTodayView ? now : vNow, isTodayView);
     }
@@ -3597,7 +4685,7 @@ const Views = {
       '<button class="btn btn--small" data-action="pure-size-reset" style="margin-bottom:12px">还原默认字号（'+CONFIG.PURE_DATE_FS.def+'px / '+CONFIG.PURE_CLOCK_FS.def+'px）</button>'+
       '<div class="field"><label>显示看板娘</label>'+
         '<button class="btn btn--small" data-action="mascot-toggle">当前：'+(S.settings.mascotHidden?'隐藏中 · 点此显示':'显示中 · 点此隐藏')+'</button></div>'+
-      '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍，最大可占满整屏宽度），点她可在「角色养成」里还原。</div>'+
+      '<div class="hint">隐藏后纯净首页只留背景、角落信息与时间带。大小与位置：按住她单指拖动 · 双指捏合缩放（0.6~1.6倍，最大可占满整屏宽度），也可在「她的空间 → 服装页」里一键还原。</div>'+
     '</div></section>';
     /* 动画强度三档 */
     const animLv = S.settings.animLevel || 'light';
@@ -3606,6 +4694,34 @@ const Views = {
       '<div class="chip-row">'+animOpts.map(o=>
         '<button class="chip'+(animLv===o.k?' on':'')+'" data-action="anim-set" data-level="'+o.k+'">'+o.n+'</button>').join('')+
       '</div><div class="hint">控制看板娘呼吸、面板弹出、星星闪烁等动画强度</div>'+
+    '</div></section>';
+    /* 她说话的频率（v1.4：她会主动开口了） */
+    const herLv = S.settings.herVoice || 'normal';
+    const herOpts = [{k:'loud',n:'多'},{k:'normal',n:'正常（推荐）'},{k:'quiet',n:'少'},{k:'off',n:'安静'}];
+    const herCap = CONFIG.HER.VOICE_LEVELS[herLv];
+    h += '<section class="sec"><h2 class="sec-title">她说话的频率</h2><div class="card pad">'+
+      '<div class="chip-row">'+herOpts.map(o=>
+        '<button class="chip'+(herLv===o.k?' on':'')+'" data-action="her-voice" data-level="'+o.k+'">'+o.n+'</button>').join('')+
+      '</div><div class="hint">'+(herLv==='off'
+        ? '她不再主动开口了。闹钟和额度用尽的提醒照旧——那些是正事。'
+        : '她会主动跟你说话（问候、待办过点催你、睡前总结、惦记你很久没做的事），一天最多 '+herCap+' 句。')+
+      '</div>'+
+      '<div class="hint">她每天过了午夜会写好「这一天的你」，存在她的空间里（长按向下滑），随时能翻。</div>'+
+    '</div></section>';
+    /* 她的通知（v1.5：她走出软件） */
+    const nSup = Notify.supported(), nOn = Notify.enabled();
+    h += '<section class="sec"><h2 class="sec-title">她的通知</h2><div class="card pad">'+
+      '<div class="hint">把软件切到后台之后，她说的话会以系统通知送到你手上——她走出软件来找你。'+
+        '（她只在要紧的时候叫你：待办快到点、你答应过的事过了点、她写下今天的日记、惦记你很久没做的事。）</div>'+
+      (nSup
+        ? '<div class="hint" style="color:var(--text)">当前：'+(nOn ? '已开启（系统权限：'+({granted:'已允许',denied:'被拒绝',default:'还没问过'}[Notify.permission()]||Notify.permission())+'）' : '未开启')+'</div>'+
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+
+            '<button class="btn btn--small'+(nOn?'':' btn--primary')+'" data-action="love-notify-toggle">'+(nOn?'关掉她的通知':'开启她的通知')+'</button>'+
+            (nOn?'<button class="btn btn--small" data-action="love-notify-test">试试发一条</button>':'')+
+          '</div>'
+        : '<div class="hint" style="color:var(--text)">当前用不了系统通知：这个功能要求网页是「部署在网上、装到手机主屏幕」的形态'+
+          '（见使用说明的部署一节）。电脑上直接双击打开的文件、或者没装到主屏幕，都收不到——这是浏览器的限制，不是她的问题。</div>')+
+      '<div class="hint">通知里只会出现她说的话，抬头是她的名字。你正看着软件的时候她不会发通知（气泡就够了）。</div>'+
     '</div></section>';
     const storageMode = Store.mode==='idb' ? '大容量模式 · 可用约 '+Store.capacityText() : Store.mode==='ls' ? '兼容模式 · 约 5MB 上限' : '当前浏览器无法保存数据';
     h += '<section class="sec"><h2 class="sec-title">数据与备份</h2><div class="card pad">'+
@@ -3651,20 +4767,89 @@ function applyBg(){
   }
 }
 /* 看板娘立绘上传回调：不压缩，原图保存（透明背景 PNG 无损保留） */
-function handleMascotImageFile(file){
-  if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
-  const rd = new FileReader();
-  rd.onload = ()=>{
-    const dataURL = rd.result;
-    if(!Store.saveImage('mascot', dataURL)){ UI.toast('存储空间不足', 'err'); return; }
-    S.settings.mascotId = 'mascot';
+/* ══════════════════════════════════════════════════════════════
+   9.57 她的衣柜 Outfit（v1.3）：多套立绘自由切换 / 上传 / 长按删除
+   数据：settings.outfits = ['img_xxx', …]（只存上传的服装 id，图片本体照旧在 img:xxx）
+   ⚠️ gcImages 必须把 outfits 里每个 id 都登记为引用，否则下次启动图片全被回收
+   ══════════════════════════════════════════════════════════════ */
+const Outfit = {
+  /* 读衣柜；老用户第一次进来时，把旧的单一「上传立绘」（固定 id 'mascot'）补进衣柜，零丢失 */
+  list(){
+    let ids = S.settings.outfits;
+    if(!Array.isArray(ids)){
+      ids = [];
+      if(S.settings.mascotId === 'mascot' || Store.getImage('mascot')) ids.push('mascot');
+      S.settings.outfits = ids;
+      saveSettings();
+    }
+    return ids;
+  },
+  name(id){ const i = this.list().indexOf(id); return i < 0 ? '自定义立绘' : ('第 ' + (i + 1) + ' 套'); },
+  src(id){ return id ? (Store.getImage(id) || '') : ''; },
+  wear(id){
+    S.settings.mascotId = id || null;
     saveSettings();
-    UI.closeModal();
     scheduleRender();
-    UI.toast('看板娘立绘已更换（原图无损）');
+    UI.toast(id ? ('已换上' + this.name(id)) : '已换回系统默认的她（mimi/ 文件夹）');
+  },
+  upload(){
+    const fi = document.getElementById('file-input');
+    if(!fi) return;
+    fi.accept = 'image/*';
+    fi.multiple = true;               // 相册里可一次多选（v1.4.1）
+    S.pendingFileCb = handleOutfitFile;
+    fi.value = ''; fi.click();
+  },
+  /* 存一套新衣服并直接换上（原图不压缩：透明背景 PNG 完整保留）
+     quiet=true 时不弹提示——批量上传由调用方统一报一句 */
+  add(dataURL, quiet){
+    const id = uid('img_');
+    if(!Store.saveImage(id, dataURL)){ UI.toast('存储空间不足，这套没能存下', 'err'); return null; }
+    const ids = this.list();
+    ids.push(id);
+    S.settings.outfits = ids;
+    S.settings.mascotId = id;
+    saveSettings();
+    scheduleRender();
+    if(!quiet) UI.toast('新服装已收进衣柜并换上');
+    return id;
+  },
+  /* 删除：从衣柜摘掉 + 立刻回收图片；正穿着就先回退，别指向已删的图 */
+  del(id){
+    const ids = this.list();
+    const i = ids.indexOf(id);
+    if(i < 0) return;
+    ids.splice(i, 1);
+    S.settings.outfits = ids;
+    if(S.settings.mascotId === id) S.settings.mascotId = null;
+    saveSettings();
+    Store.del('img:' + id);
+    scheduleRender();
+    UI.toast('这套服装已删除');
+  },
+  askDel(id){
+    if(!this.list().some(x=>x===id)) return;
+    UI.confirmDialog('删除这套服装', '「' + this.name(id) + '」会从衣柜里移除，图片也一起删掉（无法恢复）。', true, ()=>this.del(id));
+  }
+};
+/* 服装上传（v1.4.1：相册可一次多选）：逐张读原图（不压缩）存进衣柜，最后一张就是换上的那套 */
+function handleOutfitFile(files){
+  const picked = (files||[]).filter(f=>f && f.type && f.type.startsWith('image/'));
+  if(!picked.length){ UI.toast('请选择图片文件', 'err'); return; }
+  const batch = picked.length > 1;
+  if(batch) UI.toast('正在读取 '+picked.length+' 张…');
+  let i = 0, ok = 0, full = false;
+  const step = ()=>{
+    if(full || i >= picked.length){
+      if(ok > 1) UI.toast('已收进衣柜 '+ok+' 套，'+Outfit.name(S.settings.mascotId)+' 已换上');
+      return;                                   // 只传一张时 Outfit.add 自己会提示
+    }
+    const rd = new FileReader();
+    rd.onload = ()=>{ if(Outfit.add(rd.result, batch)) ok++; else full = true; step(); };
+    rd.onerror = ()=>{ UI.toast('图片读取失败', 'err'); step(); };
+    rd.readAsDataURL(picked[i++]);
   };
-  rd.onerror = ()=>{ UI.toast('图片读取失败', 'err'); };
-  rd.readAsDataURL(file);
+  step();
 }
 /* 动画强度三档：完整 / 轻度（默认）/ 关闭 */
 function applyAnimLevel(){
@@ -3673,10 +4858,12 @@ function applyAnimLevel(){
   document.body.classList.toggle('anim-light', lv==='light');
 }
 /* 背景图选择回调（压缩到1600px保存） */
-function handleBgImageFile(file){
+function handleBgImageFile(files){
+  const file = (files||[])[0];
   if(!file || !file.type || !file.type.startsWith('image/')){ UI.toast('请选择图片文件', 'err'); return; }
   UI.toast('压缩处理中…');
   compressImage(file, dataURL=>{
+    if(!dataURL) return;
     if(S.settings.bgImageId) Store.del('img:'+S.settings.bgImageId);
     if(!Store.saveImage('img_bg', dataURL)){ UI.toast('存储空间不足', 'err'); return; }
     S.settings.bgImageId = 'img_bg';
@@ -3752,26 +4939,748 @@ function bubbleScene(key, text, go, sub){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   9.65 她活过来了 Her（v1.4）：她主动找你说话
+   ★ 所有主动台词的唯一出口是 Her.voice()——将来想接真 AI，只改那一个函数；
+     台词池与全部数值在 CONFIG.HER。她只在你自己的两个空间里说话（气泡通道）。
+   ★ 零迁移：只新增 settings.herVoice / herSpoke / herLastOpen / herAsked / herNight
+   ══════════════════════════════════════════════════════════════ */
+const Her = {
+  aiHook:null,          // ★ 预留接口：挂 (kind, ctx)=>string|null，返回非空就用它，否则回落话术池
+  _lastAt:0,            // 上一条主动气泡的时刻（冷却用）
+  _lastScan:0,          // 上一次检查的时刻
+  _lastIdle:0,          // 上一次「日常念叨」的时刻
+  _nightDone:null,      // 本次会话已经说过睡前总结的日子
+
+  /* ── 唯一出口：她说的话都从这儿出 ── */
+  voice(kind, ctx){
+    ctx = ctx || {};
+    /* 指定台词（有些场合她已经想好要怎么回了，比如听你答完某个问题）——照旧走这个出口 */
+    if(ctx.override) return this.fill(String(ctx.override), ctx);
+    /* ★ AI 接口（预留）：挂上之后由它接管台词；抛错或返回空再回落话术池。
+       吐出来的文本同样要过称呼替换（AI 也可以直接写 {yt}） */
+    try{ if(this.aiHook){ const a = this.aiHook(kind, ctx); if(a) return this.fill(String(a), ctx); } }catch(e){}
+    const pool = (CONFIG.HER.LINES || {})[kind] || [];
+    /* 条件是「或」的关系，命中多条就随机挑；一条都没命中（数据在设想的边界外）
+       就退回整池——宁可说得不贴切，也不能让她哑掉 */
+    const fits = pool.filter(p => !p.when || p.when(ctx));
+    const arr = fits.length ? fits : pool;
+    if(!arr.length) return '';
+    /* 随机挑一句来说。函数式台词（要念出你的数据）偶尔会碰到上下文没带全的场合——
+       挑不动就换下一句，绝不能因为一句台词把界面弄崩（全挑不动就这次先不说话） */
+    const order = arr.slice();
+    while(order.length){
+      const p = order.splice(Math.floor(Math.random()*order.length), 1)[0];
+      let s = '';
+      try{ const t = (typeof p === 'string') ? p : p.t; s = (typeof t === 'function') ? t(ctx) : t; }
+      catch(e){ continue; }
+      if(s) return this.fill(String(s), ctx);
+    }
+    return '';
+  },
+  /* 称呼令牌：她说的每句话都可以用 {yt} / {you} / {name}，
+     实际值随关系阶段自动变 —— 称呼要在所有界面生效，靠的就是这一层 */
+  fill(text, ctx){
+    const you = (ctx && ctx.you) || (typeof Love !== 'undefined' ? Love.you() : (CONFIG.LOVE.YOU || '你'));
+    const nm  = CONFIG.LOVE.NAME;
+    return String(text)
+      .split('{you}').join(you)
+      .split('{yt}').join(you && you !== (CONFIG.LOVE.YOU || '你') ? ('，' + you) : '')
+      .split('{name}').join(nm);
+  },
+
+  /* ── 频率门：档位（每天上限）+ 冷却。跨刷新有效（落库在 settings.herSpoke）── */
+  budget(dk){
+    const lv = S.settings.herVoice || 'normal';
+    const cap = (CONFIG.HER.VOICE_LEVELS[lv] != null) ? CONFIG.HER.VOICE_LEVELS[lv] : CONFIG.HER.VOICE_LEVELS.normal;
+    let s = S.settings.herSpoke;
+    if(!s || s.dk !== dk){ s = {dk, n:0}; S.settings.herSpoke = s; }
+    return {cap, used:s.n, left:Math.max(0, cap - s.n)};
+  },
+  canSpeak(now){
+    now = now || Date.now();
+    if(this.budget(D.dateKey(now)).left <= 0) return false;
+    return (now - this._lastAt) >= CONFIG.HER.COOLDOWN_MS;
+  },
+  /* ── 说一句：所有主动台词的统一入口 ── */
+  say(kind, ctx, opt){
+    opt = opt || {};
+    const now = (ctx && ctx.now) || Date.now();
+    const text = this.voice(kind, ctx);
+    if(!text) return false;
+    const key = opt.key || ('her-' + kind + '-' + D.dateKey(now));
+    if(Bubbles.seen[key]) return false;          // 这一条今天已经说过了
+    if(!this.canSpeak(now)) return false;        // 今天说够了 / 刚说完没多久
+    Bubbles.push(text, {key, sub: opt.sub || '她', go: opt.go || null});
+    /* 你把软件切到后台了 → 这句话也走系统通知送出去（她走出软件，v1.5） */
+    if(opt.notify !== false && typeof Notify !== 'undefined') Notify.her(text, opt.sub || '她');
+    const dk = D.dateKey(now), rec = S.settings.herSpoke;
+    if(rec && rec.dk === dk) rec.n = this.budget(dk).used + 1;
+    this._lastAt = now;
+    saveSettings();
+    return true;
+  },
+  /* ── 直接回应（你回答了她的问题 / 你跟她说话）：不算「主动搭话」，
+        所以不受每日频率门限制——她答你的话，随时都该答得上 ── */
+  reply(text, opt){
+    opt = opt || {};
+    if(!text) return false;
+    Bubbles.push(text, {key: opt.key || ('her-reply-' + text), sub: opt.sub || '她', go: opt.go || null});
+    if(opt.notify !== false && typeof Notify !== 'undefined') Notify.her(text, opt.sub || '她');
+    return true;
+  },
+  /* 「她督促过的事」记一笔：等你真的做完它，好感会涨（好感来源表里的 todo） */
+  _markUrged(id, dk){
+    if(!id) return;
+    if(!S.settings.herUrged) S.settings.herUrged = {};
+    S.settings.herUrged[id] = dk || D.dateKey(Date.now());
+    saveSettings();
+  },
+
+  /* ── 当天实况（台词池只管挑词，数字都在这儿备好）── */
+  _urgent(now){
+    let best = null, bd = 0;
+    for(const t of S.todos){
+      if(t.archived || TodoLogic.effStatus(t, now)==='done') continue;
+      const due = TodoLogic.dueAt(t, now);
+      if(due == null || due <= now) continue;
+      if(!best || due < bd){ best = t; bd = due; }
+    }
+    return best;
+  },
+  ctx(now){
+    now = now || Date.now();
+    const dk = D.dateKey(now);
+    const day = Grow.dayXpDetail(dk);        // 今天：专注/完成/记录（走缓存，便宜）
+    const st  = Grow.stats(now);             // 累计（她眼中的我那份）
+    const aff = (typeof Love !== 'undefined') ? Love.state() : {total:0};
+    const c = {
+      now, dk, hour:new Date(now).getHours(), day, st, lv:st.lv,
+      minText: fmtMin(Math.floor(day.min)),
+      urg: this._urgent(now),
+      /* v1.5 感情线：她怎么称呼你（{yt} 的实际值）、你们认识多久了、好感多少 */
+      you: (typeof Love !== 'undefined') ? Love.you() : CONFIG.LOVE.YOU,
+      stage: (typeof Love !== 'undefined') ? Love.stage().k : 'new',
+      days: (typeof Love !== 'undefined') ? Love.daysTogether(now) : 1,
+      love: aff.total || 0,
+      /* v1.6a：她现在的心情（台词池可以按 c.emo 分支——同一个场合，心情不同说法不同） */
+      emo: (typeof Emo !== 'undefined') ? Emo.get(now) : 'neutral'
+    };
+    c.plan = c.urg
+      ? '今天最急的是 ' + D.tsToHHMM(TodoLogic.dueAt(c.urg, now)) + ' 的「' + c.urg.title + '」' +
+        (day.min >= 1 ? '，你已经专注 ' + c.minText + ' 了。' : '。')
+      : (st.dayCount === 0 ? '我们从今天开始吧，先做一件小事。'
+                           : '今天还没有安排，要不要挑一个空间？');
+    return c;
+  },
+
+  /* ── 打开页面时：好久不见 / 昨天没打卡 / 问候（bootMain 调一次）── */
+  onBoot(now){
+    now = now || Date.now();
+    const dk = D.dateKey(now);
+    const last = S.settings.herLastOpen;
+    S.settings.herLastOpen = {dk, at:now};   // 先记账再说话：今天说不上话也算得准
+    saveSettings();
+    const c = this.ctx(now);
+    /* ① 好久不见 */
+    let gap = 0;
+    if(last && last.dk) gap = Math.round((D.dkToTs(dk) - D.dkToTs(last.dk)) / 86400000);
+    if(gap >= CONFIG.HER.MISS_DAYS){
+      c.gap = gap;
+      return this.say('missAway', c, {key:'her-away-'+dk, sub:'好久不见', go:()=>goView('mcons')});
+    }
+    /* ② 昨天没打卡（前天还在）——断掉的线她最在意 */
+    const yest = D.dateKey(D.addDaysTs(now,-1)), before = D.dateKey(D.addDaysTs(now,-2));
+    if(!Grow.checkedIn(yest) && Grow.checkedIn(before)){
+      c.was = Grow.streakDaysUpTo(before);
+      return this.say('missStreak', c, {key:'her-streakbrk-'+dk, sub:'她惦记着', go:()=>goView('mcons')});
+    }
+    /* ③ 问候 */
+    return this.say('greet', c, {key:'her-greet-'+dk, sub:'她'});
+  },
+
+  /* ── 过了晚上 N 点，她汇报今天（每天一次）── */
+  nightCheck(now){
+    const h = new Date(now).getHours();
+    if(h < CONFIG.HER.NIGHT_FROM && h >= CONFIG.HER.NIGHT_TO) return false;
+    const dk = D.dateKey(now);
+    if(this._nightDone === dk || S.settings.herNight === dk) return false;
+    this._nightDone = dk;
+    S.settings.herNight = dk; saveSettings();
+    return this.say('night', this.ctx(now), {key:'her-night-'+dk, sub:'晚安', go:()=>goView('mdairy')});
+  },
+
+  /* ── 待办过点多久了（超过宽限才催，别刚到点就烦人）── */
+  _late(now){
+    const grace = (CONFIG.HER.OVERDUE_MIN || 10) * 60000;
+    let best = null, bd = 0;
+    for(const t of S.todos){
+      if(t.archived || TodoLogic.effStatus(t, now)==='done') continue;
+      const due = TodoLogic.dueAt(t, now);
+      if(due == null || due > now - grace) continue;   // 还没到点 / 刚过点还在宽限里 —— 都不催
+      if(!best || due > bd){ best = t; bd = due; }     // 最接近现在的那件（刚过点的先催）
+    }
+    return best;
+  },
+
+  /* ── 每分钟扫一次：过点督促 / 她惦记的事 / 日常念叨 ── */
+  tick(now){
+    if(typeof Bubbles==='undefined') return;
+    if(S.view!=='home' && S.view!=='mspace') return;   // 她只在你和她的空间里开口
+    this.nightCheck(now);
+    if(now - this._lastScan < 60000) return;
+    this._lastScan = now;
+    if(!this.canSpeak(now)) return;                    // 说不了话就什么都不用算
+    const c = this.ctx(now);
+    /* ① 待办过点还没做 */
+    const late = this._late(now);
+    if(late){
+      c.title = late.title;
+      if(this.say('urgeOver', c, {key:'her-late-'+late.id+'-'+c.dk, sub:'她提醒你', go:()=>goView('todos')})){
+        this._markUrged(late.id, c.dk);
+        return;
+      }
+    }
+    /* ② 她惦记着的事（每天最多问一件） */
+    const ask = HerDiary.nextAsk(now);
+    if(ask){
+      const kind = ask.kind === 'space' ? 'recallSpace' : 'recallTodo';
+      if(this.say(kind, Object.assign(c, {ask}), {key:'her-ask-'+ask.id+'-'+c.dk, sub:'她记得', go:()=>goView('mdairy')})){
+        HerDiary.markAsked(ask.id, now);
+        return;
+      }
+    }
+    /* ③ 日常念叨（低频） */
+    if(now - this._lastIdle < CONFIG.HER.IDLE_COOLDOWN_MS){
+      if(this.say('idle', c, {key:'her-idle-'+c.dk+'-'+Math.floor(now/600000), sub:'她'})) this._lastIdle = now;
+    }
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.66 她的日记 HerDiary（v1.4）
+   ★ 今天的日记 = 实时生成（永远是最新的）；过去的日子 = 定稿一次后冻结
+     （定稿写在 dayDoc(dk).herDiary 里 → 随 days 打包导出，零导出改动）
+   ★ 她「惦记着的事」= 从待办与空间实时推导（不落库），问过之后记在
+     settings.herAsked 里，同一件事不追问第二遍
+   ══════════════════════════════════════════════════════════════ */
+const HerDiary = {
+  /* 只读已存在的天文档：不存在就返回 null（不创建空文档污染 days） */
+  _docIfExists(dk){
+    if(S.days.has(dk)) return S.days.get(dk);
+    const raw = Store.get('day:'+dk, null);
+    if(!raw) return null;
+    S.days.set(dk, raw);
+    return raw;
+  },
+  today(){ return D.dateKey(Date.now()); },
+  /* 已定稿的日记（过去的日子）；今天的返回 null */
+  get(dk){
+    if(!dk || dk >= this.today()) return null;
+    const doc = this._docIfExists(dk);
+    return (doc && doc.herDiary) || null;
+  },
+  /* 由当天数据写一篇（纯函数式推导，不改任何数据） */
+  build(dk, now){
+    now = now || Date.now();
+    const today = this.today();
+    const e = Grow.dayXpDetail(dk);
+    const d0 = D.dkToTs(dk), d1 = d0 + 86400000;
+    /* 这一天里最专注的空间 */
+    const per = {};
+    for(const s of S.sessions){
+      if(!s.spaceId || !s.start) continue;
+      const a = Math.max(s.start, d0), b = Math.min(s.end != null ? s.end : now, d1);
+      if(b > a) per[s.spaceId] = (per[s.spaceId] || 0) + (b - a) / 60000;
+    }
+    let topId = null, topMin = 0;
+    for(const id in per){ if(per[id] > topMin){ topMin = per[id]; topId = id; } }
+    const doc = this._docIfExists(dk);
+    const mood = (doc && doc.dayMood) || null;
+    const min = Math.floor(e.min);
+    /* 明天最早的一件待办（她替你记着） */
+    const refNow = (dk === today) ? now : (d0 + 23*3600000);
+    let nextT = null, nextAt = 0;
+    for(const t of S.todos){
+      if(t.archived || TodoLogic.effStatus(t, refNow) === 'done') continue;
+      const due = TodoLogic.nextDueAt(t, refNow);
+      if(due == null || due <= refNow) continue;
+      if(!nextT || due < nextAt){ nextT = t; nextAt = due; }
+    }
+    const lines = [];
+    if(min > 0 || e.done > 0 || e.rec > 0){
+      let s1 = '';
+      if(min > 0) s1 += '专注了 ' + fmtMin(min);
+      if(e.done > 0) s1 += (s1 ? '、' : '') + '完成了 ' + e.done + ' 件事';
+      if(e.rec > 0) s1 += (s1 ? '、' : '') + '写下 ' + e.rec + ' 条记录';
+      lines.push('今天你' + s1 + '。');
+      if(e.streak >= 2) lines.push('这是连续的第 ' + e.streak + ' 天，我都数着的。');
+    }else{
+      lines.push('今天你休息了。什么都没做也没关系，休息也是正经事。');
+    }
+    if(topId){
+      const sp = spaceById(topId);
+      if(sp) lines.push('最认真的时候是在「' + sp.name + '」——' + fmtMin(Math.floor(topMin)) + '，我在旁边看着呢。');
+    }
+    if(mood && mood.emoji) lines.push('你说今天的心情是 ' + mood.emoji + (mood.tags && mood.tags.length ? '（' + mood.tags.join('·') + '）' : '') + '，我记下了。');
+    /* v1.5 感情线：那天你们的关系升了一段 / 那天你回答了她的问题（都随 days 打包，零迁移） */
+    if(doc && doc.loveUp){
+      const st = CONFIG.LOVE.STAGES.filter(x => x.k === doc.loveUp)[0];
+      if(st) lines.push('今天我们之间又近了一点——从这天起，我们算「' + st.name + '」了。我偷偷高兴了一整天。');
+    }
+    const ans = S.settings.herAnswers || {};
+    for(const qid in ans){
+      if(ans[qid].dk !== dk) continue;
+      lines.push('今天你告诉我「' + ans[qid].a + '」——是我问的，我会一直记着。');
+    }
+    if(nextT) lines.push('明天 ' + D.tsToHHMM(nextAt) + ' 有「' + nextT.title + '」，我替你记着。');
+    if(dk === today) lines.push('这一天还没过完呢，我等你。');
+    return {
+      dk, at:now,
+      mood: mood ? {emoji:mood.emoji || '', tags:(mood.tags || [])} : null,
+      facts:{min, done:e.done, rec:e.rec, topId, topMin:Math.floor(topMin), streak:e.streak},
+      lines, text:lines.join('')
+    };
+  },
+  /* 定稿：把一个已经过去的日子的日记冻结下来（幂等；没有天文档就不落库） */
+  finalize(dk, now){
+    now = now || Date.now();
+    if(!dk || dk >= this.today()) return null;      // 今天/未来的日子不定稿
+    const doc = this._docIfExists(dk);
+    if(doc && doc.herDiary) return doc.herDiary;    // 写过就不改
+    const d = this.build(dk, now);
+    if(doc){ doc.herDiary = d; saveDay(dk); }
+    return d;
+  },
+  /* 页面上取某一天的日记：今天实时算，过去的日子定稿后再给 */
+  of(dk, now){
+    if(dk === this.today()) return this.build(dk, now);
+    return this.get(dk) || this.finalize(dk, now) || this.build(dk, now);
+  },
+
+  /* ── 她惦记着的事（实时推导，可问 / 已问）── */
+  _lastTouch(spId){
+    let last = 0;
+    for(const s of S.sessions){
+      if(s.spaceId !== spId || !s.start) continue;
+      const e = (s.end != null) ? s.end : Date.now();
+      if(e > last) last = e;
+    }
+    const sp = spaceById(spId);
+    if(sp && sp.updatedAt && sp.updatedAt > last) last = sp.updatedAt;
+    if(!last && sp && sp.createdAt) last = sp.createdAt;
+    return last || null;
+  },
+  watch(now){
+    now = now || Date.now();
+    const H = CONFIG.HER, asked = S.settings.herAsked || {}, out = [];
+    const todayTs = D.dkToTs(D.dateKey(now));
+    /* ① 早就过点还没做的待办 */
+    for(const t of S.todos){
+      if(t.archived || TodoLogic.effStatus(t, now) === 'done') continue;
+      const due = TodoLogic.dueAt(t, now);
+      if(due == null) continue;
+      const days = Math.round((todayTs - D.dkToTs(D.dateKey(due))) / 86400000);
+      if(days < H.ASK_OVERDUE_DAYS) continue;
+      out.push({id:'todo:'+t.id, kind:'todo', text:t.title, days, at:due, askedDk:asked['todo:'+t.id] || null});
+    }
+    /* ② 好久没碰的空间 */
+    for(const sp of S.spaces){
+      if(sp.archived) continue;
+      const last = this._lastTouch(sp.id);
+      if(!last) continue;
+      const days = Math.round((todayTs - D.dkToTs(D.dateKey(last))) / 86400000);
+      if(days < H.ASK_STALE_SPACE_DAYS) continue;
+      out.push({id:'space:'+sp.id, kind:'space', text:sp.name, days, at:last, askedDk:asked['space:'+sp.id] || null});
+    }
+    out.sort((a, b) => b.days - a.days);      // 拖得最久的排前面
+    return out;
+  },
+  /* 她今天想问的一件事（没问过的，最多 ASK_PER_DAY 件；每天只挑一件） */
+  nextAsk(now){
+    now = now || Date.now();
+    const dk = D.dateKey(now);
+    let n = 0;
+    for(const id in (S.settings.herAsked || {})){ if(S.settings.herAsked[id] === dk) n++; }
+    if(n >= CONFIG.HER.ASK_PER_DAY) return null;
+    const list = this.watch(now).filter(a => !a.askedDk);
+    return list.length ? list[0] : null;
+  },
+  markAsked(id, now){
+    if(!id) return false;
+    if(!S.settings.herAsked) S.settings.herAsked = {};
+    S.settings.herAsked[id] = D.dateKey(now || Date.now());
+    saveSettings();
+    return true;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.67 感情线 Love（v1.5）：好感度 / 关系阶段 / 她的问题 / 对她说
+   ★ 好感 ≠ 等级：等级是她跟着你长大的进度（你做了多少事），
+     好感是你们的关系（你陪了她多少）——来源全是「你和她相处」，
+     跟你专注多久、完成几件事毫无关系，绝不做成绩效。
+   ★ 零迁移：新数据全挂 settings（herLove / herAnswers / herChatLog /
+     herLangNotes / herAskAt / herRecall / herUrged / herNotify），
+     exportJSON / importJSON 一行都不用改。
+     唯一落在 dayDoc 上的是 loveUp（那天你们的关系升了一段），随 days 打包。
+   ★ 称呼：她对你的称呼由关系阶段决定（Love.you()），台词里写 {yt} 就会自动变。
+   ══════════════════════════════════════════════════════════════ */
+const Love = {
+  _pendingStage:null,   // 升段了但还没演（演出留到 tick——别在渲染/点击过程中弹东西）
+  _lastAct:0,           // 你最后一次碰屏幕的时刻（她挑你安静下来的时候才开口）
+  _asking:null,         // 正在问她的哪个问题
+
+  /* ── 数据层（全挂 settings，零迁移）── */
+  state(){
+    let v = S.settings.herLove;
+    if(!v || typeof v !== 'object') v = {total:0};
+    if(typeof v.total !== 'number' || v.total < 0) v.total = 0;
+    if(!v.src || typeof v.src !== 'object') v.src = {};
+    S.settings.herLove = v;
+    return v;
+  },
+  total(){ return this.state().total; },
+  /* 此刻属于哪一段：门槛从低到高，取最后一个够得着的 */
+  stageAt(total){
+    const st = CONFIG.LOVE.STAGES;
+    let cur = st[0];
+    for(const s of st){ if(total >= s.min) cur = s; }
+    return cur;
+  },
+  stage(){ return this.stageAt(this.total()); },
+  nextStage(){
+    const st = CONFIG.LOVE.STAGES, i = st.indexOf(this.stage());
+    return (i >= 0 && i < st.length - 1) ? st[i+1] : null;
+  },
+  stageIndexOf(k){ const st = CONFIG.LOVE.STAGES; for(let i=0;i<st.length;i++) if(st[i].k===k) return i; return 0; },
+  /* 她对你的称呼——台词里的 {you} / {yt} 就是它，随阶段自动升级 */
+  you(){ return this.stage().you; },
+  /* 你们认识多少天了（从 meta.createdAt 算；认识的那天就是第 1 天） */
+  daysTogether(now){
+    now = now || Date.now();
+    const a = D.dateKey((S.meta && S.meta.createdAt) ? S.meta.createdAt : now);
+    const b = D.dateKey(now);
+    return Math.max(1, Math.round((D.dkToTs(b) - D.dkToTs(a)) / 86400000) + 1);
+  },
+  today(now){
+    const s = this.state(), dk = D.dateKey(now || Date.now());
+    return (s.day && s.day.dk === dk) ? s.day.n : 0;
+  },
+  srcToday(src, now){
+    const r = this.state().src[src], dk = D.dateKey(now || Date.now());
+    return (r && r.dk === dk) ? r.n : 0;
+  },
+
+  /* ★ 好感唯一的入口：冷却 → 来源每日上限 → 每日总上限，三道闸都在这里。
+     涨不动的时候直接返回 0 并且不写库——所以从视图渲染里调它是安全的、幂等的 */
+  gain(src, now){
+    now = now || Date.now();
+    const cfg = CONFIG.LOVE.SOURCES[src];
+    if(!cfg) return 0;
+    const s = this.state(), dk = D.dateKey(now);
+    if(cfg.cd && s.last && s.last[src] && now - s.last[src] < cfg.cd) return 0;   // ① 同一来源的冷却
+    const r = (s.src[src] && s.src[src].dk === dk) ? s.src[src] : {dk, n:0};
+    if(r.n >= cfg.cap) return 0;                                                  // ② 这个来源今天算够了
+    if(!s.day || s.day.dk !== dk) s.day = {dk, n:0};
+    if(s.day.n + cfg.v > CONFIG.LOVE.DAILY_CAP) return 0;                         // ③ 每天的总闸（记的是「点」不是「次」）
+    const was = this.stage().k;
+    s.total += cfg.v; r.n++; s.day.n += cfg.v;
+    s.src[src] = r;
+    if(!s.last) s.last = {};
+    s.last[src] = now;
+    if(this.stage().k !== was){
+      this._pendingStage = this.stage().k;
+      const doc = dayDoc(dk);            // 她的日记里记一笔（数据先落，演出留给 tick）
+      doc.loveUp = this.stage().k;
+      saveDay(dk);
+    }
+    saveSettings();
+    return cfg.v;
+  },
+  /* ── 感情会凉：连着几天没打开之后每天 -1，但下限不跌破当前阶段的门口
+        （会凉，是为了让「回来」有意义；不归零，是因为陪伴不该被羞辱） ── */
+  settle(now){
+    now = now || Date.now();
+    const s = this.state();
+    const last = S.settings.herLastOpen;
+    if(!last || !last.dk) return 0;
+    const gap = Math.round((D.dkToTs(D.dateKey(now)) - D.dkToTs(last.dk)) / 86400000);
+    if(gap <= CONFIG.LOVE.DECAY_AFTER_DAYS) return 0;
+    const lost = (gap - CONFIG.LOVE.DECAY_AFTER_DAYS) * CONFIG.LOVE.DECAY_PER_DAY;
+    const nv = Math.max(this.stage().min, s.total - lost);   // 门槛要在扣之前算
+    const cut = s.total - nv;
+    if(cut > 0){ s.total = nv; saveSettings(); }
+    return cut;
+  },
+  /* 打开软件时（在 Her.onBoot 之前调：settle 要读到上一次的 herLastOpen） */
+  onBoot(now){
+    now = now || Date.now();
+    const cut = this.settle(now);
+    this._lastAct = now;      // 刚打开：从这里重新数「你安静了多久」
+    return cut;
+  },
+
+  /* ── 你的活动：bootMain 里挂在 pointerdown 上 ── */
+  touch(){ this._lastAct = Date.now(); },
+  idleMs(now){ return (now || Date.now()) - (this._lastAct || 0); },
+  _modalOpen(){
+    if(typeof document === 'undefined' || !document.getElementById) return false;
+    const mr = document.getElementById('modal-root');
+    return !!(mr && mr.innerHTML);
+  },
+
+  /* ── 她的问题（galgame 式选择题）── */
+  unlocked(){ return CONFIG.LOVE.QUESTIONS.filter(q => this.total() >= (CONFIG.LOVE.CAT_MIN[q.cat] || 0)); },
+  nextQuestion(){
+    const a = S.settings.herAnswers || {};
+    const list = this.unlocked().filter(q => !a[q.id]);
+    return list.length ? list[0] : null;
+  },
+  canAsk(now){
+    now = now || Date.now();
+    const dk = D.dateKey(now), last = S.settings.herAskAt;
+    if(last && last.dk === dk) return false;                       // 每天最多一个
+    if(last && Math.round((D.dkToTs(dk) - D.dkToTs(last.dk)) / 86400000) < CONFIG.LOVE.ASK_GAP_DAYS) return false;
+    if(this.idleMs(now) < CONFIG.LOVE.ASK_IDLE_MS) return false;   // 你正忙着，她不打断
+    return !this._modalOpen();
+  },
+  openAsk(q, now){
+    now = now || Date.now();
+    if(!q) return false;
+    S.settings.herAskAt = {dk:D.dateKey(now), at:now};
+    saveSettings();
+    this._asking = q.id;
+    UI.openModal(this.askHtml(q, now));
+    return true;
+  },
+  askHtml(q, now){
+    const ctx = Her.ctx(now || Date.now());
+    let h = '<div class="lv-ask">'+
+      '<div class="lv-hero"><div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
+        '<div class="mcons-bub">'+esc(Her.fill(q.q, ctx))+'</div></div>'+
+      '<div class="lv-opts">';
+    for(let i=0;i<q.opts.length;i++){
+      h += '<button class="lv-opt" data-action="love-answer" data-id="'+esc(q.id)+'" data-i="'+i+'">'+esc(q.opts[i])+'</button>';
+    }
+    h += '</div><div class="hint">你回答过的事她会一直记着——以后还会拿它来接你的话。</div>'+
+      '<button class="btn btn--small" data-action="modal-close" style="margin-top:10px">等下再聊</button>'+
+    '</div>';
+    return h;
+  },
+  answer(qid, i, now){
+    now = now || Date.now();
+    const q = CONFIG.LOVE.QUESTIONS.filter(x => x.id === qid)[0];
+    if(!q) return false;
+    const a = q.opts[i];
+    if(a == null) return false;
+    if(!S.settings.herAnswers) S.settings.herAnswers = {};
+    S.settings.herAnswers[qid] = {a, dk:D.dateKey(now), at:now};
+    this._asking = null;
+    saveSettings();
+    this.gain('answer', now);            // 好感来源表：回答她的问题 +5
+    UI.closeModal();
+    Her.reply(Her.voice('loveBack', Object.assign(Her.ctx(now), {answer:a, override:q.back || null})),
+      {key:'her-loveback-'+qid, sub:'她记住啦', go:()=>goView('mcons')});
+    scheduleRender();
+    return true;
+  },
+  answerOf(qid){ const a = S.settings.herAnswers || {}; return a[qid] ? a[qid].a : null; },
+  /* 隔了几天，她拿你以前的回答来接一次话（每天最多一次） */
+  dueRecall(now){
+    now = now || Date.now();
+    const ans = S.settings.herAnswers || {}, used = S.settings.herRecall || {}, dk = D.dateKey(now);
+    for(const id in used){ if(used[id] === dk) return null; }
+    for(const q of CONFIG.LOVE.QUESTIONS){
+      const a = ans[q.id];
+      if(!a || used[q.id]) continue;
+      const days = Math.round((D.dkToTs(dk) - D.dkToTs(a.dk)) / 86400000);
+      if(days < CONFIG.LOVE.RECALL_GAP_DAYS) continue;
+      return {q, a:a.a, days};
+    }
+    return null;
+  },
+  markRecall(qid, now){
+    if(!S.settings.herRecall) S.settings.herRecall = {};
+    S.settings.herRecall[qid] = D.dateKey(now || Date.now());
+    saveSettings();
+  },
+
+  /* ── 「对她说」：她的小本子（聊天记录 + 她听不懂的句子，将来接 AI 的语料）── */
+  log(){ return S.settings.herChatLog || []; },
+  push(who, text, now){
+    if(!S.settings.herChatLog) S.settings.herChatLog = [];
+    const log = S.settings.herChatLog;
+    log.push({w: who === 'me' ? 'me' : 'her', t:String(text == null ? '' : text), at: now || Date.now()});
+    while(log.length > CONFIG.LOVE.CHAT_KEEP) log.shift();
+    saveSettings();
+    return log;
+  },
+  notes(){ return S.settings.herLangNotes || []; },
+  note(text, now){
+    const t = String(text == null ? '' : text).slice(0, 120);
+    if(!t) return false;
+    if(!S.settings.herLangNotes) S.settings.herLangNotes = [];
+    const n = S.settings.herLangNotes;
+    if(n.some(x => x.t === t)) return false;     // 同一句只记一次
+    n.push({t, at: now || Date.now()});
+    while(n.length > 100) n.shift();
+    saveSettings();
+    return true;
+  },
+  /* 进聊天页时她先打个招呼（隔久了才重新打，免得每次都重复一句） */
+  enter(now){
+    now = now || Date.now();
+    const log = this.log();
+    const last = log.length ? (log[log.length-1].at || 0) : 0;
+    if(now - last < CONFIG.LOVE.CHAT_HI_GAP_MS) return false;
+    const text = Her.voice(log.length ? 'chatGreet' : 'chatHi', Her.ctx(now));
+    if(!text) return false;
+    this.push('her', text, now);
+    return true;
+  },
+  /* 你说一句 → 她回一句。纯本地规则（关键词命中），全都不中就老实说没听懂 */
+  chat(text, now){
+    now = now || Date.now();
+    const raw = String(text == null ? '' : text).trim();
+    if(!raw) return '';
+    const low = raw.toLowerCase();
+    const hit = CONFIG.LOVE.CHAT.filter(r => r.k.some(k => low.indexOf(String(k).toLowerCase()) >= 0))[0];
+    const reply = Her.voice(hit ? hit.kind : 'chatFallback', Object.assign(Her.ctx(now), {say:raw}));
+    if(!hit) this.note(raw, now);        // 没听懂 → 收进小本子
+    this.push('me', raw, now);
+    if(reply) this.push('her', reply, now);
+    return reply;
+  },
+
+  /* ── 她来请求「走出软件」的权限（系统通知）——排在正事之后，且隔了一天以上才问 ── */
+  canAskNotify(now){
+    now = now || Date.now();
+    if(typeof Notify === 'undefined' || !Notify.supported()) return false;
+    const s = S.settings.herNotify || {};
+    if(s.asked) return false;
+    if(this.daysTogether(now) < 2) return false;                    // 刚认识就问这个太急了
+    if(this.idleMs(now) < CONFIG.LOVE.ASK_IDLE_MS) return false;
+    return !this._modalOpen();
+  },
+  askNotify(now){
+    now = now || Date.now();
+    S.settings.herNotify = Object.assign({}, S.settings.herNotify, {asked:true});
+    saveSettings();
+    UI.openModal(
+      '<div class="lv-ask">'+
+      '<div class="lv-hero"><div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
+        '<div class="mcons-bub">'+esc(Her.voice('noticeAsk', Her.ctx(now)))+'</div></div>'+
+      '<div class="lv-opts">'+
+        '<button class="lv-opt" data-action="love-notify-ok">好呀，你来提醒我</button>'+
+        '<button class="lv-opt lv-opt--ghost" data-action="love-notify-no">先不用</button>'+
+      '</div>'+
+      '<div class="hint">同意之后，你把软件切到后台的时候，她说的话会以系统通知送到你手上（手机上要先把网页「添加到主屏幕」再打开，电脑上直接双击打开的文件用不了）。</div>'+
+      '</div>');
+    return true;
+  },
+
+  /* ── 每秒一次（跟着主循环）：演升级 / 问你问题 / 拿旧回答接话 / 请求通知权限 ── */
+  tick(now){
+    now = now || Date.now();
+    if(S.view !== 'home' && S.view !== 'mspace') return;   // 和 Her 一样：她只在这两个纯净页里活动
+    /* ① 关系升级（账在 gain 里已经记好，这里只演） */
+    if(this._pendingStage){
+      const k = this._pendingStage; this._pendingStage = null;
+      const st = this.stage();
+      UI.toast('和 ' + CONFIG.LOVE.NAME + ' 的关系升级了 →「' + st.name + '」');
+      Her.reply(Her.voice('loveUp', Her.ctx(now)),
+        {key:'her-loveup-'+k, sub:'我们之间', go:()=>goView('mcons')});
+      return;
+    }
+    /* ② 她想问你一件事：你安静下来之后，她才好意思开口 */
+    if(this.canAsk(now) && Her.canSpeak(now)){
+      const q = this.nextQuestion();
+      if(q){ this.openAsk(q, now); return; }
+    }
+    /* ③ 隔几天，她拿你以前的回答来接一次话 */
+    const r = this.dueRecall(now);
+    if(r && Her.canSpeak(now)){
+      this.markRecall(r.q.id, now);
+      Her.say('recallAnswer',
+        Object.assign(Her.ctx(now), {a:r.a, q:r.q, override: r.q.recall ? r.q.recall(r.a) : null}),
+        {key:'her-recall-'+r.q.id+'-'+D.dateKey(now), sub:'她记得', go:()=>goView('mtalk')});
+      return;
+    }
+    /* ④ 她想请你允许她「走出软件」 */
+    if(this.canAskNotify(now)) this.askNotify(now);
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
    9.55 看板娘互动 Mascot（单击立绘：反应动画+台词气泡+爱心粒子+养成入口按钮）
    ══════════════════════════════════════════════════════════════ */
 const Mascot = {
-  lines:['今天也要一起加油哦~','摸摸头！','有什么事都可以交给我！','记得喝水哦，指挥官','要开始新的可能性了吗？','休息一下也没关系~','你的努力我都看在眼里！','今天想做什么呢？'],
+  /* 台词池：按等级解锁（v1.2）——base 人人有，L5/L10/L20 各解锁一批 */
+  lines:{
+    base:['今天也要一起加油哦~','摸摸头！','有什么事都可以交给我！','记得喝水哦，指挥官','要开始新的可能性了吗？','休息一下也没关系~','你的努力我都看在眼里！','今天想做什么呢？'],
+    L5:['诶？我好像长大了一点点！','跟着你一起努力，我也在进步呢～','学徒出师第一步，谢谢你！','今天的你，比昨天更可靠了'],
+    L10:['时间被我炼成小星星啦，都给你！','滴答滴答……我能听见时间的声音了','炼金术士的秘诀？就是每天一点点','这一炉时间里，有你一半的功劳'],
+    L20:['我在把我们的每一天，织成一条长长的围巾','编织者模式启动！时间在我手里很听话','你看，坚持的日子连起来会发光']
+  },
+  linesFor(level){
+    let out = this.lines.base.slice();
+    if(level >= 5) out = out.concat(this.lines.L5);
+    if(level >= 10) out = out.concat(this.lines.L10);
+    if(level >= 20) out = out.concat(this.lines.L20);
+    return out;
+  },
+  randomLine(level){ const l = this.linesFor(level || 1); return l[Math.floor(Math.random()*l.length)]; },
+  /* 台词总句数（等级成长页的解锁进度分母，别再手写数字） */
+  lineTotal(){ return this.lines.base.length + this.lines.L5.length + this.lines.L10.length + this.lines.L20.length; },
+  /* 从 from 升到 to 这中间新解锁的台词（按档位由低到高） */
+  unlockLinesBetween(from, to){
+    let out = [];
+    for(const [lv, key] of [[5,'L5'],[10,'L10'],[20,'L20']]){
+      if(lv > from && lv <= to) out = out.concat(this.lines[key]);
+    }
+    return out;
+  },
   tap(){
-    if(S.view!=='home') return;
+    if(S.view!=='home' && S.view!=='mspace') return;   // 她的空间里点她也能互动（并浮出回程星标）
     const el = document.getElementById('mascot');
     if(!el) return;
-    /* 反应动画：随机跳一跳 / 软软一挤（播完移除，呼吸浮动恢复） */
-    const cls = Math.random()<0.5?'mascot-hop':'mascot-squish';
-    el.classList.remove('mascot-hop','mascot-squish');
+    const now = Date.now();
+    /* v1.6a 连戳：1.5 秒里戳满 5 下，她真的要生气了（心情浮标 + 吓一跳 + 震动） */
+    if(!this._tapAt || now - this._tapAt > CONFIG.SENSE.TAP_WIN){ this._tapAt = now; this._tapN = 0; }
+    this._tapAt = now; this._tapN = (this._tapN || 0) + 1;
+    const angry = this._tapN >= CONFIG.SENSE.TAP_N;
+    if(angry) this._tapN = 0;
+    /* 反应动画：随机跳一跳 / 软软一挤；戳急了是「吓了一跳」（播完移除，呼吸浮动恢复） */
+    const cls = angry ? 'act-startle' : (Math.random()<0.5?'mascot-hop':'mascot-squish');
+    el.classList.remove('mascot-hop','mascot-squish','act-startle');
     void el.offsetWidth;
     el.classList.add(cls);
     setTimeout(()=>el.classList.remove(cls), 700);
-    /* 台词气泡 */
-    this.say(this.lines[Math.floor(Math.random()*this.lines.length)], 2600);
-    /* 爱心粒子 */
-    this.hearts();
-    /* 角色养成入口按钮（几秒后收起）。大小/位置不用调钮：单指拖动、双指缩放 */
-    this.showGrowBtn();
+    if(angry){
+      /* 生气：不撒爱心，只说一句（走本地气泡，不受每日说话次数限制——这是她在回应你） */
+      Emo.set('angry', '连戳', now);
+      buzz(110);
+      this.react('tapAngry', 3200);
+    }else{
+      /* 台词气泡（按当前等级取台词池） */
+      this.say(this.randomLine(Grow.level()), 2600);
+      /* 爱心粒子 */
+      this.hearts();
+      if(Math.random() < 0.4) Emo.set('happy', '你戳了戳她', now);
+    }
+    /* 「戳她一下」好感 +1（30 秒冷却 + 每天最多 5 次——连戳不刷分，见 CONFIG.LOVE.SOURCES） */
+    if(typeof Love !== 'undefined') Love.gain('tap', Date.now());
+    /* 白圆黑星入口（几秒后收起）：长按进她的空间 / 长按回来。大小位置不用调钮：单指拖动、双指缩放 */
+    this.showPortal();
+  },
+  /* 她对你做的一件事回一句（v1.6a）：走 Her.voice 出口（称呼自动替换），落在她自己的气泡里。
+     这些是「她回应你」，不是她主动找你——所以不受每日说话次数限制 */
+  react(kind, ms){
+    if(typeof Her === 'undefined') return false;
+    const t = Her.voice(kind, Her.ctx(Date.now()));
+    if(!t) return false;
+    this.say(t, ms || 2600);
+    return true;
   },
   say(text, ms){
     const zone = document.querySelector('#view-root .mascot-zone');
@@ -3787,11 +5696,16 @@ const Mascot = {
     clearTimeout(this._sayT);
     this._sayT = setTimeout(()=>{ b.classList.remove('show'); }, ms || 2600);
   },
+  /* 爱心粒子：动画强度三档（关闭=0 / 轻度=3 / 完整=5）。
+     以前动画关闭时只是不播放动画，元素仍会留在页面上，所以这里直接不生成 */
   hearts(){
+    const lv = S.settings.animLevel || 'light';
+    if(lv === 'off') return 0;
     const zone = document.querySelector('#view-root .mascot-zone');
-    if(!zone) return;
+    if(!zone) return 0;
+    const n = lv === 'full' ? 5 : 3;
     const em = ['💗','💙','✨','💛'];
-    for(let i=0;i<5;i++){
+    for(let i=0;i<n;i++){
       const s = document.createElement('span');
       s.className = 'mascot-heart';
       s.textContent = em[Math.floor(Math.random()*em.length)];
@@ -3801,21 +5715,50 @@ const Mascot = {
       zone.appendChild(s);
       setTimeout(()=>s.remove(), 1800);
     }
+    return n;
   },
-  showGrowBtn(){
+  /* 白圆黑星入口：用户空间里点她 → 长按进她的空间；她的空间里点她 → 长按回来 */
+  showPortal(){
     const zone = document.querySelector('#view-root .mascot-zone');
     if(!zone) return;
-    let b = zone.querySelector('.grow-btn');
+    const toMspace = (S.view !== 'mspace');
+    let b = zone.querySelector('.portal-btn');
     if(!b){
       b = document.createElement('button');
-      b.className = 'grow-btn';
-      b.textContent = '角色养成';
-      b.addEventListener('click', ()=>{ Actions['open-grow'](); });
+      b.className = 'portal-btn';
+      b.innerHTML = '<span class="pb-star">★</span>';
+      this._wirePortalHold(b);
       zone.appendChild(b);
     }
-    clearTimeout(this._growT);
+    b.setAttribute('aria-label', toMspace ? '长按进入她的空间' : '长按回到我的空间');
+    clearTimeout(this._portalT);
     b.classList.add('show');
-    this._growT = setTimeout(()=>{ b.classList.remove('show'); }, 6000);
+    this._portalT = setTimeout(()=>{ b.classList.remove('show'); }, 6000);
+  },
+  /* 星标上的长按（独立于全局手势引擎：按在按钮上时手势引擎本来就被 _busy 挡住） */
+  _wirePortalHold(b){
+    let t = null;
+    const cancel = ()=>{ if(t){ clearTimeout(t); t = null; } b.classList.remove('holding'); };
+    const fire = ()=>{
+      t = null; b.classList.remove('holding');
+      if(typeof Gestures !== 'undefined') Gestures._reset();   // 清掉可能已经起步的手势状态
+      Portal.go(S.view === 'mspace' ? 'home' : 'mspace', b);
+    };
+    b.addEventListener('pointerdown', e=>{
+      if(e.button && e.button !== 0) return;
+      b.classList.add('holding');
+      clearTimeout(t);
+      t = setTimeout(fire, Portal.HOLD_MS);
+    });
+    b.addEventListener('pointerup', cancel);
+    b.addEventListener('pointercancel', cancel);
+    b.addEventListener('pointerleave', cancel);
+    b.addEventListener('contextmenu', e=>e.preventDefault());   // 手机长按不出系统菜单
+    /* 只点一下（没按够）：教一下怎么进，不直接跳转 */
+    b.addEventListener('click', ()=>{
+      if(Portal._active) return;
+      UI.toast(S.view==='mspace' ? '长按星标 0.5 秒回到我的空间' : '长按星标 0.5 秒进入她的空间');
+    });
   },
   /* —— 单指拖动位置（按住立绘滑动即触发，与单击/双击/长按靠位移阈值区分） —— */
   dragStart(x, y){
@@ -3835,14 +5778,36 @@ const Mascot = {
     this._drag = null;
     if(moved < 10){ Mascot.tap(); return; }      // 没怎么动 = 算单击互动
     saveSettings();
+    /* v1.6a 拖到角落：她问一句「要把我放这里吗？」——第一次挪这么远的时候问一次就够了 */
+    const p = S.settings.mascotPos || {dx:0, dy:0};
+    const far = Math.abs(p.dx) >= CONFIG.SENSE.CORNER || Math.abs(p.dy) >= CONFIG.SENSE.CORNER;
+    if(far && !S.settings.herCornerAsked){
+      S.settings.herCornerAsked = true;
+      saveSettings();
+      Emo.set('shy', '你把她挪到了角落', Date.now());
+      this.react('cornerAsk', 3000);
+    }
   },
-  /* —— 双指捏合缩放（0.6~1.6 倍） —— */
+  /* —— 双指捏合缩放（0.6~1.6 倍）—— */
   pinchTo(s0, ratio){
     const s = clamp(Math.round(s0*ratio*10)/10, 0.6, 1.6);
     S.settings.mascotScale = s;
+    /* 记下这一轮捏合从多大开始、捏到多大：松手时才知道你是想放大还是缩小
+       （只记最大值不够——她本来就在 0.6 倍时，轻轻一捏也会被当成「你想把她缩小」） */
+    if(this._pinchFrom == null) this._pinchFrom = s0;
+    this._pinchTo = s;
     this.applyPos();
   },
-  pinchEnd(){ saveSettings(); },
+  pinchEnd(){
+    saveSettings();
+    /* v1.6a 捏大=害羞 / 捏小=委屈（要「朝着这个方向捏过头」才算，轻轻调大小不打扰） */
+    const from = this._pinchFrom, to = this._pinchTo;
+    this._pinchFrom = null; this._pinchTo = null;
+    if(from == null || to == null || to === from) return;
+    const now = Date.now();
+    if(to >= CONFIG.SENSE.PINCH_BIG && to > from){ Emo.set('shy', '你把她放大了', now); this.react('pinchBig'); }
+    else if(to <= CONFIG.SENSE.PINCH_SMALL && to < from){ Emo.set('sad', '你把她缩小了', now); this.react('pinchSmall'); }
+  },
   /* 还原默认大小与位置（养成面板内） */
   resetPos(){
     S.settings.mascotScale = 1;
@@ -3882,6 +5847,895 @@ const Mascot = {
 };
 
 /* ══════════════════════════════════════════════════════════════
+   9.585 她会动了（v1.6a）：她的身体 HerBody / 情绪 Emo / 动作导演 Director /
+         摇一摇 Shake / 忙碌页角落的她 QCorner
+   ★ 零迁移：新数据只挂在 settings 上（herAssets / herMood / herCornerAsked / herShake）
+   ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（mimi/ 文件夹）> 旧版「看板娘.png」> 内置小可爱
+     ——只传一张「开心」也能跑，其余地方用回普通的样子；系统默认的她也是同一套回退（缺哪个表情就退 normal.png）
+   ★ 动作分两层，都不碰你的摆位（.mascot-pos 的内联 transform 永远是老大）：
+     · 「冲动」加在 #mascot 上（keyframes，播完摘掉，与 mascot-hop 同一套手感）
+     · 「姿势」加在 .mascot-anim 上（带过渡，可以停在某个姿势上）
+   ══════════════════════════════════════════════════════════════ */
+const HerBody = {
+  forms(){ return Object.keys(CONFIG.BODY.SLOTS); },
+  assets(){ return S.settings.herAssets || {}; },
+  slots(form){ return (CONFIG.BODY.SLOTS[form] || []); },
+  /* 某个槽位存着的图 id（没传过 = null） */
+  id(form, key){ const g = this.assets()[form]; return (g && g[key]) || null; },
+  has(form, key){ return !!this.id(form, key); },
+  slotName(form, key){
+    const s = this.slots(form).find(x => x[0] === key);
+    return (s ? s[1] : key);
+  },
+  /* 传过任何一张她的图没有（决定「她的身体」页怎么说） */
+  any(){
+    for(const f of this.forms()){ const g = this.assets()[f] || {}; for(const k in g) if(g[k]) return true; }
+    return false;
+  },
+  /* 全部非空的图 id（gcImages 的保护清单——漏了这一条，下次启动她的图全被当垃圾清掉） */
+  refs(){
+    const out = [];
+    for(const f of this.forms()){ const g = this.assets()[f] || {}; for(const k in g) if(g[k]) out.push(g[k]); }
+    return out;
+  },
+  /* 系统默认的她住在 mimi/ 文件夹：文件名由槽位名推出来（普通→normal.png、开心→happy.png、
+     Q版开心→q-happy.png、动作→sit.png…）。传过图时用传的，没传过就从这里取 */
+  builtinFile(form, key){
+    const B = CONFIG.BODY.BUILTIN_BASE;
+    if(!B[form]) return null;
+    const k = (!key || key === 'base') ? '' : key;
+    const name = (form === 'q' && k ? 'q-' + k : k) || B[form];
+    return CONFIG.BODY.BUILTIN_DIR + name + '.png';
+  },
+  /* 她这会儿该用哪张图。form='normal'|'q'|'acts'（别的名字=只走回退链，给迷你看板娘用）
+     返回 {src, shell, fb}：src=图片地址（null 表示只能用小可爱），shell=是否显示内置小可爱，
+     fb=src 图裂了之后依次试的备用文件（系统默认层的逐级回退） */
+  pick(form, key){
+    const g = this.assets()[form] || {};
+    const id = (key && key !== 'base') ? (g[key] || g.base) : g.base;
+    if(id){ const u = Store.getImage(id); if(u) return {src:u, shell:false}; }
+    const mId = S.settings.mascotId;
+    if(mId === 'placeholder') return {src:null, shell:true};
+    if(mId){ const u = Store.getImage(mId); return u ? {src:u, shell:false} : {src:null, shell:true}; }
+    /* 系统默认的她：这张脸的文件 → 普通 → 旧版「看板娘.png」（过渡兜底） */
+    const fb = [];
+    const f = this.builtinFile(form, key);
+    const b = this.builtinFile(form, 'base');
+    if(f && f !== b) fb.push(f);
+    if(b) fb.push(b);
+    fb.push('看板娘.png');
+    return {src: fb.shift(), shell:false, fb};
+  },
+  /* 立绘 HTML：图和内置小可爱同时在场，缺图/图裂时自动换成兜底
+     data-her-img 标着这是哪个形态 → 情绪一变，paintHer 原地换脸，不用整页重绘
+     data-fb = 图裂接力名单：这张裂了换下一张，都裂完才露出内置小可爱 */
+  imgHtml(form, key, opt){
+    opt = opt || {};
+    const p = this.pick(form, key);
+    const fb = (p.fb && p.fb.length) ? ' data-fb="'+esc(JSON.stringify(p.fb))+'"' : '';
+    const onerr = "this.style.display='none';"+
+      "var s=this.nextElementSibling;if(s&&s.classList&&s.classList.contains('mascot-shell'))s.style.display='';"+
+      "var L=[];try{L=JSON.parse(this.dataset.fb||'[]')}catch(e){}"+
+      "if(L.length){this.src=L.shift();this.dataset.fb=JSON.stringify(L);this.style.display='';}";
+    return '<img data-her-img="'+esc(form)+'" src="'+(p.src || '看板娘.png')+'" alt="'+esc(CONFIG.LOVE.NAME)+'" draggable="false"'+
+             (p.shell ? ' style="display:none"' : '')+fb+
+             ' onerror="'+onerr+'">'+
+           shellHtml(p.shell ? '' : ' style="display:none"', opt.small);
+  },
+  /* 存一张到槽位（原图直存，不压缩：透明背景 PNG 完整保留） */
+  set(form, key, dataURL){
+    /* 只认槽位表里写着的格子：乱传的键存进去只会变成一张谁也看不见、还占着地方的图 */
+    if(!CONFIG.BODY.SLOTS[form] || !key) return null;
+    if(!this.slots(form).some(x => x[0] === key)) return null;
+    const id = uid('img_');
+    if(!Store.saveImage(id, dataURL)){ UI.toast('存储空间不足，这张没能存下', 'err'); return null; }
+    if(!S.settings.herAssets) S.settings.herAssets = {};
+    if(!S.settings.herAssets[form]) S.settings.herAssets[form] = {};
+    S.settings.herAssets[form][key] = id;
+    saveSettings();
+    scheduleRender();
+    return id;
+  },
+  /* 清空一个槽位（图立刻回收——没别的槽位引用它的话） */
+  clear(form, key){
+    const g = this.assets()[form];
+    if(!g || !g[key]) return false;
+    delete g[key];
+    saveSettings();
+    gcImages();
+    scheduleRender();
+    UI.toast('「'+this.slotName(form, key)+'」已清空，她会用「普通」那张顶上');
+    return true;
+  },
+  upload(form, key){
+    const fi = document.getElementById('file-input');
+    if(!fi || !CONFIG.BODY.SLOTS[form]) return;
+    fi.accept = 'image/*';
+    fi.multiple = false;                 // 一个槽位一张：点谁传谁
+    S.pendingFileBody = {form, key};
+    S.pendingFileCb = handleBodyFile;
+    fi.value = ''; fi.click();
+  },
+  /* 她现在的样子叫什么（「她的身体」页顶部那句） */
+  lookName(){
+    if(this.any()) return '你上传的「她的身体」';
+    const mId = S.settings.mascotId;
+    if(mId === 'placeholder') return '内置小可爱';
+    return mId ? Outfit.name(mId) : '系统默认的「米米」（mimi/ 文件夹）';
+  }
+};
+/* 身体槽位的上传（一次一张：点哪个槽位就补哪张） */
+function handleBodyFile(files){
+  const f = (files || []).filter(x => x && x.type && x.type.startsWith('image/'))[0];
+  const slot = S.pendingFileBody;
+  S.pendingFileBody = null;
+  if(!f || !slot){ UI.toast('请选择图片文件', 'err'); return; }
+  UI.toast('正在读取…');
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    if(!rd.result) return;
+    if(HerBody.set(slot.form, slot.key, rd.result))
+      UI.toast('「'+HerBody.slotName(slot.form, slot.key)+'」已经收好了');
+  };
+  rd.onerror = ()=>{ UI.toast('图片读取失败', 'err'); };
+  rd.readAsDataURL(f);
+}
+
+/* ── 她的情绪 Emo（v1.6a）：事件驱动 + 时间衰减，不随机 ──
+   优先级：刚发生的事（90 秒内的情绪）> 深夜她困了 > 平静。
+   情绪落到三处：头顶的小圆脸、她用哪张表情差分、台词池里的 c.emo 分支 */
+const Emo = {
+  get(now){
+    now = now || Date.now();
+    const m = S.settings.herMood;
+    if(m && m.emo && m.emo !== 'neutral'){
+      const age = now - (m.at || 0);
+      /* 0 ≤ 已经过去的时间 < 保持时长。下界那条是防着手机时间往回跳——
+         不然一条「刚发生」的情绪会一直挂在脸上，怎么等都等不到它淡 */
+      if(age >= 0 && age < CONFIG.BODY.MOOD_HOLD_MS) return m.emo;
+    }
+    const h = new Date(now).getHours();
+    if(h >= CONFIG.BODY.NIGHT_FROM || h < CONFIG.BODY.NIGHT_TO) return 'sleepy';
+    return 'neutral';
+  },
+  /* 她这会儿该用哪张脸（缺这张差分会自动回落到「普通」）
+     now 可以传（测试/回看用）；渲染时不传 = 就用此刻 */
+  slot(now){ return CONFIG.BODY.EMO_SLOT[this.get(now)] || 'base'; },
+  /* 头顶小圆脸的 emoji（空字符串 = 不显示浮标） */
+  face(now){ return CONFIG.BODY.EMO_FACE[this.get(now)] || ''; },
+  /* 落一笔情绪：任何让她高兴/生气/难过的瞬间都从这儿进 */
+  set(emo, why, now){
+    if(!CONFIG.BODY.EMO_SLOT[emo]) emo = 'neutral';
+    now = now || Date.now();
+    S.settings.herMood = {emo, why: why || '', at: now};
+    saveSettings();
+    paintHer();
+    return emo;
+  },
+  /* 情绪自己会淡（不写库：get() 按时间算，省得每秒存一次）；淡下来时把库也擦干净 */
+  tick(now){
+    const m = S.settings.herMood;
+    if(!m || !m.at) return false;
+    if((now || Date.now()) - m.at < CONFIG.BODY.MOOD_HOLD_MS) return false;
+    S.settings.herMood = {emo:'neutral', why:'', at:0};
+    saveSettings();
+    paintHer();
+    return true;
+  }
+};
+/* 原地换脸（不整页重绘）：情绪一变就调用——首页立绘、角落 Q版、页面里的缩略图一起换 */
+function paintHer(){
+  if(typeof document === 'undefined' || !document.querySelectorAll) return;
+  try{
+    document.querySelectorAll('img[data-her-img]').forEach(img=>{
+      const form = img.dataset.herImg || 'normal';
+      const p = HerBody.pick(form, form === 'normal' ? Emo.slot() : 'base');
+      const sib = img.nextElementSibling;
+      const shell = (sib && sib.classList && sib.classList.contains('mascot-shell')) ? sib : null;
+      if(p.src){ img.src = p.src; img.style.display = ''; if(shell) shell.style.display = 'none'; }
+      else { img.style.display = 'none'; if(shell) shell.style.display = ''; }
+      /* 图裂接力名单跟着换（换脸换到系统默认层时，这张裂了还要会往下退） */
+      img.dataset.fb = (p.fb && p.fb.length) ? JSON.stringify(p.fb) : '';
+    });
+  }catch(e){}
+  try{
+    const f = Emo.face();
+    document.querySelectorAll('.mood-dot').forEach(d=>{
+      const changed = d.textContent !== f;
+      if(changed) d.textContent = f;
+      d.classList.toggle('on', !!f);
+      /* 换了个表情就轻轻弹一下（同一张脸反复刷新时不要抖个不停） */
+      if(changed && f && d.classList.add){
+        d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+      }
+    });
+  }catch(e){}
+}
+/* 震一下：安卓可以，iPhone 的网页做不到——那就闪一道光代替「震感」 */
+function buzz(ms){
+  let ok = false;
+  try{ if(typeof navigator !== 'undefined' && navigator && navigator.vibrate){ navigator.vibrate(ms || 80); ok = true; } }catch(e){}
+  if(!ok) flash();
+  return ok;
+}
+/* 全屏微闪（给没有震动的地方补一下「被戳到了」的感觉） */
+function flash(){
+  try{
+    if(typeof document === 'undefined' || !document.createElement || !document.body) return false;
+    let el = document.getElementById('flash-layer');
+    if(!el || !el.classList){
+      el = document.createElement('div'); el.id = 'flash-layer';
+      document.body.appendChild(el);
+    }
+    el.classList.remove('on');
+    void el.offsetWidth;
+    el.classList.add('on');
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ── 动作导演 Director（v1.6a）：她什么时候动、动什么、说不说话，全从这儿出 ──
+   ★ 演戏只在咱们俩的地方（首页 / 她的空间）；弹窗、传送、加载页的时候她不打扰
+   ★ animLevel：完整=全播；轻度（默认）=只播蹦跳/扭一扭这类轻动作；关闭=不动（换脸与浮标照旧）
+   ★ 时间线走单一定时器队列，任何一次触碰都能立刻收场（Director.stop） */
+const Director = {
+  _timers:[], _plan:[], _playing:false, _lastAct:null, _lastShakeAsk:0, _poseNow:null,
+  /* 冲动动作的宿主：纯净页是 #mascot，忙碌页是右下角那个 Q版 */
+  _el(){
+    try{
+      const m = document.getElementById('mascot');
+      if(m) return m;
+      return document.getElementById('q-corner');
+    }catch(e){ return null; }
+  },
+  /* 姿势的宿主：#mascot 里那一层 .mascot-anim（忙碌页退到 Q版） */
+  _poseEl(){
+    try{
+      const a = document.querySelector('#view-root .mascot-anim');
+      if(a && a.classList) return a;
+      return document.getElementById('q-corner');
+    }catch(e){ return null; }
+  },
+  level(){ return S.settings.animLevel || 'light'; },
+  /* 这个动作现在允许播吗（关闭=一个都不播；轻度=只播轻动作；完整=全播） */
+  allowed(act){
+    const lv = this.level();
+    if(lv === 'off') return false;
+    return lv === 'full' || CONFIG.ACT.LIGHT.indexOf(act) >= 0;
+  },
+  /* 现在方便演吗 */
+  can(){
+    if(this.level() === 'off') return false;
+    if(S.view !== 'home' && S.view !== 'mspace') return false;
+    if(typeof Portal !== 'undefined' && Portal._active) return false;
+    if(S.consOpen) return false;
+    if(typeof UI !== 'undefined' && UI.isOpen && UI.isOpen()) return false;
+    return true;
+  },
+  /* 把一串 {at, act, …} 排成时间线（纯函数：冒烟测试只认它，不认真正的定时器） */
+  plan(steps){
+    const out = [];
+    for(const s of (steps || [])){
+      if(!s || !s.act) continue;
+      out.push({at: Math.max(0, s.at | 0), act: String(s.act), opt: s});
+    }
+    out.sort((a, b) => a.at - b.at);
+    return out;
+  },
+  /* 按时间线演一场（先停掉上一场，避免两场戏抢她的身体） */
+  play(steps, opt){
+    opt = opt || {};
+    const plan = this.plan(steps);
+    if(!plan.length) return [];
+    this.stop();
+    this._plan = plan; this._playing = true;
+    for(const p of plan) this._timers.push(setTimeout(()=>this._run(p), p.at));
+    const total = opt.total || (plan[plan.length - 1].at + 1400);
+    this._timers.push(setTimeout(()=>{ this._playing = false; }, total));
+    return plan;
+  },
+  _run(p){
+    const o = p.opt || {};
+    if(p.act === 'say'){
+      if(typeof Her === 'undefined') return;
+      if(o.text){ if(typeof Mascot !== 'undefined') Mascot.say(o.text, o.ms || 2600); }
+      else if(o.kind) Her.say(o.kind, o.ctx || Her.ctx(Date.now()), o);
+      return;
+    }
+    if(p.act === 'emo'){ Emo.set(o.emo, o.why); return; }
+    if(p.act === 'hearts'){ if(typeof Mascot !== 'undefined') Mascot.hearts(); return; }
+    if(p.act === 'buzz'){ buzz(o.ms); return; }
+    if(p.act === 'paint'){ paintHer(); return; }
+    if(p.act.indexOf('pose-') === 0) this.pose(p.act.slice(5), o.hold);
+    else this.act(p.act, o);
+  },
+  /* 冲动动作：加类 → 到点摘掉（和 Mascot.tap 的 hop/squish 同一套手感） */
+  act(name, opt){
+    const el = this._el();
+    if(!el || !el.classList) return false;
+    if(!this.allowed(name)) return false;
+    const ms = (opt && opt.ms) || CONFIG.ACT.MS[String(name).replace(/^act-/, '')] || 700;
+    el.classList.remove.apply(el.classList, CONFIG.ACT.RUSH);
+    void el.offsetWidth;
+    el.classList.add(name);
+    this._timers.push(setTimeout(()=>{ try{ el.classList.remove(name); }catch(e){} }, ms));
+    return true;
+  },
+  /* 姿势：停在某个姿势上（hold 毫秒后自己站好；不传就一直那样） */
+  pose(name, hold){
+    const el = this._poseEl();
+    if(!el || !el.classList) return false;
+    if(this.level() === 'off') return false;
+    el.classList.remove.apply(el.classList, CONFIG.ACT.POSES);
+    void el.offsetWidth;
+    el.classList.add('pose-' + name);
+    this._poseNow = name;
+    if(hold) this._timers.push(setTimeout(()=>{ this.stand(); }, hold));
+    return true;
+  },
+  stand(){ const r = this.pose('emerge'); this._poseNow = null; return r; },
+  hide(){ return this.pose('hide'); },
+  /* 收场：清掉所有定时器与动作类（你碰屏幕 / 换页 / 弹窗时调用） */
+  stop(){
+    for(const t of this._timers){ try{ clearTimeout(t); }catch(e){} }
+    this._timers = []; this._plan = []; this._playing = false; this._poseNow = null;
+    try{
+      document.querySelectorAll('.mascot, #q-corner').forEach(el=>{
+        el.classList.remove.apply(el.classList, CONFIG.ACT.RUSH);
+        el.classList.remove.apply(el.classList, CONFIG.ACT.POSES);
+      });
+    }catch(e){}
+    try{
+      const a = document.querySelector('#view-root .mascot-anim');
+      if(a && a.classList) a.classList.remove.apply(a.classList, CONFIG.ACT.POSES);
+    }catch(e){}
+  },
+  /* 你碰了屏幕：她把手里的动作收起来，看着你 */
+  userTouch(){ if(this._playing || this._poseNow) this.stop(); },
+  /* 每秒心跳：她自己在的时候找点事做（小动作 / 待机小剧场 / 偶尔顺口说一句） */
+  tick(now){
+    now = now || Date.now();
+    /* 第一次心跳（或刚被清成 0）→ 从现在开始计。用 == null 判「从没记过」，
+       这样 0 仍然能表示「很久没动过」，不会被当成初次而白白等一个空档 */
+    if(this._lastAct == null) this._lastAct = now;
+    this._shakeAsk(now);
+    if(this._playing || !this.can()) return;
+    if(now - this._lastAct < this._gap()) return;
+    const idle = (typeof Love !== 'undefined') ? Love.idleMs(now) : 0;
+    if(idle < CONFIG.ACT.IDLE_AFTER) return;
+    this._lastAct = now;
+    /* 你很久没动静：坐下 / 打瞌睡；否则蹦一下、扭一扭 */
+    const deep = idle >= CONFIG.ACT.SIT_AFTER;
+    const act = deep ? this._pickDeep() : this._pickLight();
+    if(act.pose) this.pose(act.pose, act.hold);
+    else this.act(act.name, act);
+    /* 偶尔顺口说一句（走 Her.say 的频率门：今天说够了就不说） */
+    if(Math.random() < CONFIG.ACT.SAY_CHANCE && typeof Her !== 'undefined')
+      Her.say('idle', Her.ctx(now), {sub:'她'});
+  },
+  _gap(){ return CONFIG.ACT.IDLE_GAP_MS + Math.random() * CONFIG.ACT.IDLE_GAP_RAND; },
+  _pickLight(){ const p = CONFIG.ACT.LIGHT; return {name: p[Math.floor(Math.random() * p.length)]}; },
+  _pickDeep(){
+    const p = [{pose:'sit', hold:9000}, {pose:'sit', hold:7000}, {pose:'sleep', hold:12000}, {pose:'droop', hold:8000}];
+    return p[Math.floor(Math.random() * p.length)];
+  },
+  /* 她的请求：能不能摇一摇我（只在 iPhone 这类「要先问你」的地方问一次，问了就记下来） */
+  _shakeAsk(now){
+    if(typeof Shake === 'undefined') return false;
+    if(now - this._lastShakeAsk < 3 * 60 * 1000) return false;
+    this._lastShakeAsk = now;
+    return Shake.ask(now);
+  }
+};
+
+/* ── 摇一摇 Shake（v1.6a）：手机摇了她会有反应 ──
+   ★ iPhone 要先点头（系统规定必须由你的手势触发）→ 所以她开口问一句、你点一下才开
+   ★ 桌面 file://、没有这个能力的浏览器：整块静默降级，绝不报错 */
+const Shake = {
+  _on:false, _last:0, _n:0, _t:0,
+  supported(){ try{ return (typeof window !== 'undefined') && ('DeviceMotionEvent' in window); }catch(e){ return false; } },
+  /* 需要先问过你才能开（iOS 13+） */
+  needAsk(){
+    try{ return this.supported() && (typeof DeviceMotionEvent !== 'undefined') && (typeof DeviceMotionEvent.requestPermission === 'function'); }
+    catch(e){ return false; }
+  },
+  on(){ return !!(S.settings.herShake && S.settings.herShake.on); },
+  asked(){ return !!(S.settings.herShake && S.settings.herShake.asked); },
+  /* 她开口问一次（气泡上点一下 = 用户手势，正好满足系统要求） */
+  ask(now){
+    if(!this.needAsk() || this.asked() || this.on()) return false;
+    if(typeof Her === 'undefined') return false;
+    now = now || Date.now();
+    S.settings.herShake = Object.assign({}, S.settings.herShake || {}, {asked: now});
+    saveSettings();
+    return Her.say('shakeAsk', Her.ctx(now), {key:'her-shake-ask', sub:'她', go:()=>Shake.request()});
+  },
+  request(cb){
+    let done = false;
+    const once = r => {
+      if(done) return; done = true;
+      S.settings.herShake = {on: r === 'granted', asked: Date.now()};
+      saveSettings();
+      if(r === 'granted'){
+        this.attach();
+        if(typeof Her !== 'undefined') Her.reply(Her.voice('shakeOk', Her.ctx()), {key:'her-shake-ok'});
+      }
+      if(cb) cb(r);
+    };
+    try{
+      const p = DeviceMotionEvent.requestPermission();
+      if(p && p.then) p.then(once, ()=>once('error'));
+      else if(typeof p === 'string') once(p);
+      else once('error');
+    }catch(e){ once('error'); }
+  },
+  attach(){
+    if(this._on || !this.supported()) return false;
+    try{
+      window.addEventListener('devicemotion', e=>this._motion(e), {passive:true});
+      this._on = true;
+      return true;
+    }catch(e){ return false; }
+  },
+  _motion(e){
+    const a = e && (e.accelerationIncludingGravity || e.acceleration);
+    if(!a) return false;
+    const mag = Math.sqrt((a.x||0)*(a.x||0) + (a.y||0)*(a.y||0) + (a.z||0)*(a.z||0));
+    if(mag < CONFIG.SENSE.SHAKE_TH) return false;
+    const now = Date.now();
+    if(now - this._last < CONFIG.SENSE.SHAKE_GAP) return false;   // 一次摇动只记一下
+    this._last = now;
+    if(now - this._t > CONFIG.SENSE.SHAKE_RESET) this._n = 0;
+    this._t = now;
+    this._n++;
+    return this.react(this._n, now);
+  },
+  /* 摇的反应：摇几下她开始喊晕，再摇她真的生气 */
+  react(n, now){
+    now = now || Date.now();
+    if(n < CONFIG.SENSE.SHAKE_N) return false;
+    if(n >= CONFIG.SENSE.SHAKE_ANGRY){
+      this._n = 0;
+      Emo.set('angry', '你摇了手机', now);
+      if(typeof Director !== 'undefined') Director.act('act-shake');
+      buzz(160);
+      if(typeof Mascot !== 'undefined') Mascot.react('shakeAngry', 2600);
+      return true;
+    }
+    if(n === CONFIG.SENSE.SHAKE_N){
+      Emo.set('worried', '你摇了手机', now);
+      if(typeof Director !== 'undefined') Director.act('act-shake');
+      if(typeof Mascot !== 'undefined') Mascot.react('shakeDizzy', 2600);
+      return true;
+    }
+    return false;
+  }
+};
+
+/* ── 忙碌页面右下角的她 QCorner（v1.6a）：Q版小人一直在，你做什么她都陪着 ── */
+const QCorner = {
+  _built:false,
+  el(){ try{ return document.getElementById('q-corner'); }catch(e){ return null; } },
+  /* 换页时同步：忙碌页出现；纯净页与她的页面不出现（那儿本来就是她的地方，不重复） */
+  sync(){
+    const el = this.el();
+    if(!el || !el.classList) return false;
+    if(!this._built){
+      el.innerHTML = '<div class="mood-dot"></div>' + HerBody.imgHtml('q', 'base', {small:true});
+      this._built = true;
+    }
+    const busy = (S.view !== 'home' && S.view !== 'mspace') && CONFIG.BODY.HER_PAGES.indexOf(S.view) < 0;
+    el.classList.toggle('on', busy);
+    if(busy) paintHer();
+    return busy;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.57 传送门 Portal（v1.3）
+   用户空间首页 ⇄ 她的空间：长按白圆黑星 0.5 秒 → 星星从小圆里外扩铺满屏幕 → 落到另一边
+   （过渡期间 Portal._active=true，手势引擎不与它抢触摸）
+   ══════════════════════════════════════════════════════════════ */
+const Portal = {
+  _active:false,
+  HOLD_MS:500,     // 长按星标多久触发
+  FLY_MS:470,      // 星星外扩铺满屏幕的时长（CSS 动画 .48s）
+  /* target: 'mspace' | 'home'；anchorEl: 星标元素（星星从它那儿开始外扩） */
+  go(target, anchorEl){
+    const ov = document.createElement('div');
+    ov.className = 'portal-overlay';
+    const a = this._anchor(anchorEl);
+    ov.style.left = Math.round(a.x) + 'px';
+    ov.style.top  = Math.round(a.y) + 'px';
+    ov.innerHTML = '<span class="po-ring"></span><span class="po-star">★</span>';
+    /* 外扩到铺满屏幕所需倍数：屏幕对角线 / 小圆直径（再留一点余量） */
+    const w = window.innerWidth || 390, h = window.innerHeight || 844;
+    ov.style.setProperty('--poscale', Math.ceil(Math.hypot(w, h) / 56 * 1.15));
+    document.body.appendChild(ov);
+    this._active = true;
+    const run = ()=>{ ov.classList.add('go'); };
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else run();
+    setTimeout(()=>this._land(target, ov), this.FLY_MS);
+    return ov;
+  },
+  /* 白光铺满屏幕的那一刻再换页（换完淡出白光，露出另一边） */
+  _land(target, ov){
+    /* 白光已经铺满整屏，这一刻必须把新页面立刻画出来（不能等下一帧）：
+       否则淡出时会先露出旧页面，边缘提示也还挂着上一个视图的四个方向 */
+    try{ goView(target); renderView(); }catch(err){ console.error('[Portal]', err); }
+    if(ov){
+      ov.classList.add('done');
+      setTimeout(()=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); }, 320);
+    }
+    this._active = false;
+  },
+  _anchor(el){
+    try{
+      const r = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+      if(r && (r.width || r.height || r.top || r.left)) return {x:r.left + r.width/2, y:r.top + r.height/2};
+    }catch(e){}
+    const w = window.innerWidth || 390, h = window.innerHeight || 844;
+    return {x:w/2, y:h*0.62};
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.56 看板娘养成 Grow（v1.2）
+   经验 = 可能性递归每分钟+1 · 完成待办+20 · 写可能性确定+5 · 连续打卡加成(连续天数×2，封顶+20)
+   ★ 纯推导：全部由既有数据实时算出，不落库、零迁移——老用户打开立刻有等级。
+     唯一的新存储键是 settings.growCelebrated（升级播报去重，见 celebrate/catchUp）
+   ══════════════════════════════════════════════════════════════ */
+const Grow = {
+  _dirty:true, _ev:null, _total:0, _min:null,
+  _feedPending:0, _zoneT:null, _sayT:null,      // 投喂演出的计数与定时器（并发多批互不误删）
+  invalidate(){ this._dirty = true; },
+  /* 全量推导：dk → {min,done,rec,streak,xp}；按日升序推进算连续天数（避免 O(n²)） */
+  rebuild(now){
+    now = now || Date.now();
+    const today = D.dateKey(now), G = CONFIG.GROW;
+    const ev = new Map();
+    const touch = dk => { if(!ev.has(dk)) ev.set(dk, {min:0, done:0, rec:0, streak:0, xp:0}); return ev.get(dk); };
+    /* ① 可能性递归：已终结切片按 end-start 计；进行中的切片只算今天（随时间持续长经验） */
+    for(const s of S.sessions){
+      if(!s.day) continue;
+      let m = 0;
+      if(s.end != null) m = (s.end - s.start) / 60000;
+      else if(s.day === today) m = Math.max(0, now - s.start) / 60000;
+      if(m > 0) touch(s.day).min += m;
+    }
+    /* ② 待办完成：doneKeys 记着每一次完成；单次待办的键是 'once'，按 completedAt 归到当天 */
+    for(const t of S.todos){
+      for(const k of (t.doneKeys || [])){
+        const dk = (k === 'once') ? (t.completedAt ? D.dateKey(t.completedAt) : null) : k;
+        if(dk && /^\d{4}-\d{2}-\d{2}$/.test(dk)) touch(dk).done++;
+      }
+    }
+    /* ③ 每日记录：枚举 day: 键，每条可能性确定 +5（旧版单条对象兼容计 1 条） */
+    for(const k of Store.allKeys()){
+      if(k.indexOf('day:') !== 0) continue;
+      const doc = Store.get(k, null);
+      if(!doc || !doc.spaceRecords) continue;
+      let n = 0;
+      for(const spId in doc.spaceRecords){
+        const v = doc.spaceRecords[spId];
+        n += Array.isArray(v) ? v.length : (v ? 1 : 0);
+      }
+      if(n > 0) touch(k.slice(4)).rec += n;
+    }
+    /* ④ 连续打卡 + 每日经验 */
+    let prev = null, run = 0;
+    for(const dk of [...ev.keys()].sort()){
+      const e = ev.get(dk);
+      const ok = e.min >= 1 || e.done > 0 || e.rec > 0;   // 打卡 = 有递归 / 有完成 / 有记录
+      run = (ok && prev && D.dateKey(D.addDaysTs(D.dkToTs(prev), 1)) === dk) ? run + 1 : (ok ? 1 : 0);
+      prev = dk;
+      e.streak = run;
+      e.xp = Math.floor(e.min) * G.XP_MINUTE + e.done * G.XP_TODO + e.rec * G.XP_RECORD +
+             (ok ? Math.min(run * G.XP_STREAK_PER_DAY, G.XP_STREAK_CAP) : 0);
+    }
+    this._ev = ev; this._total = 0;
+    for(const e of ev.values()) this._total += e.xp;
+    this._dirty = false;
+    return this;
+  },
+  _ensure(){ if(this._dirty || !this._ev) this.rebuild(Date.now()); return this; },
+  /* —— 只读推导 —— */
+  checkedIn(dk){ this._ensure(); const e = this._ev.get(dk); return !!e && (e.min >= 1 || e.done > 0 || e.rec > 0); },
+  xpForDay(dk){ this._ensure(); const e = this._ev.get(dk); return e ? e.xp : 0; },
+  dayXpDetail(dk){ this._ensure(); return this._ev.get(dk) || {min:0, done:0, rec:0, streak:0, xp:0}; },
+  totalXp(){ this._ensure(); return this._total; },
+  /* 截止 dk（含）的连续打卡天数；当天没打卡就是 0（面板据此说“今天还没打卡”） */
+  streakDaysUpTo(dk){
+    this._ensure();
+    if(!this.checkedIn(dk)) return 0;
+    let n = 0, cur = dk;
+    for(let i=0;i<365;i++){
+      if(!this.checkedIn(cur)) break;
+      n++; cur = D.dateKey(D.addDaysTs(D.dkToTs(cur), -1));
+    }
+    return n;
+  },
+  /* —— 等级数学 —— */
+  needFor(level){ return CONFIG.GROW.LEVEL_BASE + (Math.max(1, level) - 1) * CONFIG.GROW.LEVEL_STEP; },
+  /* 到达 level 所需的累计经验（到达 1 级 = 0） */
+  cumNeed(level){
+    const n = Math.max(1, level) - 1;
+    return n * CONFIG.GROW.LEVEL_BASE + CONFIG.GROW.LEVEL_STEP * n * (n - 1) / 2;
+  },
+  levelFromXp(xp){
+    let lv = 1;
+    while(this.cumNeed(lv + 1) <= xp) lv++;
+    return lv;
+  },
+  titleOf(level){
+    let s = CONFIG.GROW.TITLES[0][1];
+    for(const [lv, name] of CONFIG.GROW.TITLES){ if(level >= lv) s = name; }
+    return s;
+  },
+  nextTitleOf(level){
+    for(const [lv, name] of CONFIG.GROW.TITLES){ if(lv > level) return {level:lv, name}; }
+    return null;
+  },
+  level(){ return this.levelFromXp(this.totalXp()); },
+  /* 养成面板的一次性快照 */
+  xpInfo(now){
+    now = now || Date.now();
+    const xp = this.totalXp(), level = this.levelFromXp(xp);
+    const cur = xp - this.cumNeed(level), need = this.needFor(level);
+    const today = D.dateKey(now), yest = D.dateKey(D.addDaysTs(now, -1));
+    return {
+      xp, level, cur, need,
+      pct: need > 0 ? clamp(cur / need, 0, 1) : 0,
+      title: this.titleOf(level),
+      next: this.nextTitleOf(level),
+      streak: this.streakDaysUpTo(today),
+      streakYesterday: this.streakDaysUpTo(yest),
+      todayChecked: this.checkedIn(today)
+    };
+  },
+  /* 台词解锁进度：已解锁 X / 共 19 句 + 下一档等级 */
+  lineProgress(){
+    const lv = this.level();
+    let next = null;
+    for(const t of CONFIG.GROW.LINE_TIERS){ if(t > lv){ next = t; break; } }
+    return { level:lv, have:Mascot.linesFor(lv).length, total:Mascot.lineTotal(), next };
+  },
+  /* ——「她眼中的我」的统计数据（只读推导，同样不落库） —— */
+  stats(now){
+    now = now || Date.now();
+    this._ensure();
+    let min = 0, done = 0, rec = 0;
+    for(const e of this._ev.values()){ min += e.min; done += e.done; rec += e.rec; }
+    /* 最近在忙的空间：按空间累计递归分钟，取最大的那个 */
+    const per = {};
+    for(const s of S.sessions){
+      if(!s.spaceId) continue;
+      const m = (s.end != null) ? (s.end - s.start) / 60000 : Math.max(0, now - s.start) / 60000;
+      if(m > 0) per[s.spaceId] = (per[s.spaceId] || 0) + m;
+    }
+    let topId = null, topMin = 0;
+    for(const id in per){ if(per[id] > topMin){ topMin = per[id]; topId = id; } }
+    const dk = D.dateKey(now);
+    return {
+      xp:this._total, lv:this.levelFromXp(this._total),
+      min:Math.floor(min), done, rec,
+      streak:this.streakDaysUpTo(dk), todayChecked:this.checkedIn(dk),
+      topId, topMin:Math.floor(topMin), dayCount:this._ev.size
+    };
+  },
+  /* 她根据数据说的话（第 1 句是开场，其余是她想对你说的；全是只读推导） */
+  herWords(st, sp){
+    const out = [];
+    const lv = st.lv, title = this.titleOf(lv);
+    out.push(st.dayCount === 0
+      ? '我们才刚刚开始呢——你写的每一条，我都会记住。'
+      : '我已经陪你走过 ' + st.dayCount + ' 天啦，现在的我是 Lv.' + lv + ' · ' + title + '。');
+    if(!st.todayChecked) out.push('今天还没有打卡哦，哪怕只专注 1 分钟，我也会记你一功。');
+    if(st.streak >= 30) out.push('连续 ' + st.streak + ' 天了……这条日子已经连成很长很长的一条了。');
+    else if(st.streak >= 7) out.push('连续打卡 ' + st.streak + ' 天！你比你自己想象中更有毅力。');
+    else if(st.streak >= 3) out.push('已经连着 ' + st.streak + ' 天了，再多一天就成习惯啦。');
+    if(st.min >= 6000) out.push('你总共专注了 ' + fmtMin(st.min) + '，这些时间我都替你收好了。');
+    else if(st.min > 0) out.push('你专注了 ' + fmtMin(st.min) + '，每一分钟都算数。');
+    if(st.done >= 100) out.push('你已经完成 ' + st.done + ' 件事了，我数着的。');
+    else if(st.done > 0) out.push('你完成过 ' + st.done + ' 件事，我都有好好记下来。');
+    if(st.rec === 0) out.push('还没有任何记录呢——写第一条吧，我会替你收着。');
+    if(sp) out.push('最近你总是在忙「' + sp.name + '」，累计 ' + fmtMin(st.topMin) + '，我在旁边看着呢。');
+    if(lv < 5) out.push('再往上一点点，我就能解锁新的台词了，好期待呀。');
+    else if(lv < 10) out.push('学徒的我，也还想再长大一点。');
+    else if(lv < 20) out.push('时间在我手里越来越听话了，这都是跟你学的。');
+    return out;
+  },
+  /* —— 升级检测与播报 —— */
+  tick(now){
+    const m = Math.floor(now / 60000);
+    if(this._dirty || m !== this._min){
+      this._min = m;
+      this.rebuild(now);        // 分钟边界重算：进行中的递归会持续长经验
+      this.checkLevelUp();
+    }
+  },
+  checkLevelUp(){
+    const lv = this.level(), prev = S._level || 1;
+    S._level = lv;
+    if(lv > prev) this.celebrate(prev, lv);   // 等级回落（撤销完成/删记录）静默跟随，不播报
+  },
+  celebrate(from, to){
+    const title = this.titleOf(to);
+    UI.toast('升级啦！Lv.' + to + ' · ' + title + ' 🎉');
+    if(title !== this.titleOf(from)) setTimeout(()=>UI.toast('新称号解锁：' + title + ' ✦'), 900);
+    this.anim(this.pickLine(from, to));
+  },
+  /* 升级演出：纯净页（首页/她的空间）= 看板娘亲口说 + 星光；子页 = 迷你看板娘气泡 + 小星光 */
+  anim(line){
+    if(S.view === 'home' || S.view === 'mspace'){ Mascot.say(line, CONFIG.GROW.SAY_MS); this.fxStars(); return; }
+    this.miniSay(line);
+    this.fxStarsMini();
+  },
+  /* 升级时说的话：优先说这次刚解锁的新台词，否则随机一句 */
+  pickLine(from, to){
+    const fresh = Mascot.unlockLinesBetween(from, to);
+    return fresh.length ? fresh[fresh.length - 1] : Mascot.randomLine(to);
+  },
+  /* 补播：升级时用户不在场（页面关着）→ 下次主动打开养成面板时补一句，只补一次 */
+  catchUp(){
+    const lv = this.level(), seen = S.settings.growCelebrated || 1;
+    if(lv <= seen) return 0;
+    S.settings.growCelebrated = lv;
+    saveSettings();
+    return lv;
+  },
+  /* —— 粒子（动画关闭时一粒都不撒） —— */
+  fxStars(){
+    if((S.settings.animLevel || 'light') === 'off') return 0;
+    const zone = document.querySelector('#view-root .mascot-zone');
+    if(!zone) return 0;
+    return this._burst(zone, (S.settings.animLevel === 'full') ? 12 : 8);
+  },
+  fxStarsMini(){
+    if((S.settings.animLevel || 'light') === 'off') return 0;
+    const root = document.getElementById('feed-root');
+    if(!root) return 0;
+    return this._burst(root.querySelector('.feed-mini') || root, (S.settings.animLevel === 'full') ? 12 : 8);
+  },
+  _burst(box, n){
+    const em = ['✨','⭐','🌟','💫'];
+    for(let i=0;i<n;i++){
+      const s = document.createElement('span');
+      s.className = 'mascot-heart mascot-star';
+      s.textContent = em[i % em.length];
+      s.style.left = (10 + Math.random()*80) + '%';
+      s.style.bottom = (28 + Math.random()*62) + '%';
+      s.style.animationDelay = (i*0.05) + 's';
+      box.appendChild(s);
+      setTimeout(()=>s.remove(), 2200);
+    }
+    return n;
+  },
+  /* 子页里的迷你看板娘台词气泡（喂食区 #feed-root，动画层步骤见 9.57） */
+  miniSay(text){
+    const root = document.getElementById('feed-root');
+    if(!root) return;
+    let b = root.querySelector('.feed-say');
+    if(!b){
+      b = document.createElement('div');
+      b.className = 'feed-say';
+      root.appendChild(b);
+    }
+    b.textContent = text;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+    clearTimeout(this._sayT);
+    this._sayT = setTimeout(()=>{ b.classList.remove('show'); }, CONFIG.GROW.SAY_MS);
+  },
+  /* 轻量经验飘字：写一条可能性确定 +5（从按钮处往上飘） */
+  floatXp(anchorEl, xp){
+    if((S.settings.animLevel || 'light') === 'off') return 0;
+    const root = document.getElementById('feed-root');
+    if(!root) return 0;
+    const p = this._anchorPoint(anchorEl);
+    const s = document.createElement('span');
+    s.className = 'feed-xp';
+    s.textContent = '+' + xp;
+    s.style.left = p.x + 'px';
+    s.style.top = p.y + 'px';
+    root.appendChild(s);
+    setTimeout(()=>s.remove(), 1300);
+    return xp;
+  },
+  /* —— 投喂演出：完成待办 → 点心从卡片飞向左下角的迷你看板娘 —— */
+  feed(anchorEl, xp){
+    const lv = S.settings.animLevel || 'light';
+    if(lv === 'off') return 0;                    // 动画关闭：不撒食物（经验照长，toast 里有文字）
+    const root = document.getElementById('feed-root');
+    const zone = this._ensureZone();
+    if(!root || !zone) return 0;
+    const n = (lv === 'full') ? CONFIG.GROW.FEED_FOODS_FULL : CONFIG.GROW.FEED_FOODS_LIGHT;
+    const p0 = this._anchorPoint(anchorEl), p1 = this._mouthPoint();   // 卡片中心 → 她嘴边
+    for(let i=0;i<n;i++){
+      const f = document.createElement('span');
+      f.className = 'feed-food';
+      f.textContent = CONFIG.GROW.FOODS[(Math.random()*CONFIG.GROW.FOODS.length)|0];
+      f.style.setProperty('--fx0', p0.x + 'px');
+      f.style.setProperty('--fy0', p0.y + 'px');
+      f.style.setProperty('--fx1', p1.x + 'px');
+      f.style.setProperty('--fy1', p1.y + 'px');
+      f.style.animationDelay = (i*0.12) + 's';    // 一批食物错峰起飞
+      root.appendChild(f);
+      setTimeout(()=>f.remove(), 1900 + i*120);
+    }
+    this._feedPending = (this._feedPending || 0) + 1;
+    const land = 1050 + (n-1)*120;                // 最后一个食物落嘴的时间
+    setTimeout(()=>{
+      this._feedPending = Math.max(0, (this._feedPending || 1) - 1);
+      this._chomp();
+      const mini = zone.querySelector('.feed-mini');
+      this.floatXp(mini, xp);                     // 头顶飘 +20
+      if(Math.random() < CONFIG.GROW.FEED_SAY_CHANCE) this.miniSay(this._feedLine());
+      if(this._feedPending === 0){                // 所有批次都吃完了才收起（并发多批互不误删）
+        clearTimeout(this._zoneT);
+        this._zoneT = setTimeout(()=>this.dismissZone(), 1300);
+      }
+    }, land);
+    return n;
+  },
+  _feedLine(){ const l = CONFIG.GROW.FEED_LINES; return l[(Math.random()*l.length)|0]; },
+  /* 咬一口：重设动画类（先摘后加，连点也能重新播） */
+  _chomp(){
+    const el = document.querySelector('#feed-root .feed-mini');
+    if(!el) return;
+    el.classList.remove('feed-chomp'); void el.offsetWidth; el.classList.add('feed-chomp');
+    setTimeout(()=>el.classList.remove('feed-chomp'), 700);
+  },
+  /* 喂食区（左下角迷你看板娘）：懒创建，点头像 = 星星外扩传送到她的空间（v1.3） */
+  _ensureZone(){
+    const root = document.getElementById('feed-root');
+    if(!root) return null;
+    let z = root.querySelector('.feed-zone');
+    if(!z){
+      z = document.createElement('div');
+      z.className = 'feed-zone';
+      z.innerHTML = '<div class="feed-mini">' + this._miniHtml(true) + '</div>';   // 投喂时露脸的是 Q版那只
+      z.addEventListener('click', ()=>{ if(!Portal._active) Portal.go('mspace', z); });
+      root.appendChild(z);
+    }
+    z.classList.add('on');
+    root.classList.add('on');
+    return z;
+  },
+  /* 迷你头像（v1.6a）：q=true 用「Q版」那张（投喂演出）；否则用正常形态的迷你版——
+     她说话的地方（她眼中的我 / 她的日记 / 她的问题）也跟着此刻的心情换脸。
+     没传过图就照旧回退：现穿着的那套 > 系统默认的她（mimi/）> 内置占位小可爱 */
+  _miniHtml(q){
+    return q ? HerBody.imgHtml('q', 'base', {small:true})
+             : HerBody.imgHtml('normal', Emo.slot(), {small:true});
+  },
+  dismissZone(){
+    clearTimeout(this._zoneT);
+    this._feedPending = 0;
+    const root = document.getElementById('feed-root');
+    if(!root) return;
+    const z = root.querySelector('.feed-zone');
+    if(z) z.classList.remove('on');
+    root.classList.remove('on');
+  },
+  /* 她嘴边（迷你头像中上部）；拿不到位置就退回左下角 */
+  _mouthPoint(){
+    const el = document.querySelector('#feed-root .feed-mini');
+    const r = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+    if(r && (r.width || r.height)) return {x: r.left + r.width/2, y: r.top + r.height*0.42};
+    return {x: 40, y: (window.innerHeight || 640) - 62};
+  },
+  /* 动画锚点：优先用元素真实位置，拿不到就落在屏幕中下方（无 rect 时兜底） */
+  _anchorPoint(el){
+    try{
+      const r = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+      if(r && (r.width || r.height || r.top || r.left)) return {x: r.left + r.width/2, y: r.top + r.height/2};
+    }catch(e){}
+    const w = window.innerWidth || 360, h = window.innerHeight || 640;
+    return {x: w/2, y: h*0.62};
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
    9.7 节律操控台 Console（双击呼出 · 猫耳时段卡 · 空间栏 · 投放区）
    ══════════════════════════════════════════════════════════════ */
 const Console = {
@@ -3898,7 +6752,11 @@ const Console = {
     '</div>'+
     '<div class="console-body">'+(S.consTab==='slots' ? this.slotsHtml() : this.spacesHtml())+'</div>'+
   '</div>'; },
-  open(){ S.consOpen = true; this.lastTouch = Date.now(); this._anim = true; this.render(); },
+  open(){
+    S.consOpen = true; this.lastTouch = Date.now(); this._anim = true;
+    if(typeof Grow !== 'undefined') Grow.dismissZone();   // 操控台弹出时先收起喂食区，别打架
+    this.render();
+  },
   close(){ S.consOpen = false; S.sbOpen = false;
     const el = document.getElementById('console-root'); if(el) el.innerHTML=''; },
   toggle(){ S.consOpen ? this.close() : this.open(); },
@@ -4258,7 +7116,7 @@ const Console = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   9.8 手势引擎 Gestures（仅纯净页生效）
+   9.8 手势引擎 Gestures（仅纯净页生效：用户空间 home / 她的空间 mspace）
    双击=节律操控台 · 双击后左滑=空间栏 · 长按0.4s四向=导航页面
    ══════════════════════════════════════════════════════════════ */
 /* 长按拖动 = 把目标页面从对侧边缘「拉出来」：拖动方向 → 页面 / 它从哪条边来 / 箭头朝向 */
@@ -4273,14 +7131,29 @@ const PAGE_META = {
   summary:{name:'我们的共识', ico:'📔', color:'#F5C542'},   // 暖黄
   todos:  {name:'待办',      ico:'☀',  color:'#8FD9A8'},   // 浅绿
   spaces: {name:'空间',      ico:'✦',  color:'#274B9F'},   // 深蓝
-  rhythm: {name:'节律表',    ico:'⏱',  color:'#E2483F'}    // 红
+  rhythm: {name:'节律表',    ico:'⏱',  color:'#E2483F'},   // 红
+  /* 她的空间里的三个页面（v1.3） */
+  mgrow:  {name:'等级成长',   ico:'⭐', color:'#E874A4'},   // 粉
+  moutfit:{name:'她的身体',   ico:'👗', color:'#9B7EDE'},   // 紫（v1.6a 由「服装」升级）
+  mcons:  {name:'她眼中的我', ico:'💌', color:'#F2A6BE'},   // 桃
+  mdairy: {name:'她的日记',   ico:'📔', color:'#7FB2E5'},   // 蓝
+  mtalk:  {name:'对她说',     ico:'💬', color:'#FFB4D0'}    // 浅粉（v1.5；在 mspace 里双击进入）
+};
+/* 她的空间（v1.3 起）：四个方向四个页面——第四个方向（向下）v1.4 补齐成「她的日记」 */
+const MSPACE_PULL_META = {
+  up:   {page:'mgrow',   edge:'bottom', arrow:'↑'},   // 向上拉 → 等级成长从下面来
+  left: {page:'moutfit', edge:'right',  arrow:'←'},   // 向左拉 → 服装从右边来
+  right:{page:'mcons',   edge:'left',   arrow:'→'},   // 向右拉 → 她眼中的我从左边来
+  down: {page:'mdairy',  edge:'top',    arrow:'↓'}    // 向下拉 → 她的日记从上面来
 };
 const PULL_COMMIT = 0.36;   // 拉出进度达到这个比例，松手就进入（否则弹回）
-const SECTOR_HALF = 55;     // 扇形半张角（度）
+const SECTOR_HALF = 90;     // 半圆色块：张角 180°（平边贴着屏幕边缘，圆边朝画面里）
 
 const Gestures = {
   _t0:0, _x0:0, _y0:0, _mode:'none', _moved:0, _lastTap:0, _dblTapAt:0,
-  _lastX:0, _lastY:0, _dir:null, _holdT:null, _gvp:0,
+  _lastX:0, _lastY:0, _dir:null, _holdT:null, _gvp:0, _builtView:null,
+  /* 当前视图用的方向表：首页四向；她的空间三向 */
+  _meta(){ return S.view === 'mspace' ? MSPACE_PULL_META : PULL_META; },
   /* 拉满所需的拖动距离 / 扇形的最大半径（都按屏幕短边缩放） */
   _pullMax(){ return Math.max(110, Math.min(window.innerWidth||360, window.innerHeight||640) * 0.46); },
   _maxR(){ return Math.min(window.innerWidth||360, window.innerHeight||640) * 0.62; },
@@ -4337,7 +7210,8 @@ const Gestures = {
   },
   /* 是否命中“可交互区域”（按钮/输入/卡片等）：不抢它们的触摸 */
   _busy(e){
-    if(S.view!=='home') return true;
+    if(S.view!=='home' && S.view!=='mspace') return true;
+    if(typeof Portal !== 'undefined' && Portal._active) return true;   // 传送过渡期间不接手势
     const el = e.target;
     if(el.closest && el.closest('[data-action], button, input, select, textarea, a, .console, .drop-pad, .sb-card, .sc-tri, .sc-ear')) return true;
     return false;
@@ -4378,7 +7252,7 @@ const Gestures = {
     }else if(this._mode==='maybe' && this._moved > 30){
       /* 明确在拖动（不是长按）：若是「双击后的左滑」→ 切到空间栏 */
       clearTimeout(this._holdT);
-      if(Date.now() - this._dblTapAt < 420 && dx < -52 && S.consOpen){
+      if(S.view==='home' && Date.now() - this._dblTapAt < 420 && dx < -52 && S.consOpen){
         this._reset();
         S.consTab = 'spaces';
         Console.render();
@@ -4409,13 +7283,20 @@ const Gestures = {
     const quick = Date.now() - this._t0 < 320 && moved < 12;
     if(quick){
       const now2 = Date.now();
-      if(now2 - this._lastTap < 300 && Math.hypot(e.clientX-this._lastX, e.clientY-this._lastY) < 42){
-        /* 双击：呼出/收回节律操控台（记住时刻，供“双击后左滑”判定） */
+      /* 双击：用户空间=呼出/收回节律操控台；她的空间=对她说（v1.5，正好用掉这个闲置的手势位） */
+      if(now2 - this._lastTap < 300 && Math.hypot(e.clientX-this._lastX, e.clientY-this._lastY) < 42 &&
+         (S.view==='home' || S.view==='mspace')){
+        /* 记住时刻，供“双击后左滑”判定 */
         this._lastTap = 0;
         this._dblTapAt = now2;
+        this._reset();
+        if(S.view==='mspace'){
+          Love.enter();
+          pageLoad(PAGE_META.mtalk, ()=>{ goView('mtalk'); });   // 加载页闪一下再进聊天页
+          return;
+        }
         if(S.consOpen){ S.consOpen = false; Console.close(); }
         else{ S.consTab = 'slots'; Console.open(); }
-        this._reset();
         return;
       }
       this._lastTap = now2; this._lastX = e.clientX; this._lastY = e.clientY;
@@ -4435,18 +7316,21 @@ const Gestures = {
     if(this._mode==='mdrag'){ this._mode='none'; Mascot.dragEnd(Math.max(99, this._moved)); return; }
     this._mode='none'; this._dir=null; this._gvp=0; clearTimeout(this._holdT); this._hideEdges();
   },
-  /* 四条边各一个扇形色块（顶点钉在这条边的中点）+ 四个边缘提示 */
+  /* 当前视图的可用方向各一个扇形色块 + 边缘提示（她的空间只有 3 个方向） */
   _buildEdges(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    /* 扇形朝向 = 从这条边指向屏幕里（0°=12点、90°=3点、180°=6点、270°=9点） */
+    const meta = this._meta();
+    /* 半圆朝向 = 从这条边鼓进屏幕里（0°=12点、90°=3点、180°=6点、270°=9点） */
     const DEG = {right:270, left:90, top:180, bottom:0};
-    let h = Object.keys(DEG).map(edge=>
+    const edges = [];
+    for(const d in meta){ if(edges.indexOf(meta[d].edge) < 0) edges.push(meta[d].edge); }
+    let h = edges.map(edge=>
       '<div class="gv-wedge '+edge+'" data-edge="'+edge+'">'+
         '<svg viewBox="0 0 200 200"><path d="'+sectorPath(DEG[edge], SECTOR_HALF, 100)+'"/></svg>'+
       '</div>').join('');
-    h += Object.keys(PULL_META).map(d=>{
-      const pm = PULL_META[d], m = PAGE_META[pm.page];
+    h += Object.keys(meta).map(d=>{
+      const pm = meta[d], m = PAGE_META[pm.page];
       return '<div class="gv-edge '+pm.edge+'" data-dir="'+d+'" style="--gvc:'+m.color+'">'+
                '<span class="gve-arrow">'+pm.arrow+'</span>'+
                '<span class="gve-ring">'+m.ico+'</span>'+
@@ -4466,11 +7350,13 @@ const Gestures = {
     const c = root.querySelector('.gv-hold');
     if(c){ c.style.left = x+'px'; c.style.top = y+'px'; }
   },
-  /* 拖动 → 目标页面的扇形随距离长大、边缘提示亮起、拉够了解锁提示 */
+  /* 拖动 → 目标页面的半圆随距离长大、边缘提示亮起、拉够了解锁提示 */
   _pullTo(dir, len){
     const root = document.getElementById('gesture-root');
     if(!root) return;
-    const pm = PULL_META[dir], m = PAGE_META[pm.page];
+    const pm = this._meta()[dir];
+    if(!pm) return;                       // 这个方向在当前视图没有页面（她的空间的「向下」）
+    const m = PAGE_META[pm.page];
     const p = Math.max(0, Math.min(1, len / this._pullMax()));
     this._gvp = p;
     root.style.setProperty('--gvp', p.toFixed(3));
@@ -4485,7 +7371,9 @@ const Gestures = {
     });
   },
   _launch(dir){
-    const page = PULL_META[dir].page;
+    const pm = this._meta()[dir];
+    if(!pm) return;
+    const page = pm.page;
     pageLoad(PAGE_META[page], ()=>{ goView(page); });   // 加载页闪一下再进目标页
   },
   _hideEdges(){
@@ -4528,11 +7416,65 @@ const Notify = {
         });
       }
     }
+  },
+
+  /* ══ v1.5 她走出软件：系统通知 ══
+     只做一件事——把「她说的话」在你切出去之后送到手机上。不发服务器、不联网，
+     所以只有软件还活着（前台或后台）的时候才送得出去；关掉就没有了，这是浏览器的边界。
+     file:// 直接双击打开的桌面文件用不了（浏览器不给），要 PWA 部署后在手机上装主屏幕。 */
+  _reg:null,
+  supported(){
+    try{
+      return (typeof Notification !== 'undefined') && !!Notification &&
+             (typeof navigator !== 'undefined') && !!navigator.serviceWorker &&
+             (typeof location !== 'undefined') && /^https?:$/.test(String(location.protocol || ''));
+    }catch(e){ return false; }
+  },
+  enabled(){
+    const s = S.settings.herNotify;
+    return !!(s && s.on) && this.supported();
+  },
+  permission(){ try{ return (typeof Notification !== 'undefined' && Notification) ? Notification.permission : 'unsupported'; }catch(e){ return 'unsupported'; } },
+  /* 注册 Service Worker（没有就静默跳过，功能整体降级，绝不报错） */
+  register(){
+    if(!this.supported()) return null;
+    try{
+      navigator.serviceWorker.register('sw.js').then(reg=>{ this._reg = reg; }, ()=>{});
+    }catch(e){}
+    return null;
+  },
+  /* 请求系统通知权限：回调式（老 Safari 只认回调，新浏览器两种都给，用 done 去重） */
+  request(cb){
+    if(!this.supported()){ if(cb) cb('unsupported'); return; }
+    let done = false;
+    const once = r => { if(done) return; done = true; if(cb) cb(r || 'default'); };
+    try{
+      const p = Notification.requestPermission(once);
+      if(p && p.then) p.then(once, ()=>once('error'));
+    }catch(e){ once('error'); }
+  },
+  push(title, body){
+    if(!this.enabled()) return false;
+    const opts = {body:String(body == null ? '' : body), tag:'ps-her',
+                  icon:CONFIG.LOVE.NOTIFY_ICON, badge:CONFIG.LOVE.NOTIFY_ICON};
+    try{
+      if(this._reg && this._reg.showNotification){ this._reg.showNotification(String(title), opts); return true; }
+      if(this.permission() === 'granted'){ new Notification(String(title), opts); return true; }
+    }catch(e){}
+    return false;
+  },
+  /* 她说的话 → 只有你把软件切到后台了才发通知（你正看着屏幕的时候，气泡就够了）
+     通知的抬头永远是她的名字：像有人给你发消息，而不是系统在提醒你 */
+  her(text, sub){
+    if(!text) return false;
+    if(typeof document === 'undefined' || !document.hidden) return false;
+    return this.push(CONFIG.LOVE.NAME, sub ? ('【' + sub + '】' + text) : text);
   }
 };
 
 /* 渲染入口：home=纯净看板娘页（无顶栏无静态UI），其余为带返回按钮的子页 */
-const VIEW_TITLES = {home:'', summary:'我们的共识', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:''};
+const VIEW_TITLES = {home:'', mspace:'', summary:'我们的共识', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:'',
+  mgrow:'等级成长', moutfit:'她的身体', mcons:'她眼中的我', mdairy:'她的日记', mtalk:'对她说'};
 function renderView(){
   const root = document.getElementById('view-root');
   const ae = document.activeElement;
@@ -4544,7 +7486,7 @@ function renderView(){
     if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT'){ scheduleRender(); return; }
     try{ ae.blur(); }catch(e){}
   }
-  const isPure = S.view==='home';
+  const isPure = S.view==='home' || S.view==='mspace';   // 纯净页 = 用户空间首页 + 她的空间
   let html;
   if(S.view==='space'){
     const sp = spaceById(S.spaceId);
@@ -4560,6 +7502,12 @@ function renderView(){
   if(hdr) hdr.classList.toggle('hidden', isPure);
   document.getElementById('back-btn').classList.toggle('hidden', isPure);
   document.body.classList.toggle('pure-mode', isPure);
+  document.body.classList.toggle('mspace-mode', S.view==='mspace');   // 她的世界：换一套背景
+  /* 长按方向提示随视图变化（首页 4 向 / 她的空间 3 向），只在视图真的换了时重建 */
+  if(typeof Gestures !== 'undefined' && Gestures._builtView !== S.view){
+    Gestures._builtView = S.view;
+    Gestures._buildEdges();
+  }
   /* 离开纯净页：收起操控台 / 空间栏，清手势残留；回纯净页时若有待显示气泡则补上
      （操控台自身按签名自更新，不随 renderView 重绘——重绘会重播动画=闪烁） */
   if(!isPure){
@@ -4568,6 +7516,9 @@ function renderView(){
   }else{
     if(typeof Bubbles !== 'undefined') Bubbles.render();
   }
+  /* 离开纯净页时，她收起动作（换页中途还在蹦会怪）；忙碌页让 Q版那只站到右下角陪着 */
+  if(typeof Director !== 'undefined') Director.stop();
+  if(typeof QCorner !== 'undefined') QCorner.sync();
   collectBindings();
 }
 
@@ -4597,6 +7548,8 @@ function refreshFromStorage(){
     }
   }
   if(todosChanged) Store.set('todos', S.todos);
+  Grow.invalidate();
+  S._level = Grow.level();          // 多标签页/导入后，等级基线与推导结果对齐（不误播升级）
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -4619,6 +7572,16 @@ function bootMain(){
   applyBg();                // 应用自定义背景
   applyAnimLevel();         // 动画强度三档
   renderView();
+  /* 感情线先结账（感情会凉：好几天没打开，每天 -1）——必须排在 Her.onBoot 之前，
+     因为它要读的是「上一次打开」的日期，而 Her.onBoot 一进来就把今天记上了 */
+  if(typeof Love !== 'undefined'){ try{ Love.onBoot(Date.now()); }catch(e){ console.error('[Love]', e); } }
+  /* 她先开口（问候 / 好久不见 / 昨天没打卡）——必须排在 renderView 之后，
+     否则气泡没有挂载点（#bubble-root 是随视图渲染出来的） */
+  if(typeof Her !== 'undefined'){ try{ Her.onBoot(Date.now()); }catch(e){ console.error('[Her]', e); } }
+  /* 她的通知：注册 Service Worker（file:// 或老浏览器会静默跳过，功能整体降级） */
+  if(typeof Notify !== 'undefined'){ try{ Notify.register(); }catch(e){} }
+  /* 摇一摇（v1.6a）：安卓这类不用问你的地方直接接上；iPhone 要你先点头 → 由她开口问一次 */
+  if(typeof Shake !== 'undefined'){ try{ if(Shake.supported() && !Shake.needAsk()) Shake.attach(); }catch(e){} }
   setInterval(tick, 1000);
 
   /* 事件绑定 */
@@ -4629,6 +7592,18 @@ function bootMain(){
     if(t.dataset.action==='open-space'){ goSpace(t.dataset.id); return; }
     Actions[t.dataset.action] && Actions[t.dataset.action](t, e);
   });
+  /* 她在等你安静下来才开口：任何一次触碰都算「你在」；
+     你在的时候她也不自顾自演戏——你一碰屏幕，她就把动作收起来看着你（v1.6a） */
+  document.addEventListener('pointerdown', ()=>{
+    if(typeof Love !== 'undefined') Love.touch();
+    if(typeof Director !== 'undefined') Director.userTouch();
+  }, {passive:true});
+  /* 「对她说」输入框：回车 = 发送 */
+  viewRoot.addEventListener('keydown', e=>{
+    if(e.key !== 'Enter' || e.target.id !== 'mtalk-in') return;
+    e.preventDefault();
+    Actions['love-send']();
+  });
   viewRoot.addEventListener('input', e=>{
     const t = e.target.closest('[data-oninput]');
     if(t && Actions[t.dataset.oninput]) Actions[t.dataset.oninput](t, e);
@@ -4637,6 +7612,33 @@ function bootMain(){
     const t = e.target.closest('[data-onchange]');
     if(t && Actions[t.dataset.onchange]) Actions[t.dataset.onchange](t, e);
   });
+  /* 长按（她的衣柜：按住某套服装 0.5 秒 = 删除，和星标入口同一套手感）：
+     用委托，页面重绘也不用重新绑；触发后给元素打 __held 标记，
+     紧随其后的 click（= 穿上）看到标记就跳过，两个动作不打架 */
+  const HOLD_DEL_MS = 500;
+  const holdAt = e => (e.target && e.target.closest) ? e.target.closest('[data-hold]') : null;
+  viewRoot.addEventListener('pointerdown', e=>{
+    const t = holdAt(e);
+    if(!t) return;
+    t.__held = false;
+    t.classList.add('holding');
+    clearTimeout(t.__holdT);
+    t.__holdT = setTimeout(()=>{
+      t.__holdT = null;
+      t.__held = true;
+      t.classList.remove('holding');
+      if(Actions[t.dataset.hold]) Actions[t.dataset.hold](t, e);
+    }, HOLD_DEL_MS);
+  }, {passive:true});
+  const cancelHold = e=>{
+    const t = holdAt(e);
+    if(!t) return;
+    clearTimeout(t.__holdT);
+    t.__holdT = null;
+    t.classList.remove('holding');
+  };
+  viewRoot.addEventListener('pointerup', cancelHold, {passive:true});
+  viewRoot.addEventListener('pointercancel', cancelHold, {passive:true});
   /* 顶栏按钮（返回/设置） */
   document.getElementById('app-header').addEventListener('click', e=>{
     const t = e.target.closest('[data-action]');
@@ -4667,9 +7669,12 @@ function bootMain(){
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape') UI.closeModal();
   });
+  /* 共享的隐藏文件框（v1.4.1 起支持多选）：回调统一收到「文件数组」，
+     用几张由各处理器自己决定（multiple 每次都由调用方显式设置，避免串档） */
   document.getElementById('file-input').addEventListener('change', e=>{
     const cb = S.pendingFileCb; S.pendingFileCb = null;
-    if(cb && e.target.files && e.target.files[0]) cb(e.target.files[0]);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if(cb && files.length) cb(files);
   });
   /* 首次交互解锁音频（闹钟提示音需要） */
   document.addEventListener('pointerdown', function unlockAudio(){ Alarms.unlockAudio(); }, {once:true});
