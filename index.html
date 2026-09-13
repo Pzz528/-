@@ -389,7 +389,18 @@ img{max-width:100%;display:block}
    没有这张图 → 还是原来的白圆黑星外扩，一点不受影响 */
 .portal-overlay .po-art{position:absolute;left:50%;top:50%;width:100vw;height:100vh;margin:-50vh 0 0 -50vw;
   display:none;background-position:center;background-size:cover;background-repeat:no-repeat;border-radius:0}
-.portal-overlay.use-art .po-art{display:block}
+.portal-overlay.use-art .po-art{display:block;transform:translate(0,0) scale(.08)}
+/* ⚠️ v1.7.8 修的：这张画一开始压在**按钮中心**（--ax/--ay，按钮在屏幕下方 bottom:22%），
+   走到头要**落在屏幕正中**（50vw/50vh）——所以位移量 = 屏幕中心 − 按钮中心。
+   老代码是「以按钮为中心放大 1.04 倍」：按钮在屏幕 74% 处，乘 1.04 只够盖到 74%−52%=22%，
+   顶上一条 22% 高的缝就一直露着旧页面（她报的「她的空间过渡图有问题」就是这个）。
+   现在走到头是 scale(1)+居中：四条边正好贴着屏幕边，不多不少也不放大糊掉。
+   最后留 2% 余量（1.02 而不是 1）是防亚像素：万一差半个像素，边上会闪一条一像素的缝 */
+.portal-overlay.art-go .po-art{animation:poArtGrow .48s cubic-bezier(.35,0,.2,1) forwards}
+@keyframes poArtGrow{
+  0%  {transform:translate(0,0) scale(.08)}
+  100%{transform:translate(calc(50vw - var(--ax,50vw)), calc(50vh - var(--ay,50vh))) scale(1.02)}
+}
 .portal-overlay.use-art .po-ring,.portal-overlay.use-art .po-star{display:none}
 .portal-overlay.done{opacity:0}
 .mascot-pos{display:block;width:100%}
@@ -510,11 +521,17 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 /* v1.7.6：每张写两层 —— 先 PNG、后 .webp（CSS 里**排在前面的画在上面**，正好就是我们要的
    「她的 PNG 优先，找不到才用我压的 .webp」）。先试的那层不在，浏览器就只是不画它，底下那层照常出来，
    不会变成一片黑；两层都不在就还是底下那套紫夜渐变（.msp-bg 自己的规矩没变） */
-body[data-daypart="dawn"]  .msp-bg{background-image:url('mimi/清晨.png'),url('mimi/清晨.webp')}
-body[data-daypart="day"]   .msp-bg{background-image:url('mimi/白天.png'),url('mimi/白天.webp')}
-body[data-daypart="dusk"]  .msp-bg{background-image:url('mimi/黄昏.png'),url('mimi/黄昏.webp')}
-body[data-daypart="eve"]   .msp-bg{background-image:url('mimi/晚上.png'),url('mimi/晚上.webp')}
-body[data-daypart="night"] .msp-bg{background-image:url('mimi/深夜.png'),url('mimi/深夜.webp')}
+/* 她的房间背景（v1.7.3）+ v1.7.6 两种后缀 + v1.7.7 分文件夹。
+   CSS 多层背景 = **第一层画在最上面**，哪一层加载不出来就只是不画那一层 ——
+   所以层序就是优先级，跟 JS 那边 artCands 的顺序是同一个道理：
+     ①她新画的 PNG（放 mimi/背景/ 或随手丢在 mimi/ 根下）先赢
+     ②再退到我压的 .webp（上传那份就在这两个位置）
+   不放「别人家」文件夹那几层：背景图认名字（清晨/白天/…）不会认错家，省几个请求。 */
+body[data-daypart="dawn"]  .msp-bg{background-image:url('mimi/背景/清晨.png'),url('mimi/清晨.png'),url('mimi/背景/清晨.webp'),url('mimi/清晨.webp')}
+body[data-daypart="day"]   .msp-bg{background-image:url('mimi/背景/白天.png'),url('mimi/白天.png'),url('mimi/背景/白天.webp'),url('mimi/白天.webp')}
+body[data-daypart="dusk"]  .msp-bg{background-image:url('mimi/背景/黄昏.png'),url('mimi/黄昏.png'),url('mimi/背景/黄昏.webp'),url('mimi/黄昏.webp')}
+body[data-daypart="eve"]   .msp-bg{background-image:url('mimi/背景/晚上.png'),url('mimi/晚上.png'),url('mimi/背景/晚上.webp'),url('mimi/晚上.webp')}
+body[data-daypart="night"] .msp-bg{background-image:url('mimi/背景/深夜.png'),url('mimi/深夜.png'),url('mimi/背景/深夜.webp'),url('mimi/深夜.webp')}
 .mspace-top{position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;z-index:3;
   display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
 .mspace-top .msp-t{font-size:15px;font-weight:800;letter-spacing:7px;color:rgba(255,242,249,.92);
@@ -1017,7 +1034,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.7.6', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.7.9', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -2558,6 +2575,21 @@ const Actions = {
           Store.clearAll(()=>{ location.reload(); });   // 大容量模式等删库事务完成再刷新
         });
       }, 400);
+    });
+  },
+  /* v1.7.8：换图之后让她重新去服务器上找一遍（缓存的「这张没有」不会自己过期，所以要手动戳一下） */
+  'refresh-art'(){
+    if(!Notify.swOK() || !Notify._reg){ UI.toast('这个形态用不了刷新（要部署在网上才有效）','err'); return; }
+    UI.toast('正在重新找她的图…别关掉，一会儿就好');
+    Notify.refreshArt(n=>{
+      /* 清掉「探过没有」的记忆再重探一遍：刷新前记下的「没有」现在可能已经有了。
+         ⚠️ 探测是异步的（onload 才算数），所以画脸要排在这之后——而且多画几次兜底 */
+      try{ HerBody._probe = {}; HerBody.warm(Notify.artNames()); }catch(e){}
+      const repaint = ()=>{ try{ paintHer(); renderView(); }catch(e){} };
+      repaint();
+      try{ setTimeout(repaint, 1500); setTimeout(repaint, 4000); }catch(e){}
+      if(n < 0) UI.toast('刷新没成功（可能网断了，过会儿再点一次）','err');
+      else UI.toast(n > 0 ? ('刷新好了，找到 '+n+' 张图') : '刷新完了，服务器上没有新图');
     });
   },
   'save-settings'(){
@@ -4953,7 +4985,21 @@ const Views = {
           '（见使用说明的部署一节）。电脑上直接双击打开的文件、或者没装到主屏幕，都收不到——这是浏览器的限制，不是她的问题。</div>')+
       '<div class="hint">通知里只会出现她说的话，抬头是她的名字。你正看着软件的时候她不会发通知（气泡就够了）。</div>'+
     '</div></section>';
-    const storageMode = Store.mode==='idb' ? '大容量模式 · 可用约 '+Store.capacityText() : Store.mode==='ls' ? '兼容模式 · 约 5MB 上限' : '当前浏览器无法保存数据';
+    /* 她的图与加载（v1.7.8：打开秒开 + 换图后点一下刷新） */
+    const swOk = Notify.swOK();
+    h += '<section class="sec"><h2 class="sec-title">她的图与加载</h2><div class="card pad">'+
+      '<div class="hint">软件会把她的图全部存在手机本地：第一次打开要联网存一遍（会慢一次），'+
+        '以后每次打开都是秒开，断网也能用——这也是为什么不用做 App。</div>'+
+      (swOk
+        ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">'+
+            '<button class="btn btn--small" data-action="refresh-art">刷新她的图（换图后点一下）</button>'+
+          '</div>'
+        : '<div class="hint" style="color:var(--text)">这个按钮要在「部署在网上、装到手机主屏幕」的形态下才有用'+
+          '（电脑上直接双击打开的那个文件用不到，它本来就是本地的、不存在刷新问题）。</div>')+
+      '<div class="hint">你往 mimi/ 里丢了新图、软件里却没变？先点上面这个按钮。还不行就把主屏幕上的图标删掉重装一次'+
+        '（重装前先在上面「数据与备份」里导出一份备份）。</div>'+
+    '</div></section>';
+    const storageMode =Store.mode==='idb' ? '大容量模式 · 可用约 '+Store.capacityText() : Store.mode==='ls' ? '兼容模式 · 约 5MB 上限' : '当前浏览器无法保存数据';
     h += '<section class="sec"><h2 class="sec-title">数据与备份</h2><div class="card pad">'+
       '<div class="field"><label>存储用量（当前浏览器内）</label>'+
         '<div class="prog"><div class="prog-bar" style="width:'+Math.min(100, Store.usageBytes()/Store.capacityBytes()*100).toFixed(1)+'%"></div></div>'+
@@ -6133,14 +6179,30 @@ const Mascot = {
      · 「冲动」加在 #mascot 上（keyframes，播完摘掉，与 mascot-hop 同一套手感）
      · 「姿势」加在 .mascot-anim 上（带过渡，可以停在某个姿势上）
    ══════════════════════════════════════════════════════════════ */
-/* ── 同一个名字的两种后缀（v1.7.6）：她画的 PNG 在前，我压的 .webp 在后 ──
-   为什么两套：她那批图 PNG 一共 63MB（提示卡插画只显示 88px 见方，她给的是 1254×1254；
-   PNG 存这种带渐变的画又最不划算），从国内传 GitHub 传不动。压成同名的 .webp 只剩约 1/10。
-   为什么**永远 PNG 在前**：反过来写的话，她新画一张「待办.png」丢进 mimi/，
-   会被旧的「待办.webp」悄悄盖住 —— 换图就白换了（换图零代码是红线，不能在这儿破）。
+/* ── 同一个名字要试的一串地址（v1.7.6 起两种后缀 / v1.7.7 起分文件夹）──
+
+   两个轴：**后缀**（她画的 .png / 我压的 .webp）× **文件夹**（mimi/ 下面 5 个家）。
+   展开出来的顺序 = 依次要试的地址，两条规矩：
+
+   ★ 规矩一：**所有 PNG 都排在所有 .webp 前面**（后缀在外层循环）
+     为什么：她那批图 PNG 一共 63MB（提示卡插画只显示 88px 见方，她给的是 1254×1254；
+     PNG 存这种带渐变的画又最不划算），从国内传 GitHub 传不动，所以压成同名的 .webp（约 1/10）。
+     但反过来写的话，她新画一张「待办.png」会被旧的「待办.webp」悄悄盖住 ——
+     换图就白换了（换图零代码是红线，不能在这儿破）。
+
+   ★ 规矩二：**她的图放哪个文件夹都找得到**（先自家，再根目录，再另外四个）
+     为什么分文件夹：GitHub 网页上传一次提交最多 100 个文件，她得手动拖 ——
+     图分进 5 个家，每个一次拖完，图再多也不撞上限。
+     为什么还要找「别人家」和根目录：她可能压根不记得该放哪一格，或者照老习惯平铺在 mimi/ 根下。
+     只要文件名叫对了，丢哪儿都生效 —— 这才是真的「零代码换图」。
+
    代价：部署那份 mimi/ 里只有 .webp 时，那一串 PNG 请求会各自 404 一次。
    不占带宽（404 没有正文）、不报错，而且开机那次 warm 会提前把结果拿回来。 */
-const ART_EXT = ['.png', '.webp'];
+const ART_EXT  = ['.png', '.webp'];
+const ART_DIRS = ['表情', '动作', '卡片', '背景', '过渡'];   // mimi/ 下的 5 个家（根目录不在这儿，单独算）
+const ART_FACE = ['normal', 'happy', 'sad', 'angry', 'sleepy', 'q', 'q-happy'];
+const ART_ACT  = ['sit', 'sleep', 'startle', 'peek', 'pull', 'pull-hard', '被拖'];
+const ART_BG   = ['清晨', '白天', '黄昏', '晚上', '深夜'];
 /* 换个后缀（认不出来就还 null，让调用方原样用） */
 function artTwin(u){
   const s = String(u == null ? '' : u);
@@ -6148,16 +6210,47 @@ function artTwin(u){
     return s.slice(0, -e.length) + (e === '.png' ? '.webp' : '.png');
   return null;
 }
-/* 一个名字 → 该依次试的地址（**PNG 永远是第一个**）。传进来的是 .webp 也照样 PNG 打头 */
+/* 这个名字的家（'表情'…'过渡'；认不出来就 null = 只在根目录找）——
+   规则按名字来，不抄死一张名单：以后加了页面，提示卡插画自动跟着进「卡片」。
+   ⚠️ 这张表要和 _slim.py 里的 artFolder 保持一致（那边是打包用的 Python 版） */
+function artFolder(base){
+  const n = String(base == null ? '' : base);
+  if(!n) return null;
+  if(ART_FACE.indexOf(n) >= 0) return '表情';
+  if(ART_ACT.indexOf(n) >= 0 || n.indexOf('pull-') === 0) return '动作';
+  if(ART_BG.indexOf(n) >= 0) return '背景';
+  if(n === '她的空间' || n.slice(-3) === '过渡图') return '过渡';   // 入口那颗球 + 进页闪的整屏画
+  if(n === '松手' || n.slice(-2) === '松手') return '卡片';
+  try{                                              // 提示卡插画 = 页面名（v1.7.3）
+    for(const k in PAGE_META) if(pageArtName(k) === n) return '卡片';
+  }catch(e){}                                       // PAGE_META 还没求值（极早调用）→ 当认不出来
+  return null;
+}
+/* 一个后缀、一个名字 → 该试的 6 个地址（自家 → 根目录 → 另外四个家） */
+function artPathsIn(base, ext){
+  const home = artFolder(base);
+  const out = [];
+  if(home) out.push('mimi/' + home + '/' + base + ext);
+  out.push('mimi/' + base + ext);                   // 根目录：她的老习惯，也是已部署那份的位置
+  for(const d of ART_DIRS) if(d !== home) out.push('mimi/' + d + '/' + base + ext);
+  return out;
+}
+/* 一个名字 → 该依次试的一串地址（**先把 PNG 那 6 个试完，再轮到 .webp 那 6 个**） */
 function artCands(u){
   const s = String(u == null ? '' : u);
   if(!s) return [];
   const t = artTwin(s);
   if(!t) return [s];
-  const isWebp = s.slice(-5).toLowerCase() === '.webp';
-  return isWebp ? [t, s] : [s, t];
+  if(s.slice(0, 5) !== 'mimi/') return [s, t];      // 不在 mimi/ 里的（看板娘.png 等）→ 只换个后缀
+  /* 去掉 'mimi/' 和后缀。⚠️ 别写 slice(5,-4)：那对 .png 正好，对 .webp 会剩个孤零零的点
+     （'mimi/待办.webp' → '待办.'），于是展开出一串带点的错地址、一个都撞不上。
+     artTwin 非空已经保证末尾有个认得出的后缀，所以直接砍到最后一个点 */
+  const base = s.slice(5, s.lastIndexOf('.'));
+  const out = [];
+  for(const e of ART_EXT) out.push.apply(out, artPathsIn(base, e));
+  return out;
 }
-/* 接力名单里该跟的那半截：同一个名字的另一个后缀（如 mimi/x.png → ['mimi/x.webp']） */
+/* 接力名单里该跟的那半截（如 mimi/x.png → 它后面那 11 个候选） */
 function artRest(u){ return artCands(u).slice(1); }
 
 const HerBody = {
@@ -6804,8 +6897,14 @@ const QCorner = {
       img.src = artCands(Q_DRAG_ART)[0];
       img.dataset.fb = JSON.stringify(fb);
     }else{
+      /* ⚠️ 没换成拖动图就别动它：`_dragImg(false)` 在「只是点一下」时也会被调到，
+         这时候 _baseSrc 还是 null，老代码会把 data-fb 擦成空串——她那张脸的接力名单就没了 */
+      if(this._baseSrc == null) return;
       img.setAttribute('data-fb', this._baseFb || '');
-      if(this._baseSrc != null && img.getAttribute('src') !== this._baseSrc) img.src = this._baseSrc;   // 拖完了 → 换回平常那张脸
+      if(img.getAttribute('src') !== this._baseSrc) img.src = this._baseSrc;   // 拖完了 → 换回平常那张脸
+      /* ⚠️ 用完就清空，下次拖重新记「当下」那张：老代码一辈子只记第一次，
+         中间她换了图（温图完成/换页重画）之后再拖，就会还原成一张过期地址 */
+      this._baseSrc = null; this._baseFb = null;
     }
   },
   _endDrag(){
@@ -6853,21 +6952,25 @@ const Portal = {
     ov.innerHTML = '<span class="po-ring"></span><span class="po-star">★</span><span class="po-art"></span>';
     const w = window.innerWidth || 390, h = window.innerHeight || 844;
     /* 有她的传送图（mimi/她的空间过渡图.png，且已经探到）→ 整屏那张画从按钮上长出来：
-       .po-art 自己就是整屏大小，再跟着 overlay 从 56px 放到 1 倍 → 正好铺满，所以这档的倍数就是 1
-       （原来的白圆黑星是「小圆放到盖住屏幕」，倍数是屏幕对角线 / 小圆直径，两条路各算各的） */
+       .po-art 自己就是整屏大小，动画里从按钮中心滑到屏幕正中（见 CSS 的 poArtGrow）。
+       ⚠️ 两条路各算各的：白圆黑星是「小圆放到盖住屏幕」（倍数 = 屏幕对角线 / 小圆直径），
+       整屏画那档**不放大**（放大就会糊，而且以按钮为中心放大还会在顶上留缝） */
     /* v1.7.6：PNG 和 .webp 哪个真在就用哪个（见 artCands） */
     const trans = (typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(artCands(PORTAL_TRANS_ART)) : null;
     const useArt = !!trans;
     if(useArt){
       ov.classList.add('use-art');
       ov.querySelector('.po-art').style.backgroundImage = 'url("'+trans.replace(/"/g, '%22')+'")';
-      ov.style.setProperty('--poscale', '1.04');
+      /* ⚠️ 这一档**不放大**（老代码写的是 1.04，那是错的，见 CSS 里 poArtGrow 上面那段）：
+         记下按钮中心就行，画会从它那儿长出来、最后落在屏幕正中（四条边贴屏幕边） */
+      ov.style.setProperty('--ax', a.x + 'px');
+      ov.style.setProperty('--ay', a.y + 'px');
     }else{
       ov.style.setProperty('--poscale', Math.ceil(Math.hypot(w, h) / 56 * 1.15));
     }
     document.body.appendChild(ov);
     this._active = true;
-    const run = ()=>{ ov.classList.add('go'); };
+    const run = ()=>{ ov.classList.add(useArt ? 'art-go' : 'go'); };
     if(typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else run();
     setTimeout(()=>this._land(target, ov), this.FLY_MS);
     return ov;
@@ -8273,13 +8376,57 @@ const Notify = {
     return !!(s && s.on) && this.supported();
   },
   permission(){ try{ return (typeof Notification !== 'undefined' && Notification) ? Notification.permission : 'unsupported'; }catch(e){ return 'unsupported'; } },
-  /* 注册 Service Worker（没有就静默跳过，功能整体降级，绝不报错） */
+  /* Service Worker 能不能用（和通知无关的那一半：只要「部署在网上」就行，
+     哪怕这个浏览器不给通知权限——因为 v1.7.8 起它还管着「打开秒开」） */
+  swOK(){
+    try{
+      return (typeof navigator !== 'undefined') && !!navigator.serviceWorker &&
+             (typeof location !== 'undefined') && /^https?:$/.test(String(location.protocol || ''));
+    }catch(e){ return false; }
+  },
+  /* 注册 Service Worker（没有就静默跳过，功能整体降级，绝不报错）
+     ⚠️ v1.7.8：判据从 supported() 换成 swOK()——以前不给通知权限就不注册 sw，
+        于是「秒开」也一起没了；现在两件事分开：通知要权限，秒开只要部署在网上 */
   register(){
-    if(!this.supported()) return null;
+    if(!this.swOK()) return null;
     try{
       navigator.serviceWorker.register('sw.js').then(reg=>{ this._reg = reg; }, ()=>{});
+      /* sw 刷新完她的图会回一句话（见 refreshArt / sw.js 的 ps-refresh-done） */
+      try{
+        navigator.serviceWorker.addEventListener('message', e=>{
+          const d = (e && e.data) || {};
+          if(d.type === 'ps-refresh-done' && this._artCb){ const cb = this._artCb; this._artCb = null; cb(d.names|0); }
+        });
+      }catch(e){}
     }catch(e){}
     return null;
+  },
+  /* ── v1.7.8 「刷新她的图」──────────────────────────────────────
+     为什么需要它：图现在存在手机本地（打开才快），而**「这张没有」也会被存下来**——
+     存下来的 404 不会自己过期，所以你新丢一张图进去、软件还以为那儿是空的。
+     点一下这个按钮 = 让她去服务器上重新找一遍（sw.js 里按 artCands 的顺序试，试到第一张就停）。 */
+  _artCb:null,
+  /* 软件会用到的全部图的名字（不是地址）——和开机 warm 是同一套，只有这一份清单，不会漂移 */
+  artNames(){
+    const out = [];
+    const push = u => { if(u && out.indexOf(u) < 0) out.push(u); };
+    try{ HerBody.forms().forEach(f => HerBody.slots(f).forEach(s => push(HerBody.builtinFile(f, s[0])))); }catch(e){}
+    try{ PullMini.allFiles().forEach(k => push(HerBody.builtinFile('acts', k))); }catch(e){}
+    try{ Object.keys(PAGE_META).forEach(k => { push(pageTransImg(k)); push(cardImg(k)); push(cardReadyImg(k)); }); }catch(e){}
+    [CARD_READY, PORTAL_UI_ART, PORTAL_TRANS_ART, Q_DRAG_ART].forEach(push);
+    try{ CONFIG.DAY_BG.BUCKETS.forEach(b => push(CONFIG.DAY_BG.DIR + b.file)); }catch(e){}
+    return out;
+  },
+  refreshArt(cb){
+    if(!this.swOK() || !this._reg || !this._reg.active){ if(cb) cb(-1); return; }
+    const names = this.artNames().map(n => ({ name:n, cands:artCands(n) }));
+    let done = false;
+    const fin = n => { if(done) return; done = true; if(this._artCb === fin) this._artCb = null; if(cb) cb(n); };
+    this._artCb = fin;
+    try{ this._reg.active.postMessage({ type:'ps-refresh', names }); }
+    catch(e){ fin(-1); return; }
+    /* 兜底：万一 sw 中途被系统杀掉、回话没到，按钮不能永远转下去 */
+    try{ setTimeout(()=>fin(-1), 120000); }catch(e){}
   },
   /* 请求系统通知权限：回调式（老 Safari 只认回调，新浏览器两种都给，用 done 去重） */
   request(cb){
