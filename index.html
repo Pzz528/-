@@ -327,20 +327,17 @@ img{max-width:100%;display:block}
 /* 呼吸泡泡/悬浮装饰 */
 .mascot-shadow{position:absolute;bottom:16%;left:50%;transform:translateX(-50%);width:44%;height:7%;border-radius:50%;
   background:rgba(60,90,140,.16);filter:blur(6px);animation:shadowPulse 4s ease-in-out infinite;z-index:1}
-/* 单击互动：台词气泡 / 爱心粒子 / 养成入口按钮 / 反应动画 / 大小位置调节条 */
-/* 台词气泡与提醒气泡都锚在立绘右上（左侧小尾巴指向看板娘） */
-.mascot-chat{position:absolute;left:calc(50% + 6vw);top:26%;bottom:auto;transform:none;z-index:6;
-  max-width:min(44vw,300px);padding:9px 14px;border-radius:16px 16px 16px 4px;background:rgba(255,255,255,.92);
-  border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);font-size:15px;color:var(--text);opacity:0;pointer-events:none;
-  transition:opacity .18s,transform .18s}
-.mascot-chat.show{opacity:1;transform:translateY(-5px)}
-.mascot-chat::after{content:'';position:absolute;left:-6px;top:44%;bottom:auto;width:12px;height:12px;background:inherit;
-  border-left:1px solid rgba(255,255,255,.9);border-top:1px solid rgba(255,255,255,.9);transform:rotate(-45deg)}
+/* 单击互动：爱心粒子 / 养成入口按钮 / 反应动画 / 大小位置调节条 */
+/* ★ v1.7.11：原来这里还有一套 `.mascot-chat`（锚在立绘右上方、白底 92%、带一条指向她的小尾巴）。
+   它和 #bubble-root 里那套 `.mascot-bubble` 是**两套并行的气泡**——v1.6.2 把提醒气泡挪到屏幕中下时
+   只挪走了一套，点击她的台词一直还走这套旧的（她还报过「为什么这个还在」）。
+   现在统一成一个出口 Bubbles（见 Mascot.say），这套连同下面的死规则一起删掉。 */
 .mascot-heart{position:absolute;font-size:18px;z-index:5;pointer-events:none;animation:heartUp 1.6s ease-out forwards}
 @keyframes heartUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translateY(-90px) scale(1.25)}}
 /* 她的空间入口：白圆黑星（长按 0.5 秒传送过去 / 传回来） */
 /* 位置沿用 22%（避开底部的最优先待办/今日递归带） */
-.portal-btn{position:absolute;bottom:22%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
+/* v1.7.10：22% → 14%（她要求：球往下挪一截，好让气泡贴到它正上方、两者不再互相挡） */
+.portal-btn{position:absolute;bottom:14%;left:50%;transform:translateX(-50%) scale(.85);opacity:0;pointer-events:none;z-index:6;
   width:64px;height:64px;padding:0;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   border:1px solid rgba(255,255,255,.9);background:#fff;cursor:pointer;
@@ -390,17 +387,30 @@ img{max-width:100%;display:block}
 .portal-overlay .po-art{position:absolute;left:50%;top:50%;width:100vw;height:100vh;margin:-50vh 0 0 -50vw;
   display:none;background-position:center;background-size:cover;background-repeat:no-repeat;border-radius:0}
 .portal-overlay.use-art .po-art{display:block;transform:translate(0,0) scale(.08)}
-/* ⚠️ v1.7.8 修的：这张画一开始压在**按钮中心**（--ax/--ay，按钮在屏幕下方 bottom:22%），
-   走到头要**落在屏幕正中**（50vw/50vh）——所以位移量 = 屏幕中心 − 按钮中心。
-   老代码是「以按钮为中心放大 1.04 倍」：按钮在屏幕 74% 处，乘 1.04 只够盖到 74%−52%=22%，
-   顶上一条 22% 高的缝就一直露着旧页面（她报的「她的空间过渡图有问题」就是这个）。
-   现在走到头是 scale(1)+居中：四条边正好贴着屏幕边，不多不少也不放大糊掉。
-   最后留 2% 余量（1.02 而不是 1）是防亚像素：万一差半个像素，边上会闪一条一像素的缝 */
-.portal-overlay.art-go .po-art{animation:poArtGrow .48s cubic-bezier(.35,0,.2,1) forwards}
+/* ⚠️ v1.7.8 修的：这张画一开始压在**按钮中心**（--ax/--ay），走到头要**落在屏幕正中**
+   ——位移量 = 屏幕中心 − 按钮中心。老代码是「以按钮为中心放大 1.04 倍」：
+   按钮在屏幕 74% 处，乘 1.04 只够盖到 74%−52%=22%，顶上一条缝一直露着旧页面。
+   ⚠️ v1.7.10 再修的（她报「电脑端好了、手机上顶上还是一条缝」）：
+   位移量原来写成 `calc(50vw - var(--ax))`——**iPhone 上 100vh 是「工具栏收起时」的那个大视口**，
+   比真正看得见的那块高，拿它当屏幕中心，画就落低了、顶上差出一条。
+   现在 --dx/--dy 由 Portal.go **当场量**（可视区中心 − 画的中心），尺寸也当场设死，
+   全套都在「客户端坐标」里量、同一个坐标系里用，纯平移上下左右自动抵消，两个平台一致。
+   走到头是 scale(1.02)：四条边正好贴屏幕边，多出的 2% 是防亚像素的余量 */
+/* v1.7.14：这一秒——画从按钮那儿长出来 + 从模糊到清晰（0.6 那会儿就长好了、也清楚了），
+   之后停在清晰上（0.4 秒）再跳页。时长与模糊程度由 Portal.go 按 CONFIG.TRANS 写在元素上 */
+.portal-overlay.art-go .po-art{animation:poArtGrow var(--po-t,1000ms) cubic-bezier(.35,0,.2,1) forwards}
 @keyframes poArtGrow{
-  0%  {transform:translate(0,0) scale(.08)}
-  100%{transform:translate(calc(50vw - var(--ax,50vw)), calc(50vh - var(--ay,50vh))) scale(1.02)}
+  0%  {transform:translate(0,0) scale(.08);filter:blur(var(--po-blur,16px))}
+  60% {transform:translate(var(--dx,0px), var(--dy,0px)) scale(1.02);filter:blur(0)}
+  100%{transform:translate(var(--dx,0px), var(--dy,0px)) scale(1.02);filter:blur(0)}
 }
+/* 点击跳转那档的提示（贴在屏幕下方，跟整屏画同一个坐标世界——所以它挂在 body 上，
+   不挂在那个被 transform 收窄的 56px overlay 里面） */
+.po-tap{position:fixed;left:50%;bottom:11%;z-index:210;transform:translateX(-50%);
+  padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;
+  background:rgba(22,28,44,.42);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  pointer-events:none;animation:plTapIn .3s ease-out}
+.portal-overlay.tap-mode{pointer-events:auto;cursor:pointer}
 .portal-overlay.use-art .po-ring,.portal-overlay.use-art .po-star{display:none}
 .portal-overlay.done{opacity:0}
 .mascot-pos{display:block;width:100%}
@@ -538,13 +548,10 @@ body[data-daypart="night"] .msp-bg{background-image:url('mimi/背景/深夜.png'
   text-shadow:0 2px 10px rgba(40,20,60,.45)}
 .mspace-top .msp-d{font-size:11.5px;letter-spacing:2px;color:rgba(255,235,245,.55)}
 .pure-screen .hint-legend{position:absolute;top:calc(58px + env(safe-area-inset-top));left:0;right:0;text-align:center;z-index:3;font-size:11px;color:rgba(70,90,130,.42)}
-/* 看板娘头顶气泡 */
-.mascot-zone .mascot-bubble{position:absolute;bottom:calc(46% + 4px);left:50%;transform:translateX(-50%);z-index:4;
-  max-width:70vw;padding:9px 14px;border-radius:18px 18px 18px 6px;background:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.8);
-  box-shadow:var(--shadow);color:var(--text);font-size:13.5px;line-height:1.5;cursor:pointer;
-  backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);animation:popIn .22s cubic-bezier(.2,1.2,.4,1)}
-.mascot-zone .mascot-bubble::after{content:'';position:absolute;left:22%;bottom:-7px;width:14px;height:14px;background:inherit;border-right:1px solid rgba(255,255,255,.8);border-bottom:1px solid rgba(255,255,255,.8);transform:rotate(45deg) skew(6deg,6deg)}
-@keyframes popIn{0%{transform:translateX(-50%) scale(.6);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
+/* ⚠️ v1.7.11 删掉了一条**已经不生效的死规则** `.mascot-zone .mascot-bubble`（连它的尾巴和它那份
+   重名的 @keyframes popIn）。v1.6.2 起气泡挂在 `#bubble-root` 上，而它是 `.mascot-zone` 的**兄弟**
+   不是孩子 → 这条选择器永远匹配不到，留着只会让人以为气泡还是白底带尾巴那版。
+   顺带治好一个影子 bug：那份重名的 popIn 一直盖着前面 `.todo-side` 用的那份（CSS 同名关键帧是最后一条赢）。 */
 
 /* ══════════════════════════════════════════════════════════════
    11.5 感情线（v1.5）：我们之间 / 她的问题 / 对她说
@@ -615,48 +622,51 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 /* —— 冲动动作（#mascot 上，播完摘掉、呼吸浮动自动恢复） ——
    v1.7 表演升级：动漫式——预备下蹲 → 挤压拉伸 → 落地过冲 → 回摆收敛，
    分段快-慢-快；时长与类名不变（CONFIG.ACT.MS 表与测试都盯着） */
+/* ⚠️ v1.7.10：每一帧的 scale 都乘上 var(--qs,1)——这是角落里 Q 版的缩放（她捏过的大小）。
+   原来写死 scale(1)，于是「捏大之后再点她」会在这 1 秒里缩回原尺寸（她报的「点击小人后小人会变小」）。
+   #mascot 上没设 --qs → 回落成 1，大立绘这边一个字都没变 */
 .mascot.act-bounce{animation:actBounce 1s cubic-bezier(.3,.9,.4,1.15)}
 @keyframes actBounce{
-  0%,100%{transform:translateY(0) scale(1,1)}
-  16%{transform:translateY(8px) scale(1.04,.9)}               /* 预备：先蹲一下 */
-  34%{transform:translateY(-22px) scale(.96,1.08)}            /* 起跳：压扁拉长 */
-  52%{transform:translateY(3px) scale(1.09,.88)}              /* 落地：过冲挤压 */
-  70%{transform:translateY(-6px) scale(.98,1.03)}             /* 回弹一 */
-  84%{transform:translateY(2px) scale(1.02,.97)}              /* 回弹二（收敛） */
+  0%,100%{transform:translateY(0) scale(var(--qs,1),var(--qs,1))}
+  16%{transform:translateY(8px) scale(calc(var(--qs,1)*1.04),calc(var(--qs,1)*.9))}   /* 预备：先蹲一下 */
+  34%{transform:translateY(-22px) scale(calc(var(--qs,1)*.96),calc(var(--qs,1)*1.08))}/* 起跳：压扁拉长 */
+  52%{transform:translateY(3px) scale(calc(var(--qs,1)*1.09),calc(var(--qs,1)*.88))}  /* 落地：过冲挤压 */
+  70%{transform:translateY(-6px) scale(calc(var(--qs,1)*.98),calc(var(--qs,1)*1.03))} /* 回弹一 */
+  84%{transform:translateY(2px) scale(calc(var(--qs,1)*1.02),calc(var(--qs,1)*.97))}  /* 回弹二（收敛） */
 }
 .mascot.act-jiggle{animation:actJiggle 1.1s ease-in-out}
 @keyframes actJiggle{
-  0%,100%{transform:rotate(0) scale(1,1)}
-  15%{transform:rotate(-6deg) translateY(-4px) scale(1.02,.97)}
-  35%{transform:rotate(6deg) scale(.98,1.04)}
-  55%{transform:rotate(-4deg) scale(1.02,.97)}
-  75%{transform:rotate(3deg)}
-  88%{transform:rotate(-1.5deg)}
+  0%,100%{transform:rotate(0) scale(var(--qs,1),var(--qs,1))}
+  15%{transform:rotate(-6deg) translateY(-4px) scale(calc(var(--qs,1)*1.02),calc(var(--qs,1)*.97))}
+  35%{transform:rotate(6deg) scale(calc(var(--qs,1)*.98),calc(var(--qs,1)*1.04))}
+  55%{transform:rotate(-4deg) scale(calc(var(--qs,1)*1.02),calc(var(--qs,1)*.97))}
+  75%{transform:rotate(3deg) scale(var(--qs,1),var(--qs,1))}
+  88%{transform:rotate(-1.5deg) scale(var(--qs,1),var(--qs,1))}
 }
 .mascot.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
 @keyframes actStartle{
-  0%{transform:translateY(0) scale(1,1)}
-  14%{transform:translateY(6px) scale(1.1,.8)}                /* 吓一缩：蹲 + 横向挤 */
-  42%{transform:translateY(-16px) scale(.92,1.14)}            /* 弹起过冲 */
-  66%{transform:translateY(4px) scale(1.14,.82)}              /* 落回深蹲 */
-  84%{transform:translateY(-2px) scale(.97,1.04)}             /* 余震回正 */
-  100%{transform:translateY(0) scale(1,1)}
+  0%{transform:translateY(0) scale(var(--qs,1),var(--qs,1))}
+  14%{transform:translateY(6px) scale(calc(var(--qs,1)*1.1),calc(var(--qs,1)*.8))}    /* 吓一缩：蹲 + 横向挤 */
+  42%{transform:translateY(-16px) scale(calc(var(--qs,1)*.92),calc(var(--qs,1)*1.14))}/* 弹起过冲 */
+  66%{transform:translateY(4px) scale(calc(var(--qs,1)*1.14),calc(var(--qs,1)*.82))}  /* 落回深蹲 */
+  84%{transform:translateY(-2px) scale(calc(var(--qs,1)*.97),calc(var(--qs,1)*1.04))} /* 余震回正 */
+  100%{transform:translateY(0) scale(var(--qs,1),var(--qs,1))}
 }
 .mascot.act-shake{animation:actShake .72s ease-in-out}
 @keyframes actShake{
-  0%,100%{transform:translateX(0) rotate(0)}
-  12%{transform:translateX(-9px) rotate(-2.5deg) skewX(-3deg)}
-  30%{transform:translateX(9px) rotate(2.5deg) skewX(3deg)}
-  50%{transform:translateX(-5px) rotate(-1.5deg)}
-  70%{transform:translateX(4px) rotate(1deg)}
+  0%,100%{transform:translateX(0) rotate(0) scale(var(--qs,1),var(--qs,1))}
+  12%{transform:translateX(-9px) rotate(-2.5deg) skewX(-3deg) scale(var(--qs,1),var(--qs,1))}
+  30%{transform:translateX(9px) rotate(2.5deg) skewX(3deg) scale(var(--qs,1),var(--qs,1))}
+  50%{transform:translateX(-5px) rotate(-1.5deg) scale(var(--qs,1),var(--qs,1))}
+  70%{transform:translateX(4px) rotate(1deg) scale(var(--qs,1),var(--qs,1))}
 }
 .mascot.act-spin{animation:actSpin .92s cubic-bezier(.3,.9,.4,1.1)}
 @keyframes actSpin{
-  0%{transform:rotate(0) scale(1)}
-  22%{transform:rotate(-12deg) scale(.95)}                    /* 蓄力反向预转 */
-  62%{transform:rotate(332deg) scale(.88)}                    /* 快转 */
-  82%{transform:rotate(374deg) scale(1.05)}                   /* 过冲 */
-  100%{transform:rotate(360deg) scale(1)}
+  0%{transform:rotate(0) scale(var(--qs,1))}
+  22%{transform:rotate(-12deg) scale(calc(var(--qs,1)*.95))}  /* 蓄力反向预转 */
+  62%{transform:rotate(332deg) scale(calc(var(--qs,1)*.88))}  /* 快转 */
+  82%{transform:rotate(374deg) scale(calc(var(--qs,1)*1.05))} /* 过冲 */
+  100%{transform:rotate(360deg) scale(var(--qs,1))}
 }
 /* 次要运动（v1.7）：整张 PNG 拆不了零件 → 内层图微延迟反向错位，
    身体先动、头发与衣摆「晚半拍」跟上（幅度减半的错觉层） */
@@ -681,7 +691,26 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
   transform-origin:bottom center;
   opacity:0;transform:translateY(10px) scale(.9);transition:opacity .3s ease,transform .34s cubic-bezier(.2,1.2,.4,1)}
 #q-corner.on{opacity:1;transform:scale(var(--qs,1))}
-#q-corner img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+/* ⚠️ v1.7.14：给图**定死盒子的宽高**（72×104），让 object-fit 真的把每张图都装进同一个盒子。
+   原来是 max-width/max-height 不写宽高——替换元素的盒子会跟着图片自己的像素尺寸走：
+   q.png 是 768×768（正方形）→ 装出来 72×72；q-happy/被拖 是 512×768 → 装出来 69×104。
+   同一个她，光换个表情就从 72px 窜到 104px（她报的「happy 小人比拖着的大」就是这个）。
+   object-position:center bottom = 脚跟对齐同一条地面线，换脸/播帧都不会上下跳 */
+#q-corner img{width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block;
+  transform-origin:center bottom}
+/* ★ 她会呼吸了（v1.7.14）：Q版一直轻轻起伏，不再是一张贴在屏幕上的画。
+   挂在 img 上（容器要留给动作姿势与拖动姿势），而且**不写 var(--qs,1)**——
+   img 不承担缩放（缩放在容器上），从根上避开「捏大之后呼吸期间缩回原尺寸」那个老坑 */
+#q-corner.on img:not(.face-fade){animation:qBreathe 3.4s ease-in-out infinite}
+@keyframes qBreathe{0%,100%{transform:translateY(0) scaleY(1)}
+  50%{transform:translateY(-2.5px) scaleY(1.025)}}
+/* 播序列帧（Seq 换动作）时先别呼吸——一张一张的动作帧上再叠起伏，看着像手抖。
+   ⚠️ 选择器里那个 .on 不能省，也不是多余的：上面呼吸那条带了 :not(.face-fade)，
+      它比 #q-corner img[data-seq] 多一个类，**权重更高**（1,2,1 对 1,1,1）；
+      而 animation 简写会把 play-state 一起重置成 running —— 少写一个 .on，
+      这条就会被上面那条整个压住、静默失效（e2e 真量出来过：属性挂上了、playState 还是 running）。
+      加上 .on 后两条权重正好相等，靠**写在后面**赢。 */
+#q-corner.on img[data-seq]{animation-play-state:paused}
 #q-corner .mascot-shell{position:static;width:44px;height:64px}
 #q-corner.q-moving{transition:none;z-index:100;cursor:grabbing}
 #q-corner.q-drag{animation:qDragLean 1.1s ease-in-out infinite}   /* 拖动时的使劲儿姿势（没有拖动图时的替身） */
@@ -691,13 +720,31 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 #q-corner.act-jiggle{animation:actJiggle 1.1s ease-in-out}
 #q-corner.act-startle{animation:actStartle .64s cubic-bezier(.2,1.4,.4,1)}
 #q-corner.act-shake{animation:actShake .72s ease-in-out}
+/* v1.7.14：忙碌页补上「转圈」——「开了新空间」「升级」的回落动作就是 act-spin，
+   可角落里那只一直没有这条规则（类加上去、什么都不动，静默无效）。
+   关键帧本来就每一帧都带着 scale(var(--qs,1))（见上面那条警告），照搬即可 */
+#q-corner.act-spin{animation:actSpin .92s cubic-bezier(.3,.9,.4,1.1)}
+/* v1.7.13：忙碌页她头顶的小气泡——小号毛玻璃，说话不挡按钮、不挡 UI。
+   位置由 Bubbles._placeQ 用 left/top + translate(-50%,-100%) 钉在 Q版头顶；
+   ★ 它不吃 --qs 缩放（不做 q-corner 的孩子）——字永远清楚 */
+#q-bubble{position:fixed;z-index:61;pointer-events:auto;max-width:min(62vw,240px);
+  transform:translate(-50%,-100%);transform-origin:center bottom;text-align:center}
+#q-bubble .mascot-bubble{position:relative;display:block;margin:0;
+  font-size:12.5px;line-height:1.5;padding:7px 11px;border-radius:13px;
+  background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.6);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  box-shadow:0 8px 22px rgba(40,20,70,.22);color:var(--text);
+  text-shadow:0 1px 2px rgba(255,255,255,.5);animation:popInC .22s cubic-bezier(.2,1.2,.4,1);
+  max-width:min(62vw,240px)}
 /* 长按变身的小人（v1.7.1 放大版）：fixed 在按压点上方，不吃触摸（拖拽由手势引擎收）。
    定方向后瞬移到页面要来的那条边，随着划动距离从「小拉」换成「用力拉」——
    --lean/--tugx/--tugy 是拉的方向（写进姿势动画的 CSS 变量） */
 #pull-mini{position:fixed;z-index:95;width:110px;height:156px;pointer-events:none;
   display:flex;align-items:flex-end;justify-content:center;
   transform:translate(-50%,-108%);filter:drop-shadow(0 8px 14px rgba(30,50,90,.28))}
-#pull-mini img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+/* v1.7.14：同 #q-corner——定死盒子（110×156）再 contain，脚跟对齐地面线，
+   不然「小拉」和「用力拉」两张画布不一样时，她换姿势会忽大忽小 */
+#pull-mini img{width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block}
 #pull-mini.pop{animation:miniPop .32s cubic-bezier(.2,1.4,.4,1)}
 @keyframes miniPop{0%{transform:translate(-50%,-108%) scale(.1);opacity:0}
   55%{transform:translate(-50%,-108%) scale(1.18);opacity:1}
@@ -725,6 +772,14 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 /* 全屏微闪：iPhone 没有震动 → 用一道光代替「震感」（生气 / 三周目大事时） */
 #flash-layer{position:fixed;inset:0;z-index:190;pointer-events:none;background:#fff;opacity:0}
 #flash-layer.on{animation:flashPulse .36s ease-out}
+/* 长按拖拽时的压暗层（v1.7.14）：背景暗一点点 + 虚化，注意力交给她和提示卡。
+   z-index 70 = 压在所有页面内容之上、但压在 #gesture-root(80) / #pull-mini(95) 之下
+   ——提示卡、方向扇形、小人全都还清清楚楚地浮在上面，只有背景退后。
+   不吃触摸（pointer-events:none），拖拽照样从它身上划过去 */
+#pull-dim{position:fixed;inset:0;z-index:70;pointer-events:none;opacity:0;
+  background:rgba(24,30,52,.26);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  transition:opacity .26s ease}
+#pull-dim.on{opacity:1}
 @keyframes flashPulse{0%{opacity:0}22%{opacity:.45}100%{opacity:0}}
 /* 「她的身体」页（v1.6a）：一个槽位 = 一张缩略图 + 一个名字；点=上传，右上角 × = 清空 */
 .body-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:9px}
@@ -823,10 +878,23 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 @keyframes holdIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes holdPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 /* 加载页：整屏目标页面颜色的色块 + 图标 + 名称（约0.5秒后进入目标页） */
+/* v1.7.14：进页那一秒——她的画**从模糊到清晰**，然后再跳页。
+   模糊用时（--pl-t）和起始模糊程度（--pl-b）由 pageLoad 按 CONFIG.TRANS 写在元素上，这里只管过渡本身。
+   ⚠️ 起始的糊**必须写在变量里、不能写成行内 filter**：行内样式的优先级高过类选择器，
+      写成 el.style.filter 的话，下面 .on 那句 blur(0) 永远盖不住它 —— 画会一直糊着，全程对不上焦 */
 .page-load{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;
-  opacity:0;transition:opacity .16s ease}
-.page-load.on{opacity:1}
+  opacity:0;filter:blur(var(--pl-b,0px));transition:opacity .16s ease,filter var(--pl-t,600ms) ease-out}
+.page-load.on{opacity:1;filter:blur(0)}
 .page-load.out{opacity:0;transition:opacity .3s ease}
+/* 点击跳转那档（设置里可切）：停在画上等你看够，点一下才进页——
+   右下角一行小提示，别让她以为软件卡住了 */
+.page-load.tap-mode{pointer-events:auto;cursor:pointer}
+.page-load .pl-tap{display:none}
+.page-load.tap-mode .pl-tap{display:block;position:absolute;left:50%;bottom:11%;transform:translateX(-50%);
+  padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff;
+  background:rgba(22,28,44,.42);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  animation:plTapIn .3s ease-out}
+@keyframes plTapIn{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
 .page-load .pl-inner{display:flex;flex-direction:column;align-items:center;gap:12px;color:#fff;text-align:center;
   text-shadow:0 2px 14px rgba(20,35,60,.28);animation:plPop .42s cubic-bezier(.2,1.25,.4,1) both}
 .page-load .pl-ico{font-size:64px;line-height:1}
@@ -985,11 +1053,23 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 body.pure-mode #toast-root{bottom:calc(18px + env(safe-area-inset-bottom))}
 body.pure-mode #app{height:100dvh;display:block}
 /* 说话/提醒气泡（v1.6.2）：不再锚在立绘边上——钉在屏幕中间偏下、横着居中，
-   说话不挡她的脸（表情差分自己会说话） */
-.pure-screen #bubble-root{position:absolute;left:50%;transform:translateX(-50%);bottom:23%;top:auto;z-index:8;
-  max-width:min(80vw,360px);pointer-events:auto;text-align:center}
+   说话不挡她的脸（表情差分自己会说话）。
+   ★ v1.7.10 三件事（她的反馈）：① 白底换成**半透明毛玻璃圆角长方形**（她说白底看不清、还挡 UI）
+     ② 水晶球挪到 14%，气泡贴在它**正上方**（原来一个 23% 一个 22%，叠在一起互相挡）
+     ③ 气泡右上角能挂选项——她问你问题时，选项就在那儿（不再弹白底弹窗）*/
+.pure-screen #bubble-root{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14% + 104px);top:auto;z-index:8;
+  max-width:min(86vw,380px);pointer-events:auto;text-align:center}
 .pure-screen #bubble-root .mascot-bubble{position:relative;bottom:auto;left:auto;transform:none;max-width:100%;display:block;
-  font-size:15px;animation:popInC .22s cubic-bezier(.2,1.2,.4,1)}
+  font-size:15px;line-height:1.6;padding:11px 15px;border-radius:16px;
+  background:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.6);
+  backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+  box-shadow:0 10px 30px rgba(40,20,70,.2);color:var(--text);
+  text-shadow:0 1px 2px rgba(255,255,255,.5);animation:popInC .22s cubic-bezier(.2,1.2,.4,1)}
+/* 选项（她问你问题时）：搁在气泡右上角，右对齐、窄屏自动折行 */
+.pure-screen #bubble-root .bb-opts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin:0 0 8px}
+.pure-screen #bubble-root .bb-opt{padding:6px 11px;border-radius:11px;font-family:inherit;font-size:12.5px;line-height:1.3;
+  cursor:pointer;color:var(--text);background:rgba(255,255,255,.66);border:1px solid rgba(255,170,205,.8);transition:transform .12s}
+.pure-screen #bubble-root .bb-opt:active{transform:scale(.95)}
 @keyframes popInC{0%{transform:translateY(12px) scale(.85);opacity:0}100%{transform:none;opacity:1}}
 /* 桌面端纯净屏：立绘按屏高限宽（避免大屏全屏贴顶，但比手机版留得更大） */
 @media (min-width:520px){
@@ -1019,6 +1099,8 @@ body.pure-mode #app{height:100dvh;display:block}
 <div id="modal-root"></div>
 <div id="toast-root"></div>
 <div id="bg-layer" class="hidden"></div>
+<!-- 长按拖拽时的压暗层（v1.7.14）：背景暗一点点+虚化，提示卡和她浮在上面 -->
+<div id="pull-dim"></div>
 <!-- 长按四向导航的方向提示层 -->
 <div id="gesture-root"></div>
 <!-- 节律操控台（双击呼出）：自流转时段卡 + 空间栏 + 投放区 -->
@@ -1027,6 +1109,9 @@ body.pure-mode #app{height:100dvh;display:block}
 <div id="feed-root"></div>
 <!-- 忙碌页面右下角的她（v1.6a）：Q版小人一直在，不吃触摸，纯陪伴 -->
 <div id="q-corner"></div>
+<!-- v1.7.13：忙碌页她说话的小气泡（#q-corner 的兄弟——绝不能放它里面，
+     会继承 --qs 缩放，字会糊）。位置由 Bubbles._placeQ 摆在她头顶 -->
+<div id="q-bubble" class="hidden"></div>
 <input type="file" id="file-input" hidden>
 <script>
 'use strict';
@@ -1034,7 +1119,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.7.9', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.7.15', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -1290,9 +1375,9 @@ const CONFIG = {
     /* v1.7 开口必配脸+小动作：每段话都有表情与动作变化。
        emo='*idle' = 从 FACE_IDLE 随机挑；act 必须是 RUSH 动作或 pose-* 姿势 */
     FACE_KEEP_MS:8000,           // 8 秒内的新情绪不被说话冲掉（刚发生的事最大）
-    FACE_IDLE:['happy','shy'],   // 日常念叨时随机挑
+    FACE_IDLE:['neutral','shy'],   // 日常念叨时随机挑（v1.7.14：从开心改成平静，常态=日常）
     FACE:{
-      greet:{emo:'happy', act:'act-bounce'},
+      greet:{emo:'happy', act:'act-bounce', seq:'wave'},
       missAway:{emo:'sad', act:'act-jiggle'},
       missStreak:{emo:'sad', act:'act-jiggle'},
       night:{emo:'sleepy', act:'pose-droop', hold:6000},
@@ -1308,6 +1393,56 @@ const CONFIG = {
       pinchSmall:{emo:'sad', act:'act-jiggle'},
       shakeDizzy:{emo:'worried', act:'act-shake'},
       shakeAngry:{emo:'angry', act:'act-shake'}
+    },
+    /* ── v1.7.12 事件反应表：你做的每一件事，她都有反应（帧 + 表情 + 一句话）──
+       ★ 这张表就是 7b 剧情系统的事件总线**骨架**：钩子、去重键、反唠叨闸全在这儿，
+         下一轮的里程碑章节只要在这张表上再加一列「什么时候该演哪一章」，钩子一个字都不用动。
+       ★ 台词必须挂在**真实数据**上（今天第几件 / 哪个空间 / 多少分钟）——
+         空喊「真棒」的复读机是元气型的死穴，这句红线从 v1.6 起没变过。
+       ★ 每句都能用 {you}/{yt}/{name}（称呼随关系阶段自动换，见 Her.fill）
+       ★ `act` = **她还没画那组帧时的替身**（CSS 小动作）：帧一到就自动让位（演了帧就不放 act），
+         一张图都没有的那几天，你做完一件事她照样有反应——不会干站着 */
+    EVENTS:{
+      todoNew:    {seq:'note',  emo:'happy',       act:'act-jiggle',
+        line:[{t:c=>'「'+c.todoTitle+'」记下来啦——今天第 '+c.todoN+' 条，我盯着它哦。'},
+              {t:c=>'好，「'+c.todoTitle+'」收进本子了。你只管去做，剩下的我看着。'},
+              {t:'又有事情托付给我啦。放心，丢不了的。'}]},
+      todoDone:   {seq:'clap',  emo:'happy',       act:'act-bounce',
+        line:[{t:c=>'第 '+c.dayDone+' 件完成！我就说你可以的{yt}。'},
+              {t:c=>'「'+c.todoTitle+'」划掉啦——今天已经完成 '+c.dayDone+' 件了。'},
+              {t:c=>'完成 +1！今天的进度我数着的：'+c.dayDone+' 件。'}]},
+      spaceNew:   {seq:'wow',   emo:'happy',       act:'act-spin',
+        line:[{t:c=>'「'+c.spaceName+'」开张啦！这是你的第 '+c.spaceN+' 个空间。'},
+              {t:c=>'新的可能性出现了——「'+c.spaceName+'」。好期待里面会长出什么。'},
+              {t:'又多了一块地方。以后这里也会留下你的时间吧。'}]},
+      recordNew:  {seq:'thumb', emo:'happy',       act:'act-bounce',
+        line:[{t:c=>'今天第 '+c.recN+' 条确定下来了。写下来的东西，就丢不掉了。'},
+              {t:c=>'「'+c.spaceName+'」又确定了一点——我替你收好了。'},
+              {t:'嗯，这一条我记住了。以后回头看会很有用的。'}]},
+      rhythmStart:{seq:'cheer', emo:'happy',       act:'act-jiggle',
+        line:[{t:c=>'「'+c.spaceName+'」开始啦，我陪你记时。'},
+              {t:c=>'好，计时开始了——今天还有 '+c.remainText+' 可以递归。'},
+              {t:'专注模式。我安静一点，不打扰你。'}]},
+      rhythmStop: {seq:'relief', emo:'neutral',    act:'act-jiggle',
+        line:[{t:c=>'「'+c.spaceName+'」收了 '+c.minText+'，我记好啦。'},
+              {t:'停下来了。休息一下也没关系，我一直都在。'},
+              {t:c=>'这一段 '+c.minText+'，我替你收着。'}]},
+      slotEnd:    {seq:'thumb', emo:'happy',       act:'act-bounce',
+        line:[{t:c=>'「'+c.spaceName+'」的自动时段跑完啦，这次 '+c.minText+'。'},
+              {t:'到点了。这一轮自流转，我替你封存好了。'}]},
+      /* 额度用完也**故意不写台词**：那条「今日递归时间用完啦」的老提醒气泡还带着
+         「点我看详情 →」，比这儿再写一句强。事件总线只负责「加油 + 担心脸」 */
+      quotaEnd:   {seq:'cheer', emo:'worried',     act:'act-jiggle'},
+      /* ★ 这两件大事**故意不在这儿写台词**：它们本来就有更贴切的句子——
+         升段走 Love 的 loveUp 台词池、升级走刚刚解锁的那句新台词（Grow.pickLine）。
+        事件总线只负责「鼓掌 + 变脸」，开口交给原来那条线，免得同一件事说两遍 */
+      loveUp:     {seq:'clap',  emo:'happy',       act:'act-bounce'},
+      levelUp:    {seq:'clap',  emo:'happy',       act:'act-spin'}
+    },
+    /* 反唠叨闸（v1.7.12）：她回应你做的事，也不能变成复读机 */
+    REACT:{
+      GAP_MS:90*1000,   // 同一件事（同一个 id）90 秒内只回应一次
+      DAILY:12          // 一天最多「出声」这么多回（帧和表情照演，只是不出声）
     }
   },
   /* ── 她成为活人 v1.5：感情线（好感度 / 关系阶段 / 她的问题 / 对她说）──
@@ -1417,7 +1552,7 @@ const CONFIG = {
   BODY:{
     /* 槽位表：form（形态）→ [[key, 名字], …]；key='base' 是这一形态的「普通」那张 */
     SLOTS:{
-      normal:[['base','普通'],['happy','开心'],['sad','难过'],['angry','生气'],['sleepy','困了']],
+      normal:[['base','普通'],['happy','开心'],['shy','害羞'],['sad','难过'],['angry','生气'],['sleepy','困了']],
       q:     [['base','普通'],['happy','开心']],
       acts:  [['sit','抱膝坐'],['sleep','睡着'],['startle','受惊'],['peek','扒边偷看'],
               ['pull','拉页面·小拉'],['pull-hard','拉页面·用力拉']]
@@ -1429,7 +1564,11 @@ const CONFIG = {
       acts:'做动作时换上的姿势图（没有就用上面那张）'
     },
     /* 情绪 → 用哪张表情差分（缺这张就自动回落到「普通」） */
-    EMO_SLOT:{happy:'happy', worried:'sad', sad:'sad', angry:'angry', sleepy:'sleepy', shy:'happy', neutral:'base'},
+    EMO_SLOT:{happy:'happy', worried:'sad', sad:'sad', angry:'angry', sleepy:'sleepy', shy:'shy', neutral:'base'},
+    /* 槽位名 → mimi/ 里的**文件名**（不一样时才要写一条）。
+       v1.7.14：害羞这张她画的名字就叫「害羞.png」——她不用为了配合代码改名，
+       改代码配合她的文件名（跟上一条规矩：图片归她、代码归我） */
+    BUILTIN_FILE:{shy:'害羞'},
     /* 情绪 → 头顶小圆脸的 emoji（空=不显示浮标） */
     EMO_FACE:{happy:'😊', worried:'🥺', sad:'😢', angry:'😤', sleepy:'😴', shy:'😳', neutral:''},
     /* 情绪 → 说人话（「她的身体」页顶部那句、日记里也用） */
@@ -1437,9 +1576,14 @@ const CONFIG = {
     MOOD_HOLD_MS:90*1000,   // 一件事惹出来的情绪保持多久（之后她自己淡回平静）
     NIGHT_FROM:23,          // 几点之后她困了（强制 sleepy）
     NIGHT_TO:5,             // 几点之前还算深夜
-    /* v1.7 表情漂移：没事件、非深夜时，每隔一段随机时间在 开心/害羞/平静 间轻漂一次
-       （纯 UI 微表情，不写 herMood；事件情绪与深夜自动遮蔽） */
-    DRIFT:{EMOS:['happy','shy','neutral','happy'], MIN_MS:15000, MAX_MS:30000},
+    /* v1.7 表情漂移：没事件、非深夜时，每隔一段随机时间在 平静/害羞 间轻漂一次
+       （纯 UI 微表情，不写 herMood；事件情绪与深夜自动遮蔽）
+       ★ v1.7.14：常态改成「日常」——她的平常脸 = 平静（base），不是开心。
+         老板是 happy/shy/neutral/happy：四分之三的时间都漂在开心上，
+         加上「她说闲话时也从 开心/害羞 里挑」，你几乎永远见不到她的普通脸，
+         而且一变脸就是大表情（她说的「切表情的变化很大」）。
+         现在：三次里两次漂回平静、一次轻轻害羞；间隔也从 15~30 秒拉到 30~60 秒 */
+    DRIFT:{EMOS:['neutral','neutral','neutral','shy'], MIN_MS:30000, MAX_MS:60000},
     /* 忙碌页面里她会以 Q版 站在右下角（她的页面不重复出现——那儿本来就是她的地方） */
     HER_PAGES:['mgrow','moutfit','mcons','mdairy','mtalk'],
     /* 系统默认的她（v1.6.1）：住在 mimi/ 文件夹，文件名由槽位名推出来——
@@ -1477,6 +1621,31 @@ const CONFIG = {
     SIT_AFTER:150*1000,      // 你这么久没动静，她就坐下/打瞌睡了（v1.6.2：4min→2.5min）
     SAY_CHANCE:0.5           // 小动作之后顺口说一句的概率（走 Her.say 的频率门）
   },
+  /* ── 序列帧 v1.7.12：她一帧一帧画的「动作」，播放器按这张表播 ──
+     ★ 她画图的地方：mimi/动作/<文件夹>/01.png、02.png、03.png（每个动作三帧：起 / 中 / 收）
+     ★ 名字对不上、图没画完、文件夹还没建 —— 一律当她没演，回落成小动作+台词，绝不报错
+     ★ 一个动作几帧、来回摆几遍，全在这张表上（改这里不影响她画图） */
+  SEQ:{
+    DIR:'动作',              // 帧住在 mimi/动作/<文件夹>/ 下面（她一个动作一个文件夹，一次拖 3 张）
+    FRAMES:3,                // 每个动作几张（01/02/03）
+    FRAME_MS:160,            // 每帧停多久（≈ 每秒 6 帧，够「动」又不费电）
+    HOLD_MS:600,             // 演完之后让收尾那帧多停一拍（不然一收就切回原脸，像没演完）
+    END_MS:420,              // 停顿之后、换回她平常那张脸之前的缓冲
+    /* ★ v1.7.15：「探到没有」是异步的——开机那几秒、刚传完新图，帧都还没加载好。
+       这会儿演不了**不等于**她没画：等它一下（这两个数 = 每 0.15 秒看一眼、最多看 12 眼） */
+    WAIT_MS:150,
+    WAIT_TRIES:12,
+    /* 播放表：id → 帧文件夹 / 要不要来回摆（挥手和鼓掌是来回摆的，其余一遍到位） */
+    LIST:{
+      wave:  {dir:'挥手',   pingpong:true},   // 开机问候
+      clap:  {dir:'鼓掌',   pingpong:true},   // 完成待办 · 升级 · 升段
+      note:  {dir:'记下来'},                  // 建了一条待办
+      wow:   {dir:'惊喜'},                    // 开了一个新的可能性空间
+      thumb: {dir:'点赞'},                    // 写下可能性确定 · 自流转跑完
+      cheer: {dir:'加油'},                    // 开始递归 · 额度用完
+      relief:{dir:'松口气'}                   // 递归停下来
+    }
+  },
   /* ── 她对你每个动作的敏感度：连戳 / 拖角落 / 捏大捏小 / 摇手机（实机手感就调这里） ── */
   SENSE:{
     TAP_N:5, TAP_WIN:1500,   // 连戳几下她会生气（时间窗）
@@ -1489,6 +1658,15 @@ const CONFIG = {
     SHAKE_ANGRY:5,           // 摇几下她真的生气
     SHAKE_RESET:6000,        // 这么久没再摇，计数归零
     TAP_FACES:['happy','shy','happy','worried']  // 连戳第 1~4 下依次的表情（第 5 下=生气）
+  },
+  /* ── 进页过渡 v1.7.14：拉够松手 / 长按水晶球之后闪的那一下 ──
+     总时长 = 模糊→清晰(BLUR_MS) + 停在清晰上(CLEAR_MS)，一共 1 秒，然后跳页。
+     ★ 想改快慢就改前两个数（跳页定时器、动画时长、模糊用时全跟着这张表走，不用改别处）
+     ★ 设置里能切「自动跳转 / 点击跳转」：点击那档就停在画上等你看够（见 Settings.transMode） */
+  TRANS:{
+    BLUR_MS:600,     // 从模糊到清晰用多久（过渡图登场时是糊的，慢慢对上焦）
+    CLEAR_MS:400,    // 清晰之后停多久再进页（这 0.4 秒是留给「看一眼」的）
+    BLUR_PX:16       // 登场时糊到什么程度
   },
   SPACE_COLORS:['#2E6BE6','#1F8A57','#C77F1F','#C94440','#7A4FD0','#1F9BA6'],
   PRESET_CATEGORIES:['做过的事','掌握的知识','将要做的事','将要掌握的知识'],
@@ -1830,6 +2008,7 @@ const S = {
   activeTimer:null,        // {tickFn} 弹窗内自增计时用
   _level:1,                // 看板娘当前等级（内存基线，用于升级播报；每次启动由 Grow 推导对齐）
   lastDay:null, lastHb:0, quotaWarned:false, renderPending:false,
+  renderedView:null,       // 上一次画的是哪个视图（分「换页」还是「原地刷新」，见 renderView v1.7.15）
   pendingFileCb:null
 };
 /* 数据变更入口：执行 fn 后重渲染当前视图 */
@@ -2229,7 +2408,11 @@ const Rhythm = {
           }
         }
       }else if(now >= e && active){
+        /* 这一轮自流转实际跑了多久（跨天残留的那条要夹一下，别报出个荒唐数） */
+        const smin = clamp(Math.round((e - active.start) / 60000), 1, 1440);
         this.finalizeSessionsOnDay(dk, [active.id], e, 'slotEnd');
+        /* v1.7.12：自动时段跑完 → 她竖个大拇指（「这次 90 分钟」，她自己数着的） */
+        if(typeof Her !== 'undefined') Her.onEvent('slotEnd', {id:active.id, spaceId:slot.spaceId, min:smin});
         changed = true;
       }
     }
@@ -2289,9 +2472,11 @@ const Rhythm = {
       const Tstar = Math.min(now, (Qms - fin + starts) / active.length);
       this.finalizeSessionsOnDay(today, active.map(s=>s.id), Tstar, 'quota');
       UI.toast('今日节律递归时间已用完，递归已结束');
-      if(S.view==='home' || S.view==='mspace'){
-        Bubbles.push('今日节律递归时间用完啦，递归自动结束了', {key:'quota-out-'+today, sub:'⏳ 额度耗尽', go:()=>goView('rhythm')});
-      }
+      /* v1.7.12：额度见底 → 她挥拳鼓劲、脸上带点担心（话由下面那条老提醒来说，不重复） */
+      if(typeof Her !== 'undefined') Her.onEvent('quotaEnd', {id:today});
+      /* v1.7.13：这条老提醒不再只在纯净页说——忙碌页她会挂在 Q版头顶说（点一下照样跳节律表，
+         她的页面两边都没容器 → 先排着，等你回纯净页再冒出来） */
+      Bubbles.push('今日节律递归时间用完啦，递归自动结束了', {key:'quota-out-'+today, sub:'⏳ 额度耗尽', go:()=>goView('rhythm')});
       scheduleRender();
     }
   },
@@ -2308,8 +2493,11 @@ const Rhythm = {
       this.finalizeSessionsOnDay(today, [m.id], now, 'manual');
       UI.toast('已切换到「'+sp.name+'」的递归');
     }
-    S.sessions.push({id:uid('rs_'), spaceId:spId, mode:'manual', day:today, start:now, end:null, endedBy:null, note:'', scheduleId:null});
+    const ses = {id:uid('rs_'), spaceId:spId, mode:'manual', day:today, start:now, end:null, endedBy:null, note:'', scheduleId:null};
+    S.sessions.push(ses);
     saveSessions();
+    /* v1.7.12：开始递归 → 她双拳一握给你加油（顺便报一句今天还剩多少可以递归） */
+    if(typeof Her !== 'undefined') Her.onEvent('rhythmStart', {id:ses.id, spaceId:spId});
     scheduleRender();
     UI.toast('「'+sp.name+'」可能性递归已开始');
     return true;
@@ -2317,9 +2505,13 @@ const Rhythm = {
   manualStop(){
     const m = this.activeManual();
     if(!m) return false;
+    /* 这一段专注了多久（她待会儿要念出来的那个数——真实数据，不是「你辛苦了」） */
+    const mins = Math.max(1, Math.round((Date.now() - m.start) / 60000));
     this.finalizeSessionsOnDay(m.day, [m.id], Date.now(), 'manual');
     scheduleRender();
     UI.toast('递归已停止');
+    /* v1.7.12：停下了 → 她松口气、擦擦额头（这一段多少分钟，她替你收着） */
+    if(typeof Her !== 'undefined') Her.onEvent('rhythmStop', {id:m.id, spaceId:m.spaceId, min:mins});
     return true;
   },
   /* —— 每秒定向刷新 —— */
@@ -2471,6 +2663,7 @@ function tick(){
   if(typeof Emo !== 'undefined') Emo.tick(now);       // 她的情绪会自己淡下来（v1.6a）
   if(typeof Emo !== 'undefined') Emo.wanderTick(now); // 表情漂移（v1.7：平静时的微表情，不写情绪）
   if(typeof Director !== 'undefined') Director.tick(now);  // 她自己找点事做：小动作/待机小剧场（v1.6a）
+  if(typeof Blink !== 'undefined') Blink.tick(now);   // 眨眼（v1.7.12 骨架：闭眼帧一到就自动开始眨）
   if(typeof DayBg !== 'undefined') DayBg.tick(now);   // 她的房间按时间段换背景（v1.7.3）
   checkRollover(now);
   if(now - S.lastHb > 30000){ S.lastHb = now; Store.set('heartbeat', {lastActiveAt: now}); }
@@ -2618,6 +2811,8 @@ const Actions = {
         Grow.invalidate(); Grow.feed(btn, CONFIG.GROW.XP_TODO); Grow.checkLevelUp();
         /* 这件事她督促过（催过你）→ 你真的做完了，好感 +3（好感来源表里的 todo） */
         if(typeof Love !== 'undefined' && S.settings.herUrged && S.settings.herUrged[t.id]) Love.gain('todo');
+        /* v1.7.12：她看见了 → 鼓掌 + 一句（「今天第 3 件」这种挂真数据的话） */
+        if(typeof Her !== 'undefined') Her.onEvent('todoDone', {id:t.id, todoTitle:t.title});
         scheduleRender(); UI.toast('已完成 ✓'+(S.settings.animLevel==='off' ? '（看板娘 +'+CONFIG.GROW.XP_TODO+' 经验）' : ''));
       }
       else { Grow.invalidate(); Grow.checkLevelUp(); scheduleRender(); UI.toast('已恢复为未完成'); }
@@ -2692,6 +2887,8 @@ const Actions = {
     }
     if(isNew) S.todos.push(t);
     saveTodos();
+    /* v1.7.12：她在旁边看着你填完 → 低头把小本子记一笔（帧），再抬头跟你说一声 */
+    if(isNew && typeof Her !== 'undefined') Her.onEvent('todoNew', {id:t.id, todoTitle:t.title});
     UI.closeModal();
     scheduleRender();
     UI.toast(isNew ? '待办已创建' : '已保存');
@@ -2725,16 +2922,20 @@ const Actions = {
     if(!name){ UI.toast('请填写空间名称', 'err'); return; }
     const icon = document.getElementById('sf-icon').value.trim() || S.form.icon;
     const note = document.getElementById('sf-note').value.trim();
+    let made = null;
     if(sp){
       sp.name = name; sp.icon = icon; sp.note = note; sp.color = S.form.color;
     }else{
-      S.spaces.push({
+      made = {
         id:uid('sp_'), name, icon, color:S.form.color, note,
         createdAt:Date.now(), archived:false,
         categories:CONFIG.PRESET_CATEGORIES.map((n,i)=>({id:uid('cat_'), name:n, order:i}))
-      });
+      };
+      S.spaces.push(made);
     }
     saveSpaces();
+    /* v1.7.12：又开了一块新地方 → 她睁大眼、举手欢呼（新建空间那组帧） */
+    if(made && typeof Her !== 'undefined') Her.onEvent('spaceNew', {id:made.id, spaceName:made.name});
     UI.closeModal();
     scheduleRender();
     UI.toast(sp ? '空间已更新' : '可能性空间「'+name+'」已创建');
@@ -2810,6 +3011,8 @@ const Actions = {
     doc.spaceRecords[sp.id] = recs;
     saveDay(dk);
     if(isNew){ Grow.floatXp(btn, CONFIG.GROW.XP_RECORD); Grow.checkLevelUp(); }
+    /* v1.7.12：写下一条「可能性确定」→ 她竖个大拇指（今天第几条，她数着的） */
+    if(isNew && typeof Her !== 'undefined') Her.onEvent('recordNew', {id:rec.id, spaceId:sp.id, recN:recs.length});
     /* 同步到「确定性迭代」分类笔记：收藏则创建/更新，取消收藏则移除 */
     const linked = S.catnotes.find(n=>n.fromIter===rec.id);
     if(catId){
@@ -3275,6 +3478,13 @@ const Actions = {
     applyAnimLevel();
     scheduleRender();
     UI.toast({'full':'动画强度：完整','light':'动画强度：轻度','off':'动画强度：关闭'}[btn.dataset.level]||'已保存');
+  },
+  /* v1.7.14：进页过渡是自动跳还是等她点一下（读取处：pageLoad / Portal.go，都 || 'auto' 兜底） */
+  'trans-mode'(btn){
+    S.settings.transMode = (btn && btn.dataset.mode === 'tap') ? 'tap' : 'auto';
+    saveSettings();
+    scheduleRender();
+    UI.toast(S.settings.transMode === 'tap' ? '进页过渡：点一下才进去' : '进页过渡：自动进页');
   },
   /* —— 看板娘互动 / 她的空间（v1.3：等级成长/服装/她眼中的我 都在她的空间里） —— */
   /* —— 她的衣柜（服装页）—— */
@@ -4021,13 +4231,40 @@ function pageLoad(meta, done){
   el.innerHTML = '<div class="pl-inner"><div class="pl-ico">'+meta.ico+'</div>'+
                  '<div class="pl-name">'+esc(meta.name)+'</div>'+
                  '<div class="pl-dots"><i></i><i></i><i></i></div></div>';
+  /* v1.7.14：登场是糊的 → .on 那一拍开始对焦（用时 = CONFIG.TRANS.BLUR_MS，见 CSS 的 .page-load）
+     ⚠️ 起始的糊走 --pl-b 变量（不是行内 filter）：行内样式会盖住 .on 那句 blur(0)，画就永远糊着 */
+  const T = CONFIG.TRANS;
+  el.style.setProperty('--pl-t', T.BLUR_MS + 'ms');
+  el.style.setProperty('--pl-b', T.BLUR_PX + 'px');
+  /* 点击跳转那档：停在画上等你看够，点一下才进页（右下角一行小提示） */
+  const tapMode = (S.settings.transMode === 'tap');
+  if(tapMode){
+    el.classList.add('tap-mode');
+    const tip = document.createElement('div');
+    tip.className = 'pl-tap';
+    tip.textContent = '点一下继续';
+    el.appendChild(tip);
+  }
   document.body.appendChild(el);
   requestAnimationFrame(()=>{ el.classList.add('on'); });
-  setTimeout(()=>{
+  /* 跳页（只跳一次：点击档里可能被点好几下） */
+  let t = null, landed = false;
+  const land = ()=>{
+    if(landed) return;
+    landed = true;
+    if(t){ try{ clearTimeout(t); }catch(e){} t = null; }
     try{ done(); }catch(err){ console.error('[pageLoad]', err); }
+    el.removeEventListener('click', land);
     el.classList.add('out');
     setTimeout(()=>el.remove(), 340);
-  }, 520);
+  };
+  if(tapMode){
+    el.addEventListener('click', land);
+    /* 一直不点也别把她扣在这儿：给个长兜底（画可以慢慢看，但终归要进页） */
+    t = setTimeout(land, T.BLUR_MS + T.CLEAR_MS + 8000);
+  }else{
+    t = setTimeout(land, T.BLUR_MS + T.CLEAR_MS);
+  }
 }
 /* 当日递归圆圈：灰色圆环=24小时底盘，每段递归按分钟占比画成扇形（颜色=空间色），
    中心显示当日合计，下方图例按空间拆分（进行中的段会呼吸闪烁） */
@@ -4957,6 +5194,17 @@ const Views = {
         '<button class="chip'+(animLv===o.k?' on':'')+'" data-action="anim-set" data-level="'+o.k+'">'+o.n+'</button>').join('')+
       '</div><div class="hint">控制看板娘呼吸、面板弹出、星星闪烁等动画强度</div>'+
     '</div></section>';
+    /* 进页过渡的跳转方式（v1.7.14）：过渡图从模糊到清晰之后，是自动进页还是等你点一下 */
+    const transMode = S.settings.transMode || 'auto';
+    const transOpts = [{k:'auto',n:'自动跳转'},{k:'tap',n:'点击跳转'}];
+    h += '<section class="sec"><h2 class="sec-title">进页过渡</h2><div class="card pad">'+
+      '<div class="chip-row">'+transOpts.map(o=>
+        '<button class="chip'+(transMode===o.k?' on':'')+'" data-action="trans-mode" data-mode="'+o.k+'">'+o.n+'</button>').join('')+
+      '</div><div class="hint">'+(transMode==='tap'
+        ? '拉出页面 / 长按水晶球之后会停在她的画上，点一下才进去——可以慢慢看那张画。'
+        : '拉出页面 / 长按水晶球之后，她的画从模糊到清晰（共 1 秒）就自动进页。想多看一会儿画，就切到「点击跳转」。')+
+      '</div>'+
+    '</div></section>';
     /* 她说话的频率（v1.4：她会主动开口了） */
     const herLv = S.settings.herVoice || 'normal';
     const herOpts = [{k:'loud',n:'多'},{k:'normal',n:'正常（推荐）'},{k:'quiet',n:'少'},{k:'off',n:'安静'}];
@@ -5167,45 +5415,108 @@ function browserName(){
    9.6 看板娘气泡提醒 Bubbles（纯屏顶部，点击跳转对应页面）
    ══════════════════════════════════════════════════════════════ */
 const Bubbles = {
-  queue:[],            // 待显示：{text, sub, go}  go=回调（点击时执行）
+  queue:[],            // 待显示：{text, sub, go, opts, hold}  go=回调（点击时执行）
   seen:{},             // 去重：key → true（同一天只提醒一次）
   shownUntil:0,        // 当前气泡的自动消失时刻
   active:null,
+  /* opts（v1.7.10，她要求的）：选项按钮，挂在气泡**右上角**、右对齐。
+     每条 = {t:文字, action:'动作名', 其余键会原样写成 data-*}
+     ——她的问题（galgame 选项）和通知权限那种「要不要」都走这儿，不再弹白底弹窗 */
   push(text, opt){
     opt = opt || {};
+    /* ★ v1.7.11：她的**即时台词**（点击她 / 捏 / 摇 / 拖到角落 / 场景演出的一句话）也走这一个气泡。
+       和提醒那套的区别只有两条：**不排队**（点一下要马上有回应，不能在队列里等）和
+       **不去重**（同一句话今天点第二次也该重新说一遍）。所以直接顶掉当前那条。
+       ⚠️ 唯一的例外：她**正在问你话**时（active 带着选项、要留一分钟）不许顶——
+       顶了她那个问题就没了，你就没得选了。 */
+    if(opt.say){
+      /* 这会儿没有能挂气泡的地方（她的页面 / 没装 Q版）就当她没开口。
+         少了这道判断，子页上的一句会**卡在 active 里**，等你回首页时突然冒出来（时序不对，
+         看着像 bug）。v1.7.13：忙碌页有 #q-bubble 了，那儿也算「有地方挂」 */
+      if(!this._mount()) return;
+      if(this.active && this.active.opts) return;
+      this.active = {text, sub:'', go:null, opts:null, hold:opt.hold || 2600};
+      this.render();
+      return;
+    }
     const key = opt.key || text;
     if(this.seen[key]) return;
     this.seen[key] = true;
-    this.queue.push({text, sub:opt.sub||'', go:opt.go||null});
+    this.queue.push({text, sub:opt.sub||'', go:opt.go||null, opts:opt.opts||null, hold:opt.hold||0});
     if(this.queue.length>4) this.queue.shift();
     this.render();
   },
-  /* 把当前待显示的一条画到纯净页（非纯净页时挂起，回纯净页由 renderView 补画） */
+  /* v1.7.13：气泡挂哪儿——纯净页 #bubble-root 优先；忙碌页 Q版在场 → 她头顶的 #q-bubble；
+     都没有 = 挂起（她的页面）。返回 {el, q} 或 null */
+  _mount(){
+    try{
+      const root = document.getElementById('view-root');
+      const br = root ? root.querySelector('#bubble-root') : null;
+      if(br) return {el:br, q:false};
+    }catch(e){}
+    try{
+      const qb = document.getElementById('q-bubble');
+      const qc = document.getElementById('q-corner');
+      if(qb && qc && qc.classList && qc.classList.contains('on')) return {el:qb, q:true};
+    }catch(e){}
+    return null;
+  },
+  /* 小气泡钉到 Q版头顶：外层 transform:translate(-50%,-100%) 负责对中 + 抬到头顶，
+     不用量气泡自己的宽；左右夹回屏幕里（她被你拖到边上，气泡也不出屏） */
+  _placeQ(){
+    const qc = document.getElementById('q-corner'), qb = document.getElementById('q-bubble');
+    if(!qc || !qb || !qb.style) return;
+    try{
+      const r = qc.getBoundingClientRect();
+      const w = window.innerWidth || 390;
+      const half = Math.min(240, w * 0.62) / 2 + 6;
+      qb.style.left = clamp(r.left + r.width / 2, half, w - half) + 'px';
+      qb.style.top = Math.max(8, r.top - 8) + 'px';
+    }catch(e){}
+  },
+  /* 把当前待显示的一条画到该去的地方（哪儿都没有时挂起，回纯净页由 renderView 补画） */
   render(){
-    const root = document.getElementById('view-root');
-    const br = root ? root.querySelector('#bubble-root') : null;
-    if(!br){ return; }                       // 不在纯净页，暂不显示
+    const m = this._mount();
+    if(!m) return;                           // 两边都没容器（她的页面），暂不显示
+    const br = m.el;
     if(!this.active){
       if(this.queue.length) this.active = this.queue.shift();
       else { br.classList.add('hidden'); br.innerHTML=''; return; }
     }
     const b = this.active;
+    /* 选项（v1.7.10）：气泡右上角一排，右对齐——她问你的时候，选项就在那儿 */
+    let optHtml = '';
+    if(b.opts && b.opts.length){
+      optHtml = '<div class="bb-opts">';
+      for(const o of b.opts){
+        let at = '';
+        for(const k in o){ if(k !== 't') at += ' data-'+k+'="'+esc(String(o[k]))+'"'; }
+        optHtml += '<button class="bb-opt" type="button"'+at+'>'+esc(o.t)+'</button>';
+      }
+      optHtml += '</div>';
+    }
     /* 每次都重画：view-root 整体重渲染会抹掉气泡标记，必须随渲染重建 */
-    br.innerHTML = '<div class="mascot-bubble" role="button" aria-label="提醒">'+
+    br.innerHTML = '<div class="mascot-bubble" role="button" aria-label="提醒">'+ optHtml +
       (b.sub ? '<div style="font-size:10.5px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:2px">'+esc(b.sub)+'</div>' : '')+
       '<div>'+esc(b.text)+'</div>'+
       (b.go ? '<div style="font-size:10.5px;color:var(--text-2);margin-top:3px">点我看详情 →</div>' : '')+
     '</div>';
     br.classList.remove('hidden');
     br.onclick = ()=>{ this.dismiss(); if(b.go) b.go(); };
+    if(m.q) this._placeQ();                  // 忙碌页：钉到 Q版头顶
     clearTimeout(this._t);
-    this._t = setTimeout(()=>{ this.dismiss(); }, 9000);
+    /* 她问你问题时挂久一点（hold）：一句话飘 9 秒就走，问题得留够你看见并选的时间 */
+    this._t = setTimeout(()=>{ this.dismiss(); }, b.hold || 9000);
   },
   dismiss(){
     this.active = null;
-    const root = document.getElementById('view-root');
-    const br = root ? root.querySelector('#bubble-root') : null;
-    if(br){ br.innerHTML=''; br.classList.add('hidden'); }
+    try{
+      const root = document.getElementById('view-root');
+      const br = root ? root.querySelector('#bubble-root') : null;
+      if(br){ br.innerHTML=''; br.classList.add('hidden'); }
+      const qb = document.getElementById('q-bubble');
+      if(qb){ qb.innerHTML=''; qb.classList.add('hidden'); }   // 忙碌页那个也一起收
+    }catch(e){}
     if(this.queue.length) this.render();     // 排队的下一条顶上
   }
 };
@@ -5235,7 +5546,7 @@ const Her = {
     /* ★ AI 接口（预留）：挂上之后由它接管台词；抛错或返回空再回落话术池。
        吐出来的文本同样要过称呼替换（AI 也可以直接写 {yt}） */
     try{ if(this.aiHook){ const a = this.aiHook(kind, ctx); if(a) return this.fill(String(a), ctx); } }catch(e){}
-    const pool = (CONFIG.HER.LINES || {})[kind] || [];
+    const pool = this.pool(kind);
     /* 条件是「或」的关系，命中多条就随机挑；一条都没命中（数据在设想的边界外）
        就退回整池——宁可说得不贴切，也不能让她哑掉 */
     const fits = pool.filter(p => !p.when || p.when(ctx));
@@ -5252,6 +5563,16 @@ const Her = {
       if(s) return this.fill(String(s), ctx);
     }
     return '';
+  },
+  /* 台词池（v1.7.12）：老的那批在 CONFIG.HER.LINES；
+     事件反应表里那几句用 'ev:<事件名>' 取——台词和它的编排（帧/表情）写在同一张表上，
+     改的时候不用两头找（谁也没法只改一半） */
+  pool(kind){
+    const L = CONFIG.HER.LINES || {};
+    if(L[kind]) return L[kind];
+    const m = /^ev:([A-Za-z]+)$/.exec(String(kind));
+    const ev = m && (CONFIG.HER.EVENTS || {})[m[1]];
+    return (ev && ev.line) || [];
   },
   /* 称呼令牌：她说的每句话都可以用 {yt} / {you} / {name}，
      实际值随关系阶段自动变 —— 称呼要在所有界面生效，靠的就是这一层 */
@@ -5311,11 +5632,82 @@ const Her = {
     if(cur === 'sleepy' || cur === 'angry') skip = true;                       // 困与气最优先
     else if(cur !== 'neutral' && m && (now - (m.at || 0)) < CONFIG.HER.FACE_KEEP_MS) skip = true; // 新情绪让着
     if(!skip && emo !== cur && typeof Emo !== 'undefined') Emo.set(emo, '说话', now);
-    if(f.act && typeof Director !== 'undefined' && Director.can()){
+    /* 动作：她画了配套的序列帧（比如打招呼的挥手）→ 演帧；没画 → 还是 CSS 小动作 */
+    const played = (f.seq && typeof Seq !== 'undefined' && Seq.play(f.seq)) ? true : false;
+    if(!played && f.act && typeof Director !== 'undefined' && Director.can()){
       if(f.act.indexOf('pose-') === 0) Director.pose(f.act.slice(5), f.hold || 6000);
       else Director.act(f.act, f);
     }
     return true;
+  },
+  /* v1.7.13：这会儿她有说话的容器吗——纯净页的 #bubble-root，
+     或忙碌页 Q版头顶的 #q-bubble；她的页面（mgrow…）两边都没有。
+     （纯函数，只认视图名：冒烟测试直接拿它验，不用真 DOM） */
+  speakHere(v){ return v === 'home' || v === 'mspace' || CONFIG.BODY.HER_PAGES.indexOf(v) < 0; },
+  /* ── v1.7.12 事件反应：你做的每件事，她都看见了 ──────────────────
+     三层各管各的（这是 v1.7b 剧情系统的地基，也是「像 galgame」的关键）：
+       ① 帧（Seq）——她在场就演。忙碌页（待办/空间/汇总/节律）上她以 Q版 站在右下角，
+          优先播 q- 开头的 Q版专用帧，没画就回落成同一组正常帧缩小了播（v1.7.13）
+       ② 表情（Emo）——真值得高兴/担心的事，脸跟着变（哪怕这会儿看不见她，回首页也是那个表情）
+       ③ 一句话——纯净页在立绘下的 #bubble-root 说，忙碌页在她头顶的 #q-bubble 说；
+          她的页面两边都没有 → 挂起，回纯净页再补画（v1.7.13 前忙碌页根本不开口）
+     ★ 反唠叨：同一件事（同一个 id）90 秒内只说一次 + 一天最多出声 REACT.DAILY 次。
+       帧和表情不算「说话」，不受这两道闸管——它们不吵人，只是让你看得见她。
+     ★ 整个函数吞掉一切异常：她回应你失败，绝不能连累你刚做成的那件事
+     ★ 返回值 = 她**有没有动**（演了帧 / 放了 CSS 替身 / 开了口），调用方现在都不看它，
+       留着是因为下一轮剧情系统要用「她有没有真的回应」来决定要不要往下演一章 */
+  onEvent(kind, data){
+    try{
+      const g = (CONFIG.HER.EVENTS || {})[kind];
+      if(!g) return false;
+      data = data || {};
+      const now = Date.now();
+      /* ① 帧：演上了就不放 CSS 小动作（两套一起上会打架）；没图 = 她还没画 → 回落小动作 */
+      let played = false;
+      if(g.seq && typeof Seq !== 'undefined' && Seq.play(g.seq)) played = true;
+      if(!played && g.act && typeof Director !== 'undefined' && Director.allowed(g.act))
+        played = Director.act(g.act, g) || false;
+      /* ② 表情 */
+      if(g.emo && typeof Emo !== 'undefined') Emo.set(g.emo, '事件', now);
+      /* ③ 一句话（有闸；没写台词的 kind —— 升段/升级 —— 直接到这儿就回去） */
+      if(!g.line) return played;
+      /* v1.7.13：忙碌页也开口——纯净页走 #bubble-root，忙碌页（Q版在场）走她头顶的
+         #q-bubble；她的页面两边都没有 → 照旧不开口 */
+      if(!this.speakHere(S.view)) return played;
+      const busy = S.view !== 'home' && S.view !== 'mspace';
+      const key = kind + '|' + (data.id == null ? '' : data.id);
+      const dk = D.dateKey(now);
+      const rec = (S.settings.herReact && S.settings.herReact.dk === dk)
+        ? S.settings.herReact : {dk, key:null, at:0, n:0};
+      if(rec.key === key && (now - rec.at) < CONFIG.HER.REACT.GAP_MS) return played;
+      if((rec.n || 0) >= CONFIG.HER.REACT.DAILY) return played;
+      const c = this._evCtx(now, data);
+      const text = this.voice('ev:' + kind, c);
+      if(!text) return played;
+      rec.key = key; rec.at = now; rec.n = (rec.n || 0) + 1;
+      S.settings.herReact = rec;
+      saveSettings();
+      /* 忙碌页她只有角落那么小 → 气泡短一点（3.2 秒），不挡手头的按钮、不跟 toast 打架 */
+      Bubbles.push(text, {key:'her-ev-' + key + '-' + now, sub:'她', hold: busy ? 3200 : 0});
+      return true;
+    }catch(e){ return false; }
+  },
+  /* 事件台词要用的那几个数（每句夸都挂在真实数据上——「今天第 3 件」不是「你真棒」）。
+     每个字段都给兜底：宁可说得笼统，也不能让她的句子里蹦出个 undefined */
+  _evCtx(now, data){
+    const c = this.ctx(now);
+    c.dayDone = (c.day && c.day.done) || 0;
+    c.todoN   = (data.todoN != null) ? data.todoN : ((c.day && c.day.done) || 0) + 1;
+    c.recN    = (data.recN != null) ? data.recN : 1;
+    c.todoTitle = data.todoTitle || '这件事';
+    try{ c.spaceN = (S.spaces || []).filter(s => !s.archived).length || 1; }catch(e){ c.spaceN = 1; }
+    let spName = data.spaceName || '';
+    if(!spName && data.spaceId){ try{ const sp = spaceById(data.spaceId); if(sp) spName = sp.name; }catch(e){} }
+    c.spaceName = spName || '这个空间';
+    c.minText = (data.min != null) ? fmtMin(Math.max(1, Math.round(data.min))) : c.minText;
+    try{ c.quotaText = fmtMin(Rhythm.quota()); }catch(e){ c.quotaText = '今天的'; }
+    try{ c.remainText = fmtMin(Rhythm.remainingMinutes(now)); }catch(e){ c.remainText = c.minText; }
+    return c;
   },
   /* ── 直接回应（你回答了她的问题 / 你跟她说话）：不算「主动搭话」，
         所以不受每日频率门限制——她答你的话，随时都该答得上 ── */
@@ -5748,22 +6140,12 @@ const Love = {
     S.settings.herAskAt = {dk:D.dateKey(now), at:now};
     saveSettings();
     this._asking = q.id;
-    UI.openModal(this.askHtml(q, now));
+    /* ★ v1.7.10（她要求的）：不弹白底弹窗了——就着她说话的那个气泡说，
+       选项摆在气泡**右上角**（Bubbles 的 opts，见那段注释）。
+       点选项照旧走 data-action="love-answer"（下面 Actions 里那个），逻辑一行没动 */
+    const opts = q.opts.map((t, i)=>({t, action:'love-answer', id:q.id, i}));
+    Bubbles.push(Her.fill(q.q, Her.ctx(now)), {key:'her-ask-'+q.id, sub:'她在问你', opts, hold:60000});
     return true;
-  },
-  askHtml(q, now){
-    const ctx = Her.ctx(now || Date.now());
-    let h = '<div class="lv-ask">'+
-      '<div class="lv-hero"><div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
-        '<div class="mcons-bub">'+esc(Her.fill(q.q, ctx))+'</div></div>'+
-      '<div class="lv-opts">';
-    for(let i=0;i<q.opts.length;i++){
-      h += '<button class="lv-opt" data-action="love-answer" data-id="'+esc(q.id)+'" data-i="'+i+'">'+esc(q.opts[i])+'</button>';
-    }
-    h += '</div><div class="hint">你回答过的事她会一直记着——以后还会拿它来接你的话。</div>'+
-      '<button class="btn btn--small" data-action="modal-close" style="margin-top:10px">等下再聊</button>'+
-    '</div>';
-    return h;
   },
   answer(qid, i, now){
     now = now || Date.now();
@@ -5864,16 +6246,12 @@ const Love = {
     now = now || Date.now();
     S.settings.herNotify = Object.assign({}, S.settings.herNotify, {asked:true});
     saveSettings();
-    UI.openModal(
-      '<div class="lv-ask">'+
-      '<div class="lv-hero"><div class="mcons-ava">'+Grow._miniHtml()+'</div>'+
-        '<div class="mcons-bub">'+esc(Her.voice('noticeAsk', Her.ctx(now)))+'</div></div>'+
-      '<div class="lv-opts">'+
-        '<button class="lv-opt" data-action="love-notify-ok">好呀，你来提醒我</button>'+
-        '<button class="lv-opt lv-opt--ghost" data-action="love-notify-no">先不用</button>'+
-      '</div>'+
-      '<div class="hint">同意之后，你把软件切到后台的时候，她说的话会以系统通知送到你手上（手机上要先把网页「添加到主屏幕」再打开，电脑上直接双击打开的文件用不了）。</div>'+
-      '</div>');
+    /* ★ v1.7.10：同样不弹窗——就在气泡里问，选项在右上角 */
+    Bubbles.push(Her.voice('noticeAsk', Her.ctx(now)),
+      {key:'her-notice-ask', sub:'她想走出软件',
+       opts:[{t:'好呀，你来提醒我', action:'love-notify-ok'},
+             {t:'先不用', action:'love-notify-no'}],
+       hold:60000});
     return true;
   },
 
@@ -5886,6 +6264,8 @@ const Love = {
       const k = this._pendingStage; this._pendingStage = null;
       const st = this.stage();
       UI.toast('和 ' + CONFIG.LOVE.NAME + ' 的关系升级了 →「' + st.name + '」');
+      /* v1.7.12：关系近了一步 → 鼓掌（话由下面那句 loveUp 台词来说，不重复） */
+      if(typeof Her !== 'undefined') Her.onEvent('loveUp', {id:k});
       Her.reply(Her.voice('loveUp', Her.ctx(now)),
         {key:'her-loveup-'+k, sub:'我们之间', go:()=>goView('mcons')});
       return;
@@ -5984,19 +6364,14 @@ const Mascot = {
     Her.reactFace(kind);
     return true;
   },
+  /* ★ v1.7.11：她说的话**只有一个出口**——Bubbles（就是提醒气泡那一个，挂在 #bubble-root 上）。
+     以前这里是另建一个 `.mascot-chat` 挂在立绘右上角：白底 92%、带一条指着她的小尾巴，
+     和提醒气泡长得完全不一样，她看到的就是「点了她之后又冒出一个白气泡」。
+     现在借着 Bubbles 的 say 档：不排队、不去重、直接顶掉上一条（点一下马上有回应）。
+     ⚠️ 别改回自己建元素：一改成两套，位置/长相/优先级就又分家了（这是她报过的 bug）。 */
   say(text, ms){
-    const zone = document.querySelector('#view-root .mascot-zone');
-    if(!zone) return;
-    let b = zone.querySelector('.mascot-chat');
-    if(!b){
-      b = document.createElement('div');
-      b.className = 'mascot-chat';
-      zone.appendChild(b);
-    }
-    b.textContent = text;
-    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
-    clearTimeout(this._sayT);
-    this._sayT = setTimeout(()=>{ b.classList.remove('show'); }, ms || 2600);
+    if(typeof Bubbles === 'undefined') return;
+    Bubbles.push(text, {say:true, hold: ms || 2600});
   },
   /* 爱心粒子：动画强度三档（关闭=0 / 轻度=3 / 完整=5）。
      以前动画关闭时只是不播放动画，元素仍会留在页面上，所以这里直接不生成 */
@@ -6200,7 +6575,8 @@ const Mascot = {
    不占带宽（404 没有正文）、不报错，而且开机那次 warm 会提前把结果拿回来。 */
 const ART_EXT  = ['.png', '.webp'];
 const ART_DIRS = ['表情', '动作', '卡片', '背景', '过渡'];   // mimi/ 下的 5 个家（根目录不在这儿，单独算）
-const ART_FACE = ['normal', 'happy', 'sad', 'angry', 'sleepy', 'q', 'q-happy'];
+const ART_FACE = ['normal', 'happy', 'sad', 'angry', 'sleepy', 'q', 'q-happy',
+                  '害羞', '脸红'];   // v1.7.14：她新画的两张（中文名，在「表情」家）
 const ART_ACT  = ['sit', 'sleep', 'startle', 'peek', 'pull', 'pull-hard', '被拖'];
 const ART_BG   = ['清晨', '白天', '黄昏', '晚上', '深夜'];
 /* 换个后缀（认不出来就还 null，让调用方原样用） */
@@ -6216,7 +6592,7 @@ function artTwin(u){
 function artFolder(base){
   const n = String(base == null ? '' : base);
   if(!n) return null;
-  if(ART_FACE.indexOf(n) >= 0) return '表情';
+  if(ART_FACE.indexOf(n) >= 0 || n.slice(-6) === '-blink') return '表情';   // 眨眼帧（v1.7.12 骨架）
   if(ART_ACT.indexOf(n) >= 0 || n.indexOf('pull-') === 0) return '动作';
   if(ART_BG.indexOf(n) >= 0) return '背景';
   if(n === '她的空间' || n.slice(-3) === '过渡图') return '过渡';   // 入口那颗球 + 进页闪的整屏画
@@ -6228,6 +6604,11 @@ function artFolder(base){
 }
 /* 一个后缀、一个名字 → 该试的 6 个地址（自家 → 根目录 → 另外四个家） */
 function artPathsIn(base, ext){
+  /* ★ v1.7.12：名字里自带路径的（她画的序列帧 mimi/动作/挥手/01.png）→ **就这一个地址**。
+     这种名字是她自己分的文件夹，不用猜「它该住哪儿」；不特殊处理的话，
+     artFolder 认不出来 → 会把同一个名字往 5 个家里各拼一遍，
+     凭空多出 10 个绝不会存在的地址（每张帧白探 10 次，21 张就是 200 多次无用请求） */
+  if(base.indexOf('/') >= 0) return ['mimi/' + base + ext];
   const home = artFolder(base);
   const out = [];
   if(home) out.push('mimi/' + home + '/' + base + ext);
@@ -6252,6 +6633,40 @@ function artCands(u){
 }
 /* 接力名单里该跟的那半截（如 mimi/x.png → 它后面那 11 个候选） */
 function artRest(u){ return artCands(u).slice(1); }
+
+/* ── v1.7.12 序列帧的地址 ────────────────────────────────────────
+   她画的动作帧住在 mimi/动作/<文件夹>/01.png、02.png、03.png（见 CONFIG.SEQ.LIST）。
+   帧号从 0 开始数（内部索引），文件名从 01 开始写（她看得懂的那个）。
+   ★ 一个帧名字只展开 2 个候选（.png 与它的 .webp）——名字里带着完整路径，
+     不用猜它该住哪个家（见 artPathsIn 里那条）。PNG 依旧排在 .webp 前面。 */
+function seqFrameName(id, i){
+  const d = (CONFIG.SEQ.LIST || {})[id];
+  if(!d) return null;
+  const n = String((i | 0) + 1);
+  return 'mimi/' + CONFIG.SEQ.DIR + '/' + d.dir + '/' + (n.length < 2 ? '0' + n : n) + '.png';
+}
+function seqCands(id, i){
+  const n = seqFrameName(id, i);
+  return n ? artCands(n) : [];
+}
+/* ── v1.7.13 Q版专用帧的地址 ─────────────────────────────────────
+   同上，只是住在 mimi/动作/q-<文件夹>/ 里（q- 前缀 = Q版专用，她自己画的小帧）。
+   忙碌页右下角那个 Q版优先播这一组；没画 → 回落成正常帧缩小了播（v1.7.12 的样子）。 */
+function seqFrameNameQ(id, i){
+  const d = (CONFIG.SEQ.LIST || {})[id];
+  if(!d) return null;
+  const n = String((i | 0) + 1);
+  return 'mimi/' + CONFIG.SEQ.DIR + '/q-' + d.dir + '/' + (n.length < 2 ? '0' + n : n) + '.png';
+}
+function seqCandsQ(id, i){
+  const n = seqFrameNameQ(id, i);
+  return n ? artCands(n) : [];
+}
+/* 这个动作一共几帧（表里写的；没写就用默认的 3） */
+function seqFrames(id){
+  const d = (CONFIG.SEQ.LIST || {})[id];
+  return d ? Math.max(2, d.n || CONFIG.SEQ.FRAMES) : 0;
+}
 
 const HerBody = {
   forms(){ return Object.keys(CONFIG.BODY.SLOTS); },
@@ -6280,7 +6695,11 @@ const HerBody = {
   builtinFile(form, key){
     const B = CONFIG.BODY.BUILTIN_BASE;
     if(!B[form]) return null;
-    const k = (!key || key === 'base') ? '' : key;
+    let k = (!key || key === 'base') ? '' : key;
+    /* v1.7.14：槽位名和文件名对不上时走别名表（'shy' → 她画的「害羞.png」）。
+       ——名字归她定，代码跟着她的名字走 */
+    const alias = CONFIG.BODY.BUILTIN_FILE || {};
+    if(k && alias[k]) k = alias[k];
     const name = (form === 'q' && k ? 'q-' + k : k) || B[form];
     return CONFIG.BODY.BUILTIN_DIR + name + '.png';
   },
@@ -6505,8 +6924,18 @@ function paintHer(){
   if(typeof document === 'undefined' || !document.querySelectorAll) return;
   try{
     document.querySelectorAll('img[data-her-img]').forEach(img=>{
+      /* ★ v1.7.12：正在播序列帧的她，手别伸进来——帧是在这个 img 上一张张换的，
+         中间插一脚「按情绪重画」会把动作打断（播完她自己会 paintHer 回来）。
+         这是唯一的例外；除此之外换脸照旧对所有 img 生效 */
+      if(img.dataset && img.dataset.seq) return;
       const form = img.dataset.herImg || 'normal';
-      const p = HerBody.pick(form, form === 'normal' ? Emo.slot() : 'base');
+      const slot = Emo.slot();
+      /* ★ v1.7.13：Q版也跟心情换脸——但只换她**画过**的 q- 槽位（slots('q') = base/happy）。
+         不开心/生气/困 这几个她还没画 Q版差分 → 落回 base；
+         不这么挡着的话，pick 会去试 mimi/表情/q-sad.png 那一长串不存在的地址（每夜每 90 秒一次） */
+      const key = (form === 'normal') ? slot
+        : (form === 'q' ? (HerBody.slots('q').some(s => s[0] === slot) ? slot : 'base') : 'base');
+      const p = HerBody.pick(form, key);
       const sib = img.nextElementSibling;
       const shell = (sib && sib.classList && sib.classList.contains('mascot-shell')) ? sib : null;
       if(p.src){
@@ -6653,6 +7082,9 @@ const Director = {
   hide(){ return this.pose('hide'); },
   /* 收场：清掉所有定时器与动作类（你碰屏幕 / 换页 / 弹窗时调用） */
   stop(){
+    /* 序列帧与眨眼也算「她身上的戏」：一起收（不然换页之后帧还挂在她脸上） */
+    if(typeof Seq !== 'undefined'){ try{ Seq.stop(); }catch(e){} }
+    if(typeof Blink !== 'undefined'){ try{ Blink.stop(); }catch(e){} }
     for(const t of this._timers){ try{ clearTimeout(t); }catch(e){} }
     this._timers = []; this._plan = []; this._playing = false; this._poseNow = null;
     try{
@@ -6702,6 +7134,243 @@ const Director = {
     this._lastShakeAsk = now;
     return Shake.ask(now);
   }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   序列帧播放器 Seq（v1.7.12）：她一帧一帧画的动作
+   为什么要有它：CSS 小动作的本质是「一张画滑来滑去」，而动漫感来自**形变**——
+   抬手、合掌、低头写字这些只有真画出来才像。她每个动作画三帧（起 / 中 / 收，
+   见 CONFIG.SEQ.LIST），播放器负责按顺序换 img 的 src；帧与帧之间的「动」由眼睛补
+   —— 这就是动画本来的意思。
+
+   ★ 红线一：**只换 img 的 src**。不碰 .mascot-pos 的内联 transform（那是你摆的位置），
+     也不碰 #q-corner 的 --qs 缩放——摆位永远是你的，戏永远盖不掉。
+   ★ 红线二：图没画完 / 没传 / 名字对不上 → play() 直接返回 false，当她没演，
+     调用方回落成小动作 + 台词，绝不报错、绝不闪裂图（只贴探到过的那张）。
+   ★ 宿主：纯净页是她的大立绘；忙碌页是右下角那个 Q版（同一组帧缩小了播）。
+   ══════════════════════════════════════════════════════════════ */
+const Seq = {
+  _id:null, _plan:null, _i:0, _img:null, _prev:null, _t:null, _q:false, _pend:null,
+  def(id){ return (CONFIG.SEQ.LIST || {})[id] || null; },
+  playing(){ return !!this._id; },
+  canPlay(){ return (S.settings.animLevel || 'full') !== 'off'; },
+  /* 这会儿该把帧播在谁身上：纯净页的大立绘 → 忙碌页右下角的 Q版 → 都没有就不演。
+     v1.7.13：返回 {img, q}——q=true 表示这是角落那个 Q版（优先贴她画的 q- 专用帧） */
+  host(){
+    try{
+      const zone = document.querySelector('#view-root .mascot-zone');
+      const big = zone ? zone.querySelector('img[data-her-img]') : null;
+      if(big) return {img:big, q:false};
+      const q = document.getElementById('q-corner');
+      if(q && q.classList && q.classList.contains('on')){
+        const img = q.querySelector('img[data-her-img]');
+        if(img) return {img, q:true};
+      }
+      return null;
+    }catch(e){ return null; }
+  },
+  /* 这个动作按什么顺序播（**纯函数**：冒烟测试认它、不认真定时器）——
+     先把起/中/收走一遍（前奏-过程-收尾），来回摆的动作（挥手/鼓掌）再收两遍 */
+  plan(id){
+    const n = seqFrames(id);
+    if(!n) return [];
+    const d = this.def(id), out = [];
+    for(let i = 0; i < n; i++) out.push(i);
+    if(d && d.pingpong) for(let r = 0; r < 2; r++){ out.push(n - 2); out.push(n - 1); }
+    return out;
+  },
+  /* 这一帧该贴哪张图：**只认探到过的**（没探到 = 她还没画，别贴一张空图上去）。
+     返回 {src, fb}；fb = 这张裂了往后接力的名单。
+     v1.7.13：q=true → 先找 Q版专用帧；Q版帧裂了/没画，接力名单末尾补正常帧兜底 */
+  frame(id, i, q){
+    const cands = q ? seqCandsQ(id, i) : seqCands(id, i);
+    if(!cands.length) return null;
+    const warm = (typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(cands) : null;
+    if(!warm) return null;
+    const fb = [];
+    for(const u of cands) if(u !== warm) fb.push(u);
+    if(q) for(const u of seqCands(id, i)) fb.push(u);   // Q版帧裂了 → 正常帧顶上，绝不空
+    return {src:warm, fb};
+  },
+  /* ★ v1.7.15：重画之后 img 会被换成新的一只（renderView 重建了整块 innerHTML）——
+     把正在演的这帧搬到新的那只身上接着演。不搬的话：新节点上是她的脸（定格），
+     帧还在旧的、已经被扔掉的节点上换，你**什么都看不见**（完成待办那个 bug 就是它）。
+     只有真跟页面断了（isConnected === false）才搬；假 DOM 里没有这个属性 → 一律不动 */
+  rehost(){
+    const old = this._img;
+    if(!this._id || !old || old.isConnected !== false) return false;
+    const h = this.host();
+    if(!h || !h.img || h.img === old) return false;
+    try{ delete old.dataset.seq; }catch(e){}
+    const f = this.frame(this._id, this._plan[this._i], this._q);
+    this._prev = {src:h.img.getAttribute('src'), fb:h.img.getAttribute('data-fb') || ''};
+    this._img = h.img;
+    try{ h.img.dataset.seq = '1'; }catch(e){}
+    if(f) this._show(f);
+    return true;
+  },
+  /* ★ v1.7.15：首帧还没探到 —— 探图是异步的（开机那几秒、刚换完图都这样），
+     这会儿演不了不等于她没画，等它一下再演。放弃的话，开机那一刻她永远不挥手
+     （问候走过场的时候图还没加载好，等图好了这件事已经过去了，她自然就「没动」） */
+  _wait(id){
+    if(this._pend) return false;                       // 已经在等了（别叠）
+    const p = {id, n:0, t:null};
+    this._pend = p;
+    const tick = ()=>{
+      p.t = null;
+      if(this._pend !== p) return;                     // 被新的戏 / 收场取消了
+      const ok = (++p.n <= CONFIG.SEQ.WAIT_TRIES) && this.ready(id);
+      if(ok){ this._pend = null; this.play(id); return; }
+      if(p.n >= CONFIG.SEQ.WAIT_TRIES){ this._pend = null; return; }
+      p.t = setTimeout(tick, CONFIG.SEQ.WAIT_MS);
+    };
+    p.t = setTimeout(tick, CONFIG.SEQ.WAIT_MS);
+    return true;
+  },
+  /* 等到了吗：这会儿真演得起来吗（play 与「等她那张图加载好」共用一套判断） */
+  ready(id){
+    if(!this.def(id) || !this.canPlay()) return false;
+    const h = this.host();
+    if(!h || !h.img) return false;
+    const plan = this.plan(id);
+    if(!plan.length) return false;
+    const q = !!h.q && plan.every(i => !!this.frame(id, i, true));
+    return !!this.frame(id, plan[0], q);
+  },
+  /* 演一个动作。true = 真的演了（调用方就别再放 CSS 小动作了）。
+     ★ 演到一半又来了新事件（连着完成两件事）→ 旧的立刻收摊，新的接上：
+       记录动作不排队，跟上你的手速 */
+  play(id, opt){
+    if(!this.def(id) || !this.canPlay()) return false;
+    const h = this.host();
+    if(!h || !h.img) return false;
+    const plan = this.plan(id);
+    if(!plan.length) return false;
+    /* v1.7.13：Q版在场 → **整场每一帧都有 Q版专用帧**才用她画的小帧；
+       差一张就整场回落正常帧缩小了播（大小脸混着播会跳，比现在还糟） */
+    let q = false;
+    if(h.q) q = plan.every(i => !!this.frame(id, i, true));
+    const f0 = this.frame(id, plan[0], q);
+    if(!f0){ this._wait(id); return false; }   // 一帧都没探到：可能只是还没加载好 → 等它一下（见 _wait）
+    const img = h.img;
+    this._cancelPend();                   // 新的戏上来了：还在等的那出就别演了
+    this.stop(true);                      // 接新戏：旧的收掉但不还原（马上要被新帧盖住）
+    this._id = id; this._plan = plan; this._i = 0; this._img = img; this._q = q;
+    this._prev = {src:img.getAttribute('src'), fb:img.getAttribute('data-fb') || ''};
+    try{ img.dataset.seq = '1'; }catch(e){}
+    this._show(f0);
+    this._t = setTimeout(()=>{ this._t = null; this._step(); }, CONFIG.SEQ.FRAME_MS);
+    return true;
+  },
+  _show(f){
+    const img = this._img;
+    if(!img || !f) return false;
+    img.setAttribute('src', f.src);
+    img.setAttribute('data-fb', JSON.stringify(f.fb || []));
+    return true;
+  },
+  _step(){
+    if(!this._id) return;
+    /* ★ v1.7.15：万一下一帧之前 img 被重画换掉了（别的 innerHTML 重建）→ 把戏搬过去接着演 */
+    if(this._img && this._img.isConnected === false) this.rehost();
+    this._i++;
+    const f = (this._i < this._plan.length) ? this.frame(this._id, this._plan[this._i], this._q) : null;
+    if(f){
+      this._show(f);
+      this._t = setTimeout(()=>{ this._t = null; this._step(); }, CONFIG.SEQ.FRAME_MS);
+      return;
+    }
+    /* 演完了：收尾那帧停一拍，再换回她平常那张脸（她还在，只是动作做完了） */
+    const d = this.def(this._id) || {};
+    const hold = (d.pingpong ? 0 : CONFIG.SEQ.HOLD_MS) + CONFIG.SEQ.END_MS;
+    this._t = setTimeout(()=>{ this._t = null; this.stop(); }, hold);
+  },
+  /* 还在等图的那一出，取消掉（不再演了）。true = 真取消了 */
+  _cancelPend(){
+    const p = this._pend;
+    this._pend = null;
+    if(p && p.t){ try{ clearTimeout(p.t); }catch(e){} }
+    return !!p;
+  },
+  /* 收场。keep=true = 别还原（马上要接下一组帧，中间还原一帧反而会闪） */
+  stop(keep){
+    if(this._t){ try{ clearTimeout(this._t); }catch(e){} this._t = null; }
+    if(!keep) this._cancelPend();          // 收场了：还在等图的那一出也别等上演了
+    const img = this._img, prev = this._prev;
+    this._id = null; this._plan = null; this._img = null; this._prev = null; this._i = 0; this._q = false;
+    if(!img) return false;
+    try{ delete img.dataset.seq; }catch(e){ try{ img.removeAttribute('data-seq'); }catch(e2){} }
+    if(keep) return true;
+    if(prev && prev.src != null) img.setAttribute('src', prev.src);
+    if(prev) img.setAttribute('data-fb', prev.fb || '');
+    /* 再画一次：这中间她可能已经换了情绪（帧是「动作」，脸该跟着当下的心情走） */
+    if(typeof paintHer === 'function') paintHer();
+    return true;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   眨眼 Blink（v1.7.12 骨架）：她是活人的最小证据
+   ★ 现在**什么都不会发生**——闭眼的帧她还没画（批次 3：每个表情两张）。
+     骨架先立在这儿：图一到位（mimi/表情/happy-blink.png 这种名字），
+     开机探到就自动开始眨，一行代码都不用动。
+   ★ 规矩：正演着序列帧时不眨（动作要紧）、动画关闭档不眨、摆着姿势不眨（睡着的人不眨）、
+     不在纯净页不眨。闭眼帧按**当下这张脸**挑——开心的闭眼帧不能贴在难过的脸上。
+   ══════════════════════════════════════════════════════════════ */
+const Blink = {
+  _next:0, _t:null, _on:false,
+  GAP_MIN:3000, GAP_MAX:7000, SHUT_MS:120,
+  /* 该用哪张闭眼帧：跟着她此刻那张脸走（平静 → normal-blink） */
+  name(){
+    const slot = (typeof Emo !== 'undefined') ? Emo.slot() : 'base';
+    const f = (slot && slot !== 'base') ? slot : 'normal';
+    return 'mimi/' + f + '-blink.png';
+  },
+  frames(){ return artCands(this.name()); },
+  _img(){
+    try{
+      const zone = document.querySelector('#view-root .mascot-zone');
+      return zone ? zone.querySelector('img[data-her-img]') : null;
+    }catch(e){ return null; }
+  },
+  tick(now){
+    now = now || Date.now();
+    if((S.settings.animLevel || 'full') === 'off') return false;
+    if(S.view !== 'home' && S.view !== 'mspace') return false;
+    if(typeof Seq !== 'undefined' && Seq.playing()) return false;   // 正演着动作，先不眨
+    if(typeof Director !== 'undefined' && Director._poseNow) return false;  // 坐着/睡着的时候不眨
+    if(!this._next) this._next = now + this._gap();
+    if(now < this._next) return false;
+    this._next = now + this._gap();
+    return this.blink();
+  },
+  blink(){
+    if(this._on) return false;
+    const warm = (typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(this.frames()) : null;
+    if(!warm) return false;                    // 闭眼帧还没画 → 不眨（骨架先立着）
+    const img = this._img();
+    if(!img) return false;
+    this._on = true;
+    const was = img.getAttribute('src'), fb = img.getAttribute('data-fb') || '';
+    img.setAttribute('src', warm);
+    img.setAttribute('data-fb', '');
+    this._t = setTimeout(()=>{
+      this._t = null; this._on = false;
+      if(img.getAttribute('src') !== warm) return;   // 中间被别处换了脸（事件/换页）→ 别乱还原
+      img.setAttribute('src', was);
+      img.setAttribute('data-fb', fb);
+    }, this.SHUT_MS);
+    return true;
+  },
+  /* 停了（换页/收场）：把眼睛睁开，别让她闭着眼进下一页 */
+  stop(){
+    if(this._t){ try{ clearTimeout(this._t); }catch(e){} this._t = null; }
+    if(!this._on) return false;
+    this._on = false;
+    if(typeof paintHer === 'function') paintHer();
+    return true;
+  },
+  _gap(){ return this.GAP_MIN + Math.random() * (this.GAP_MAX - this.GAP_MIN); }
 };
 
 /* ── 摇一摇 Shake（v1.6a）：手机摇了她会有反应 ──
@@ -6790,7 +7459,7 @@ const Shake = {
 
 /* ── 忙碌页面右下角的她 QCorner（v1.6a）：Q版小人一直在，你做什么她都陪着 ── */
 const QCorner = {
-  _built:false, _wired:false, _pts:new Map(), _drag:null, _pinch:null, _t0:0, _moved:0, _tapFired:false, _baseSrc:null,
+  _built:false, _wired:false, _pts:new Map(), _drag:null, _pinch:null, _t0:0, _moved:0, _tapFired:false, _baseSrc:null, _dragImgOn:false,
   el(){ try{ return document.getElementById('q-corner'); }catch(e){ return null; } },
   /* 换页时同步：忙碌页出现；纯净页与她的页面不出现（那儿本来就是她的地方，不重复） */
   sync(){
@@ -6805,6 +7474,11 @@ const QCorner = {
     const busy = (S.view !== 'home' && S.view !== 'mspace') && CONFIG.BODY.HER_PAGES.indexOf(S.view) < 0;
     el.classList.toggle('on', busy);
     if(busy) paintHer();
+    else {
+      /* v1.7.13：离开忙碌页 → 头顶那个小气泡一起收掉（别让它悬在别的页面上） */
+      const qb = document.getElementById('q-bubble');
+      if(qb){ qb.innerHTML = ''; qb.classList.add('hidden'); }
+    }
     return busy;
   },
   /* 摆位与大小（v1.7.1）：你把她拖到哪、捏多大都记在设置上（qPos/qScale，零迁移） */
@@ -6835,8 +7509,16 @@ const QCorner = {
       this._pts.set(e.pointerId, [e.clientX, e.clientY]);
       if(this._pts.size === 1){
         this._t0 = Date.now(); this._moved = 0; this._tapFired = false;
-        const r = el.getBoundingClientRect();
-        this._drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, bx:r.left, by:r.top};
+        /* ⚠️ v1.7.10：起手就换算到**盒子**坐标（applyPos 写进 left/top 的那个值）：
+           全程只在盒子坐标里算，一次 rect 都不再量——① 看得见的那块是盒子按底边中点放大出来的，
+           两个坐标系混用就是「捏大之后再拖会跳、会跑偏」的根源（她报的）；
+           ② rect 会把当时挂着的动作（比如她刚被你戳了一下在扭）的 rotate 一起量进去 */
+        const bw = el.offsetWidth || 72, bh = el.offsetHeight || 104;
+        const s  = clamp(S.settings.qScale || 1, .6, 2.2);
+        const r  = el.getBoundingClientRect();
+        this._drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, bw, bh, s,
+          bx0: (typeof el.offsetLeft === 'number') ? el.offsetLeft : (r.left + (bw * s - bw) / 2),
+          by0: (typeof el.offsetTop  === 'number') ? el.offsetTop  : (r.top  + (bh * s - bh))};
       }else if(this._pts.size === 2){
         const arr = [...this._pts.values()];
         this._endDrag();                     // 第二指落下 → 拖动收尾（位置照存），转捏合
@@ -6870,13 +7552,23 @@ const QCorner = {
     const dx = x - d.x0, dy = y - d.y0;
     this._moved = Math.max(this._moved, Math.hypot(dx, dy));
     if(this._moved >= 8){
+      /* 你上手拖她 → 正在演的那套帧（事件反应）让位给「被拖图」，
+         不然每帧都在跟她抢同一个 img.src（表现就是拖起来一闪一闪的） */
+      if(typeof Seq !== 'undefined' && Seq.playing()) Seq.stop(true);
       el.classList.add('q-moving', 'q-drag');
       this._dragImg(true);
     }
     const w = window.innerWidth || 390, h = window.innerHeight || 844;
-    el.style.left = clamp(d.bx + dx, -40, w - 30) + 'px';
-    el.style.top = clamp(d.by + dy, 0, h - 30) + 'px';
+    const dW = d.bw * d.s, dH = d.bh * d.s;                        // 看得见的那块（含缩放）
+    /* 全程盒子坐标：见得着的那块 = 盒子按底边中点放大出来的（横向左右各胖一半、纵向全长在头顶上），
+       所以「盒子能挪到哪儿」= 可视范围每边各让出放大长出来的那截——
+       至少留 ~30px 在屏幕里，手感跟原来那套一模一样 */
+    const padX = (dW - d.bw) / 2, padY = dH - d.bh;
+    el.style.left = Math.round(clamp(d.bx0 + dx, 30 - dW + padX, w - 30 + padX)) + 'px';
+    el.style.top  = Math.round(clamp(d.by0 + dy, 14 - dH + padY, h - 30 + padY)) + 'px';
     el.style.right = ''; el.style.bottom = '';
+    /* v1.7.13：拖着她的时候，头顶的气泡跟着走（她还在说话） */
+    if(typeof Bubbles !== 'undefined' && Bubbles._placeQ) Bubbles._placeQ();
   },
   /* 拖动图：她「被拎着一只手拖走」那张（mimi/被拖.png，v1.7.5）——
      没有这张文件 → 接力到拉页面那张（mimi/pull.png 或你传的 acts.pull）→ 再没有才是 q.png + 姿势替身。
@@ -6887,19 +7579,32 @@ const QCorner = {
     const img = el.querySelector('img');
     if(!img) return;
     if(on){
+      /* ⚠️ v1.7.10：一次拖动**只换一次图**。pointermove 每帧都会调进来，
+         而下面那句 `img.src = 第一个候选` 每帧都重设一遍：
+         候选里排前面的 .png 是 404 的（她给的是压过的 .webp），
+         浏览器一 404 就顺着 data-fb 往后接力，下一帧又被拨回第一个候选、
+         再 404、再接力……来回弹 → 拖动时一直闪（她报的「拖动时会闪烁」就是这个） */
+      if(this._dragImgOn) return;
+      this._dragImgOn = true;
       if(this._baseSrc == null) this._baseSrc = img.getAttribute('src');
       if(this._baseFb == null) this._baseFb = img.getAttribute('data-fb') || '';
       const p = (typeof PullMini !== 'undefined') ? PullMini.art(false) : null;   // 拉页面那张（小拉）
       /* v1.7.6：被拖.png 不在 → 先试被拖.webp → 再接力回她平常的样子（PNG 永远排最前） */
-      const fb = artRest(Q_DRAG_ART);
+      const cands = artCands(Q_DRAG_ART);
+      /* 开机探过就直接用探到的那张（不然要从第一个候选起一张张 404 试过去，头两帧就是空的） */
+      const warm = (typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(cands) : null;
+      const fb = [];
+      if(warm){ for(const u of cands){ if(u !== warm) fb.push(u); } }
+      else { for(let i = 1; i < cands.length; i++) fb.push(cands[i]); }
       if(p && p.src) fb.push(p.src);
       if(p && p.fb) fb.push.apply(fb, p.fb);
-      img.src = artCands(Q_DRAG_ART)[0];
+      img.src = warm || cands[0];
       img.dataset.fb = JSON.stringify(fb);
     }else{
       /* ⚠️ 没换成拖动图就别动它：`_dragImg(false)` 在「只是点一下」时也会被调到，
          这时候 _baseSrc 还是 null，老代码会把 data-fb 擦成空串——她那张脸的接力名单就没了 */
       if(this._baseSrc == null) return;
+      this._dragImgOn = false;
       img.setAttribute('data-fb', this._baseFb || '');
       if(img.getAttribute('src') !== this._baseSrc) img.src = this._baseSrc;   // 拖完了 → 换回平常那张脸
       /* ⚠️ 用完就清空，下次拖重新记「当下」那张：老代码一辈子只记第一次，
@@ -6910,8 +7615,22 @@ const QCorner = {
   _endDrag(){
     const el = this.el();
     if(this._drag && this._moved >= 8 && el){
-      const r = el.getBoundingClientRect();
-      S.settings.qPos = {x: Math.round(r.left), y: Math.round(r.top)};
+      /* ⚠️ v1.7.10：存的是**盒子**的位置，而且直接取 offsetLeft/offsetTop（就是刚写进 left/top 的那个值）
+         ——applyPos 也是把它塞进 left/top，两边同一个坐标系，原样还回去她就停在原地。
+         老代码存的是 getBoundingClientRect 量到的那块：那是**放大后**看得见的位置（以底边中点为原点
+         放大时它比盒子偏左偏上）→ 还回去她就一路往左上跑（她报的）；而且 rect 连当时挂着的
+         拖动动画（qDragLean 那个 ±6° 的使劲儿姿势）都会一起量进去，存下来还是个随帧抖的值 */
+      const bx = (typeof el.offsetLeft === 'number') ? el.offsetLeft : null;
+      const by = (typeof el.offsetTop  === 'number') ? el.offsetTop  : null;
+      if(bx != null && by != null){
+        S.settings.qPos = {x: Math.round(bx), y: Math.round(by)};
+      }else{
+        /* 量不到布局值（测试用的假 DOM）→ 退回按 rect 换算 */
+        const r = el.getBoundingClientRect();
+        const bw = el.offsetWidth || 72, bh = el.offsetHeight || 104;
+        const s = clamp(S.settings.qScale || 1, .6, 2.2);
+        S.settings.qPos = {x: Math.round(r.left + (bw * s - bw) / 2), y: Math.round(r.top + (bh * s - bh))};
+      }
       saveSettings();                        // 她记住新位置（跨刷新不忘）
     }
     if(el && el.classList){ el.classList.remove('q-moving', 'q-drag'); this._dragImg(false); }
@@ -6941,7 +7660,10 @@ const QCorner = {
 const Portal = {
   _active:false,
   HOLD_MS:500,     // 长按星标多久触发
-  FLY_MS:470,      // 星星外扩铺满屏幕的时长（CSS 动画 .48s）
+  FLY_MS:470,      // 白圆黑星那档外扩铺满屏幕的时长（CSS 过渡 .48s）
+  /* v1.7.14：有传送图那一档 = 模糊→清晰(0.6) + 停在画上(0.4)，跟拖拽进页走**同一张表**
+     （CONFIG.TRANS）——两条进她空间的路，节奏得是一个人才对 */
+  flyMs(){ const T = CONFIG.TRANS; return T.BLUR_MS + T.CLEAR_MS; },
   /* target: 'mspace' | 'home'；anchorEl: 星标元素（星星从它那儿开始外扩） */
   go(target, anchorEl){
     const ov = document.createElement('div');
@@ -6961,6 +7683,9 @@ const Portal = {
     if(useArt){
       ov.classList.add('use-art');
       ov.querySelector('.po-art').style.backgroundImage = 'url("'+trans.replace(/"/g, '%22')+'")';
+      /* 这一档的时长与模糊程度（见 CSS 的 poArtGrow）：表在 CONFIG.TRANS，这里只负责递过去 */
+      ov.style.setProperty('--po-t', this.flyMs() + 'ms');
+      ov.style.setProperty('--po-blur', CONFIG.TRANS.BLUR_PX + 'px');
       /* ⚠️ 这一档**不放大**（老代码写的是 1.04，那是错的，见 CSS 里 poArtGrow 上面那段）：
          记下按钮中心就行，画会从它那儿长出来、最后落在屏幕正中（四条边贴屏幕边） */
       ov.style.setProperty('--ax', a.x + 'px');
@@ -6969,14 +7694,61 @@ const Portal = {
       ov.style.setProperty('--poscale', Math.ceil(Math.hypot(w, h) / 56 * 1.15));
     }
     document.body.appendChild(ov);
+    if(useArt){
+      /* ⚠️ v1.7.10：这张画的**尺寸和落点全部当场量**，一个 vw/vh 都不用——
+         iPhone 上 100vh 是「地址栏收起时」的大视口，比真正看得见的那块高，
+         拿它算落点，画就落低了、顶上差出一条缝（她报的「电脑端是好的、手机上顶上还有一条缝」）。
+         这里两件事：
+           ① 画按当场量到的可视区设成那么大（宁大勿小：取 client 与 inner 的较大者，保证盖满）
+           ② 落点 = **可视区正中**（用 clientWidth/clientHeight——iPhone 的 innerHeight
+              在某些时刻会报成大视口，只有 clientHeight 永远是「现在看得见的那块」）
+         尺寸和落点都在客户端坐标里量、也是在同一个坐标系里用，纯平移上下左右自动抵消，
+         所以两个平台、有没有刘海、地址栏收没收起，结果都一样 */
+      const art = ov.querySelector('.po-art');
+      const de = document.documentElement || {};
+      const vw2 = Math.max(de.clientWidth || 0, window.innerWidth || 0) || 390;     // 画的宽（宁大勿小）
+      const vh2 = Math.max(de.clientHeight || 0, window.innerHeight || 0) || 844;   // 画的高（宁大勿小）
+      const cw  = de.clientWidth  || window.innerWidth  || vw2;                     // 落点用的可视区宽
+      const ch  = de.clientHeight || window.innerHeight || vh2;                     // 落点用的可视区高
+      art.style.width = vw2 + 'px'; art.style.height = vh2 + 'px';
+      art.style.margin = (-vh2 / 2) + 'px 0 0 ' + (-vw2 / 2) + 'px';
+      const r0 = art.getBoundingClientRect();     // 此刻它正压在按钮中心（scale(.08) 不改变中心）
+      const cx0 = r0.left + r0.width / 2, cy0 = r0.top + r0.height / 2;
+      ov.style.setProperty('--dx', (cw / 2 - cx0).toFixed(1) + 'px');
+      ov.style.setProperty('--dy', (ch / 2 - cy0).toFixed(1) + 'px');
+    }
     this._active = true;
     const run = ()=>{ ov.classList.add(useArt ? 'art-go' : 'go'); };
     if(typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else run();
-    setTimeout(()=>this._land(target, ov), this.FLY_MS);
+    /* v1.7.14：设置里切到「点击跳转」→ 不自动落地，停在画上等你点（点任意处都算）。
+       用 document 上的监听而不是 overlay 自己的：有画那档 overlay 只有 56px（画是它的孩子），
+       挂在它身上只有球那么大一块可点 */
+    const flyMs = useArt ? this.flyMs() : this.FLY_MS;
+    if(S.settings.transMode === 'tap'){
+      ov.classList.add('tap-mode');
+      const tip = document.createElement('div');
+      tip.className = 'po-tap';
+      tip.textContent = '点一下继续';
+      document.body.appendChild(tip);
+      ov.__tip = tip;
+      ov.__tap = ()=>{ this._land(target, ov); };
+      document.addEventListener('pointerdown', ov.__tap, true);
+      ov.__t = setTimeout(()=>this._land(target, ov), flyMs + 8000);   // 长兜底：看够了她也得过去
+    }else{
+      ov.__t = setTimeout(()=>this._land(target, ov), flyMs);
+    }
     return ov;
   },
-  /* 白光铺满屏幕的那一刻再换页（换完淡出白光，露出另一边） */
+  /* 白光铺满屏幕的那一刻再换页（换完淡出白光，露出另一边）。
+     v1.7.14：点击档会从两个地方进来（点击 / 长兜底定时器）→ 落地只做一次 */
   _land(target, ov){
+    if(ov && ov.__landed) return;
+    if(ov){
+      ov.__landed = true;
+      if(ov.__t){ try{ clearTimeout(ov.__t); }catch(e){} ov.__t = null; }
+      if(ov.__tap){ try{ document.removeEventListener('pointerdown', ov.__tap, true); }catch(e){} ov.__tap = null; }
+      if(ov.__tip){ try{ ov.__tip.remove(); }catch(e){} ov.__tip = null; }
+    }
     /* 白光已经铺满整屏，这一刻必须把新页面立刻画出来（不能等下一帧）：
        否则淡出时会先露出旧页面，边缘提示也还挂着上一个视图的四个方向 */
     try{ goView(target); renderView(); }catch(err){ console.error('[Portal]', err); }
@@ -7178,6 +7950,8 @@ const Grow = {
   },
   celebrate(from, to){
     const title = this.titleOf(to);
+    /* v1.7.12：升级 = 她自己也长大了 → 鼓掌（话由下面 pickLine 那句新解锁的台词来说） */
+    if(typeof Her !== 'undefined') Her.onEvent('levelUp', {id:'lv' + to, lv:to});
     UI.toast('升级啦！Lv.' + to + ' · ' + title + ' 🎉');
     if(title !== this.titleOf(from)) setTimeout(()=>UI.toast('新称号解锁：' + title + ' ✦'), 900);
     this.anim(this.pickLine(from, to));
@@ -7286,7 +8060,9 @@ const Grow = {
       this._chomp();
       const mini = zone.querySelector('.feed-mini');
       this.floatXp(mini, xp);                     // 头顶飘 +20
-      if(Math.random() < CONFIG.GROW.FEED_SAY_CHANCE) this.miniSay(this._feedLine());
+      /* v1.7.13：忙碌页「完成待办」那句已经由事件反应说在 Q版头顶了 —— 投喂这边别再补一句
+         （左下 feed 区 + 右下小气泡同时开腔会抢话）。纯净页照旧 */
+      if((S.view === 'home' || S.view === 'mspace') && Math.random() < CONFIG.GROW.FEED_SAY_CHANCE) this.miniSay(this._feedLine());
       if(this._feedPending === 0){                // 所有批次都吃完了才收起（并发多批互不误删）
         clearTimeout(this._zoneT);
         this._zoneT = setTimeout(()=>this.dismissZone(), 1300);
@@ -7873,8 +8649,14 @@ const Gestures = {
     if(S.view!=='home' && S.view!=='mspace') return true;
     if(typeof Portal !== 'undefined' && Portal._active) return true;   // 传送过渡期间不接手势
     const el = e.target;
-    if(el.closest && el.closest('[data-action], button, input, select, textarea, a, .console, .drop-pad, .sb-card, .sc-tri, .sc-ear')) return true;
+    if(el.closest && el.closest('[data-action], button, input, select, textarea, a, .console, .drop-pad, .sb-card, .sc-tri, .sc-ear, .page-load')) return true;
     return false;
+  },
+  /* 拖拽时把背景压暗+虚化（v1.7.14）：长按成功那一刻开、松手/取消那一刻关。
+     开关都挂在 _showEdges/_hideEdges 上——所有收场路径（松手、取消、第二指捏合、切页）都从那儿过 */
+  _dim(on){
+    const el = document.getElementById('pull-dim');
+    if(el && el.classList) el.classList.toggle('on', !!on);
   },
   _down(e){
     const now = Date.now();
@@ -8042,6 +8824,7 @@ const Gestures = {
     this._gvp = 0; this._ride = 0;
     root.style.setProperty('--ride', '0px');
     root.classList.add('on');
+    this._dim(true);                       // v1.7.14：背景暗一点点+虚化，注意力给卡片和她
     /* 长按成功圆圈：出现在按压点，由浅渐实 */
     const c = root.querySelector('.gv-hold');
     if(c){ c.style.left = x+'px'; c.style.top = y+'px'; }
@@ -8084,6 +8867,7 @@ const Gestures = {
     const root = document.getElementById('gesture-root');
     if(!root) return;
     this._gvp = 0; this._ride = 0;
+    this._dim(false);                      // v1.7.14：拖拽收场 → 背景亮回来（所有路径都走这儿）
     root.classList.remove('on','locked');
     root.style.setProperty('--gvp', '0');
     root.style.setProperty('--ride', '0px');
@@ -8415,6 +9199,17 @@ const Notify = {
     try{ Object.keys(PAGE_META).forEach(k => { push(pageTransImg(k)); push(cardImg(k)); push(cardReadyImg(k)); }); }catch(e){}
     [CARD_READY, PORTAL_UI_ART, PORTAL_TRANS_ART, Q_DRAG_ART].forEach(push);
     try{ CONFIG.DAY_BG.BUCKETS.forEach(b => push(CONFIG.DAY_BG.DIR + b.file)); }catch(e){}
+    /* v1.7.12：她画的序列帧（mimi/动作/<文件夹>/01..03.png）与闭眼帧——
+       开机一起探、点「刷新她的图」也一起找：新画好的动作传上去（再点一下刷新）就能演 */
+    try{
+      const L = CONFIG.SEQ.LIST || {};
+      for(const id in L){ const n = seqFrames(id); for(let i = 0; i < n; i++){ push(seqFrameName(id, i)); push(seqFrameNameQ(id, i)); } }
+    }catch(e){}
+    try{
+      const nm = {};
+      for(const k in CONFIG.BODY.EMO_SLOT){ const v = CONFIG.BODY.EMO_SLOT[k]; nm[v === 'base' ? 'normal' : v] = 1; }
+      for(const f in nm) push('mimi/' + f + '-blink.png');
+    }catch(e){}
     return out;
   },
   refreshArt(cb){
@@ -8471,6 +9266,12 @@ function renderView(){
     if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT'){ scheduleRender(); return; }
     try{ ae.blur(); }catch(e){}
   }
+  /* ★ v1.7.15：这次重画是「真的换页」还是「原地刷新」——
+     原地刷新（完成待办之后重建卡片、存完东西回来）**不该把她刚起的动作一起收掉**：
+     事件反应全是「先演、紧接着 scheduleRender」的节奏，收掉就等于她从来没动过
+     （她报的「完成待办没动画反馈」就是这个：开关一松，动作演了不到一帧就被自己人掐了） */
+  const viewChanged = (S.renderedView !== S.view);
+  S.renderedView = S.view;
   const isPure = S.view==='home' || S.view==='mspace';   // 纯净页 = 用户空间首页 + 她的空间
   let html;
   if(S.view==='space'){
@@ -8482,6 +9283,10 @@ function renderView(){
     document.getElementById('hdr-title').textContent = VIEW_TITLES[S.view]||'';
   }
   root.innerHTML = html;
+  /* ★ v1.7.15：立绘刚被换成新的一只 —— 正在播的帧跟着搬到新节点上接着演。
+     纯净页（首页/她的空间）的她是随 innerHTML 一起重建的：不搬的话，
+     她演到一半的帧留在**已经被扔掉**的旧节点上，你看到的是定格 */
+  if(typeof Seq !== 'undefined' && Seq.playing()) Seq.rehost();
   root.classList.toggle('pure', isPure);
   const hdr = document.getElementById('app-header');
   if(hdr) hdr.classList.toggle('hidden', isPure);
@@ -8502,8 +9307,9 @@ function renderView(){
   }else{
     if(typeof Bubbles !== 'undefined') Bubbles.render();
   }
-  /* 离开纯净页时，她收起动作（换页中途还在蹦会怪）；忙碌页让 Q版那只站到右下角陪着 */
-  if(typeof Director !== 'undefined') Director.stop();
+  /* 离开纯净页时，她收起动作（换页中途还在蹦会怪）；忙碌页让 Q版那只站到右下角陪着
+     ★ v1.7.15：只有**真的换页**才收——原地刷新是数据变了，不是她要收场（见上面 viewChanged） */
+  if(typeof Director !== 'undefined' && viewChanged) Director.stop();
   if(typeof QCorner !== 'undefined') QCorner.sync();
   collectBindings();
 }
@@ -8562,6 +9368,22 @@ function bootMain(){
   if(typeof HerBody !== 'undefined' && HerBody.warm && typeof PullMini !== 'undefined'){
     try{ HerBody.warm(PullMini.allFiles().map(k=>HerBody.builtinFile('acts', k))); }catch(e){}
   }
+  /* v1.7.12：她画的动作帧（每个动作 3 张，见 CONFIG.SEQ）也开机先探一遍——
+     探到了，你随时做完一件事她当场就能演（不用等图现下）；没探到（还没画 / 还没传）
+     就当她没演，回落成 CSS 小动作 + 台词。探图是异步的，不挡首屏 */
+  if(typeof HerBody !== 'undefined' && HerBody.warm && typeof CONFIG.SEQ !== 'undefined'){
+    try{
+      const L = CONFIG.SEQ.LIST || {}, list = [];
+      for(const id in L){
+        const n = seqFrames(id);
+        for(let i = 0; i < n; i++){
+          const nm = seqFrameName(id, i);  if(nm) list.push(nm);
+          const qn = seqFrameNameQ(id, i); if(qn) list.push(qn);   // v1.7.13：Q版专用帧一起探
+        }
+      }
+      if(list.length) HerBody.warm(list);
+    }catch(e){}
+  }
   /* v1.7.5 那几张「过一会儿才要」的（进页时的过渡图 / 她的空间入口与传送 / 被拖）：
      开机先别抢带宽，等首页安顿下来再在后台温一遍（探到了才用，没探到就照旧走兜底版）。
      探的是「文件在不在 + 解码过没有」——用过一次浏览器就缓存了，之后再开机几乎不花流量 */
@@ -8576,6 +9398,13 @@ function bootMain(){
             const t = pageTransImg(k); if(t) list.push(t);
           });
           list.push(PORTAL_UI_ART, PORTAL_TRANS_ART, Q_DRAG_ART);
+          /* v1.7.12 眨眼帧（<脸>-blink.png，她还没画就是几个很小的 404）——
+             探到了她才开始眨，探不到就一直睁着眼，什么都不会坏 */
+          const bm = {};
+          Object.keys(CONFIG.BODY.EMO_SLOT).forEach(function(k){
+            const v = CONFIG.BODY.EMO_SLOT[k]; bm[v === 'base' ? 'normal' : v] = 1;
+          });
+          Object.keys(bm).forEach(function(f2){ list.push('mimi/' + f2 + '-blink.png'); });
           HerBody.warm(list);
         }catch(e){}
       }, 2600);
