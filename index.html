@@ -352,7 +352,7 @@ img{max-width:100%;display:block}
 .portal-btn.holding::after{content:'';position:absolute;inset:-6px;border-radius:50%;
   border:2px solid rgba(255,255,255,.85);animation:poHold .85s linear infinite}
 @keyframes poHold{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.3);opacity:0}}
-/* 她的空间入口（v1.7.5）：她画的 mimi/她的空间.png 那张当按钮（图不在就还是白圆黑星，功能一样）
+/* 她的空间入口（v1.7.5）：她画的「她的空间.png」那张当按钮（图不在就还是白圆黑星，功能一样）
    ⚠️ 这张图**故意不写 position:absolute**：按钮本来就是 flex 居中，图按正常流撑满（100%）就行。
       苹果 Safari 里 <button> 当不了绝对定位子元素的参照物（position:relative 在 button 上不生效），
       写成 absolute+inset 的话，那颗水晶球在 iPhone 上有可能跑到屏幕角上去，而不是待在按钮里。
@@ -380,7 +380,7 @@ img{max-width:100%;display:block}
 .portal-overlay.go .po-star{transform:rotate(200deg) scale(2.1)}
 @keyframes poHalo{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8),0 0 24px 4px rgba(245,197,66,.55)}
   100%{box-shadow:0 0 0 46px rgba(255,255,255,0),0 0 70px 20px rgba(245,197,66,0)}}
-/* 传送过渡（v1.7.5）：有 mimi/她的空间过渡图.png 时，让**整屏那张画**从按钮那儿长出来铺满屏幕
+/* 传送过渡（v1.7.5）：有「她的空间过渡图.png」时，让**整屏那张画**从按钮那儿长出来铺满屏幕
    （整屏大小、以按钮为中心：所以它自己是 100vw×100vh、居中压在 56px 的 overlay 上，
      再跟着 overlay 一起放大 → 视觉上就是「按钮炸开成一片房间」，不是放大一个小圆）
    没有这张图 → 还是原来的白圆黑星外扩，一点不受影响 */
@@ -531,17 +531,18 @@ body.mspace-mode .mascot-shadow{background:rgba(255,205,240,.18)}
 /* v1.7.6：每张写两层 —— 先 PNG、后 .webp（CSS 里**排在前面的画在上面**，正好就是我们要的
    「她的 PNG 优先，找不到才用我压的 .webp」）。先试的那层不在，浏览器就只是不画它，底下那层照常出来，
    不会变成一片黑；两层都不在就还是底下那套紫夜渐变（.msp-bg 自己的规矩没变） */
-/* 她的房间背景（v1.7.3）+ v1.7.6 两种后缀 + v1.7.7 分文件夹。
+/* 她的房间背景（v1.7.3）+ v1.7.6 两种后缀 + v1.7.7 分文件夹 + v1.7.16 搬出 mimi/。
    CSS 多层背景 = **第一层画在最上面**，哪一层加载不出来就只是不画那一层 ——
    所以层序就是优先级，跟 JS 那边 artCands 的顺序是同一个道理：
-     ①她新画的 PNG（放 mimi/背景/ 或随手丢在 mimi/ 根下）先赢
+     ①她新画的 PNG（放 背景/ 里，或随手平铺在网站最外层）先赢
      ②再退到我压的 .webp（上传那份就在这两个位置）
-   不放「别人家」文件夹那几层：背景图认名字（清晨/白天/…）不会认错家，省几个请求。 */
-body[data-daypart="dawn"]  .msp-bg{background-image:url('mimi/背景/清晨.png'),url('mimi/清晨.png'),url('mimi/背景/清晨.webp'),url('mimi/清晨.webp')}
-body[data-daypart="day"]   .msp-bg{background-image:url('mimi/背景/白天.png'),url('mimi/白天.png'),url('mimi/背景/白天.webp'),url('mimi/白天.webp')}
-body[data-daypart="dusk"]  .msp-bg{background-image:url('mimi/背景/黄昏.png'),url('mimi/黄昏.png'),url('mimi/背景/黄昏.webp'),url('mimi/黄昏.webp')}
-body[data-daypart="eve"]   .msp-bg{background-image:url('mimi/背景/晚上.png'),url('mimi/晚上.png'),url('mimi/背景/晚上.webp'),url('mimi/晚上.webp')}
-body[data-daypart="night"] .msp-bg{background-image:url('mimi/背景/深夜.png'),url('mimi/深夜.png'),url('mimi/背景/深夜.webp'),url('mimi/深夜.webp')}
+   不放「别人家」文件夹那几层：背景图认名字（清晨/白天/…）不会认错家，省几个请求。
+   ⚠️ CSS 写不了 artCands，这里的地址要跟 artPathsIn 发出来的一模一样（都不带 'mimi/'） */
+body[data-daypart="dawn"]  .msp-bg{background-image:url('背景/清晨.png'),url('清晨.png'),url('背景/清晨.webp'),url('清晨.webp')}
+body[data-daypart="day"]   .msp-bg{background-image:url('背景/白天.png'),url('白天.png'),url('背景/白天.webp'),url('白天.webp')}
+body[data-daypart="dusk"]  .msp-bg{background-image:url('背景/黄昏.png'),url('黄昏.png'),url('背景/黄昏.webp'),url('黄昏.webp')}
+body[data-daypart="eve"]   .msp-bg{background-image:url('背景/晚上.png'),url('晚上.png'),url('背景/晚上.webp'),url('晚上.webp')}
+body[data-daypart="night"] .msp-bg{background-image:url('背景/深夜.png'),url('深夜.png'),url('背景/深夜.webp'),url('深夜.webp')}
 .mspace-top{position:absolute;top:calc(14px + env(safe-area-inset-top));left:0;right:0;z-index:3;
   display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
 .mspace-top .msp-t{font-size:15px;font-weight:800;letter-spacing:7px;color:rgba(255,242,249,.92);
@@ -826,7 +827,7 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
   transform:scale(calc(1 + var(--gvp,0) * .45))}
 .gv-edge .gve-name{font-size:11px;font-weight:800;color:#33415c;padding:3px 8px;border-radius:999px;white-space:nowrap;max-width:100%;
   background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(30,50,90,.2)}
-/* v1.7.3 卡片上的插画（mimi/ 里那几张，见 CARD_IMG）：有图时箭头和图标圈让位，
+/* v1.7.3 卡片上的插画（她画的那几张，见 CARD_IMG）：有图时箭头和图标圈让位，
    那一格尺寸由 --gw 定死（= PullMini.CARD_W，一个数说了算）
    没图的那版（箭头 + 图标圈）也占同样高的一格：整张卡片就那么高（PullMini.CARD_H），
    她的站位永远算得准。文件不在 / 图裂了 → 自己摘掉插画（img-miss），退回箭头那版 */
@@ -1119,7 +1120,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.7.15', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.7.16', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -1547,7 +1548,7 @@ const CONFIG = {
   },
   /* ── 她会动了 v1.6a：她的身体（表情差分 / Q版 / 动作图）、情绪、动作、敏感度 ──
      ★ 全部数值和槽位表都在这一块，实机手感要调就调这里
-     ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（mimi/ 文件夹）> 旧版「看板娘.png」> 内置小可爱
+     ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（那 6 个图文件夹）> 旧版「看板娘.png」> 内置小可爱
        ——缺哪一张都不影响跑，只是那一处用回普通的样子 */
   BODY:{
     /* 槽位表：form（形态）→ [[key, 名字], …]；key='base' 是这一形态的「普通」那张 */
@@ -1565,7 +1566,7 @@ const CONFIG = {
     },
     /* 情绪 → 用哪张表情差分（缺这张就自动回落到「普通」） */
     EMO_SLOT:{happy:'happy', worried:'sad', sad:'sad', angry:'angry', sleepy:'sleepy', shy:'shy', neutral:'base'},
-    /* 槽位名 → mimi/ 里的**文件名**（不一样时才要写一条）。
+    /* 槽位名 → 她那个文件的**文件名**（不一样时才要写一条）。
        v1.7.14：害羞这张她画的名字就叫「害羞.png」——她不用为了配合代码改名，
        改代码配合她的文件名（跟上一条规矩：图片归她、代码归我） */
     BUILTIN_FILE:{shy:'害羞'},
@@ -1586,13 +1587,13 @@ const CONFIG = {
     DRIFT:{EMOS:['neutral','neutral','neutral','shy'], MIN_MS:30000, MAX_MS:60000},
     /* 忙碌页面里她会以 Q版 站在右下角（她的页面不重复出现——那儿本来就是她的地方） */
     HER_PAGES:['mgrow','moutfit','mcons','mdairy','mtalk'],
-    /* 系统默认的她（v1.6.1）：住在 mimi/ 文件夹，文件名由槽位名推出来——
+    /* 系统默认的她（v1.6.1）：住在网站根目录那几个图文件夹里（v1.7.16 前是 mimi/），文件名由槽位名推出来——
        她长什么样、做什么表情，换文件就行，一行代码都不用动。
        缺哪张就自动往后退：这张脸的文件 → 普通 → 旧版看板娘.png → 内置小可爱 */
     BUILTIN_DIR:'mimi/',
     BUILTIN_BASE:{normal:'normal', q:'q', acts:'normal'}
   },
-  /* ── 她的房间背景（v1.7.3）：她的空间的背景按时间段换（图在 mimi/，名字就是时段名）──
+  /* ── 她的房间背景（v1.7.3）：她的空间的背景按时间段换（图在她的图文件夹里，名字就是时段名）──
      ★ 要改「几点算哪个时段」就改这张表的 from/to（当天第几分钟：5*60 = 05:00）
      ★ from > to 的那一段是跨夜的（深夜 23:00 → 次日 05:00）
      ★ 哪张图不在（或换名字）都不要紧：那段时间就用回原来那套紫夜渐变 */
@@ -1622,11 +1623,12 @@ const CONFIG = {
     SAY_CHANCE:0.5           // 小动作之后顺口说一句的概率（走 Her.say 的频率门）
   },
   /* ── 序列帧 v1.7.12：她一帧一帧画的「动作」，播放器按这张表播 ──
-     ★ 她画图的地方：mimi/动作/<文件夹>/01.png、02.png、03.png（每个动作三帧：起 / 中 / 收）
+     ★ 她画图的地方：网站根目录的「动作」文件夹里一个动作一个子文件夹（即 动作/<文件夹>/01.png…），
+       每个动作三帧：起 / 中 / 收（代码里那个名字带 'mimi/' 记号，只是记号，不是真文件夹）
      ★ 名字对不上、图没画完、文件夹还没建 —— 一律当她没演，回落成小动作+台词，绝不报错
      ★ 一个动作几帧、来回摆几遍，全在这张表上（改这里不影响她画图） */
   SEQ:{
-    DIR:'动作',              // 帧住在 mimi/动作/<文件夹>/ 下面（她一个动作一个文件夹，一次拖 3 张）
+    DIR:'动作',              // 帧住在「动作」文件夹下面的 <文件夹>/ 里（她一个动作一个文件夹，一次拖 3 张）
     FRAMES:3,                // 每个动作几张（01/02/03）
     FRAME_MS:160,            // 每帧停多久（≈ 每秒 6 帧，够「动」又不费电）
     HOLD_MS:600,             // 演完之后让收尾那帧多停一拍（不然一收就切回原脸，像没演完）
@@ -4445,7 +4447,7 @@ function shellHtml(hide, small){
    9. Views 视图渲染（首页/待办/空间/节律表/设置）
    ══════════════════════════════════════════════════════════════ */
 const Views = {
-  /* —— 立绘层（首页与「她的空间」共用）：她的身体槽位 > 现穿着的那套 > 系统默认的她（mimi/）> 旧版「看板娘.png」 > 内置小可爱 ——
+  /* —— 立绘层（首页与「她的空间」共用）：她的身体槽位 > 现穿着的那套 > 系统默认的她（她的图文件夹）> 旧版「看板娘.png」 > 内置小可爱 ——
      force=true 时无视「隐藏看板娘」设置（她的空间里她必须在场）
      v1.6a：外面多了两层——.mascot-anim 是「姿势」（露头/走近/坐下…），#mascot 是「冲动」（蹦跳/吓一跳…）；
      用户的摆位在 .mascot-pos 的内联 transform 上，动作层绝不碰它 */
@@ -5244,7 +5246,7 @@ const Views = {
           '</div>'
         : '<div class="hint" style="color:var(--text)">这个按钮要在「部署在网上、装到手机主屏幕」的形态下才有用'+
           '（电脑上直接双击打开的那个文件用不到，它本来就是本地的、不存在刷新问题）。</div>')+
-      '<div class="hint">你往 mimi/ 里丢了新图、软件里却没变？先点上面这个按钮。还不行就把主屏幕上的图标删掉重装一次'+
+      '<div class="hint">你往那 6 个图文件夹里丢了新图、软件里却没变？先点上面这个按钮。还不行就把主屏幕上的图标删掉重装一次'+
         '（重装前先在上面「数据与备份」里导出一份备份）。</div>'+
     '</div></section>';
     const storageMode =Store.mode==='idb' ? '大容量模式 · 可用约 '+Store.capacityText() : Store.mode==='ls' ? '兼容模式 · 约 5MB 上限' : '当前浏览器无法保存数据';
@@ -5314,7 +5316,7 @@ const Outfit = {
     S.settings.mascotId = id || null;
     saveSettings();
     scheduleRender();
-    UI.toast(id ? ('已换上' + this.name(id)) : '已换回系统默认的她（mimi/ 文件夹）');
+    UI.toast(id ? ('已换上' + this.name(id)) : '已换回系统默认的她（那 6 个图文件夹）');
   },
   upload(){
     const fi = document.getElementById('file-input');
@@ -6548,7 +6550,7 @@ const Mascot = {
    9.585 她会动了（v1.6a）：她的身体 HerBody / 情绪 Emo / 动作导演 Director /
          摇一摇 Shake / 忙碌页角落的她 QCorner
    ★ 零迁移：新数据只挂在 settings 上（herAssets / herMood / herCornerAsked / herShake）
-   ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（mimi/ 文件夹）> 旧版「看板娘.png」> 内置小可爱
+   ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（那 6 个图文件夹）> 旧版「看板娘.png」> 内置小可爱
      ——只传一张「开心」也能跑，其余地方用回普通的样子；系统默认的她也是同一套回退（缺哪个表情就退 normal.png）
    ★ 动作分两层，都不碰你的摆位（.mascot-pos 的内联 transform 永远是老大）：
      · 「冲动」加在 #mascot 上（keyframes，播完摘掉，与 mascot-hop 同一套手感）
@@ -6556,7 +6558,15 @@ const Mascot = {
    ══════════════════════════════════════════════════════════════ */
 /* ── 同一个名字要试的一串地址（v1.7.6 起两种后缀 / v1.7.7 起分文件夹）──
 
-   两个轴：**后缀**（她画的 .png / 我压的 .webp）× **文件夹**（mimi/ 下面 5 个家）。
+   ★★ v1.7.16（2026-09-14）：她那些文件夹**从 mimi/ 里搬到了网站根目录**。
+     为什么搬：GitHub 网页上传一次最多 100 个文件，mimi/ 整个文件夹早超了，她传不动；
+     拆成 6 个文件夹一次拖一个才传得上去，而拆出来的文件夹只能放在网站最外层。
+     代码这边只改**一处**：artPathsIn 发出去的地址不再带 'mimi/' 那一截。
+     ⚠️ 所以 'mimi/' 这个前缀现在只是**记号**（＝「这个名字是她的图，要满世界找」），
+        不是真文件夹：CONFIG 里、builtinFile()、cardImg()、seqFrameName() 全都照旧写 'mimi/xxx.png'，
+        **只有真正发给浏览器的地址不带它**（看板娘.png 这种不带记号的 = 就一个地址）。
+
+   两个轴：**后缀**（她画的 .png / 我压的 .webp）× **文件夹**（根目录下的 6 个家）。
    展开出来的顺序 = 依次要试的地址，两条规矩：
 
    ★ 规矩一：**所有 PNG 都排在所有 .webp 前面**（后缀在外层循环）
@@ -6565,16 +6575,16 @@ const Mascot = {
      但反过来写的话，她新画一张「待办.png」会被旧的「待办.webp」悄悄盖住 ——
      换图就白换了（换图零代码是红线，不能在这儿破）。
 
-   ★ 规矩二：**她的图放哪个文件夹都找得到**（先自家，再根目录，再另外四个）
+   ★ 规矩二：**她的图放哪个文件夹都找得到**（先自家，再网站根目录，再另外几个家）
      为什么分文件夹：GitHub 网页上传一次提交最多 100 个文件，她得手动拖 ——
-     图分进 5 个家，每个一次拖完，图再多也不撞上限。
-     为什么还要找「别人家」和根目录：她可能压根不记得该放哪一格，或者照老习惯平铺在 mimi/ 根下。
+     图分进几个家，每个一次拖完，图再多也不撞上限（v1.7.16 起这 6 个家直接住在网站根目录）。
+     为什么还要找「别人家」和根目录：她可能压根不记得该放哪一格，或者照老习惯把图平铺在外层。
      只要文件名叫对了，丢哪儿都生效 —— 这才是真的「零代码换图」。
 
-   代价：部署那份 mimi/ 里只有 .webp 时，那一串 PNG 请求会各自 404 一次。
+   代价：部署那份里只有 .webp 时，那一串 PNG 请求会各自 404 一次。
    不占带宽（404 没有正文）、不报错，而且开机那次 warm 会提前把结果拿回来。 */
 const ART_EXT  = ['.png', '.webp'];
-const ART_DIRS = ['表情', '动作', '卡片', '背景', '过渡'];   // mimi/ 下的 5 个家（根目录不在这儿，单独算）
+const ART_DIRS = ['表情', '动作', '卡片', '背景', '过渡'];   // 网站根目录下的 5 个家（根目录不在这儿，单独算；她另建的「对话表情差分」还没接进来，不在候选里）
 const ART_FACE = ['normal', 'happy', 'sad', 'angry', 'sleepy', 'q', 'q-happy',
                   '害羞', '脸红'];   // v1.7.14：她新画的两张（中文名，在「表情」家）
 const ART_ACT  = ['sit', 'sleep', 'startle', 'peek', 'pull', 'pull-hard', '被拖'];
@@ -6602,18 +6612,20 @@ function artFolder(base){
   }catch(e){}                                       // PAGE_META 还没求值（极早调用）→ 当认不出来
   return null;
 }
-/* 一个后缀、一个名字 → 该试的 6 个地址（自家 → 根目录 → 另外四个家） */
+/* 一个后缀、一个名字 → 该试的一串地址（自家 → 网站根目录 → 另外几个家）
+   ⚠️ 这里就是 v1.7.16 唯一的「去掉 mimi/」的地方 —— 名字传进来时带着那个记号，
+      发出去的地址一律不带（见上面注释：6 个家现在住在网站根目录） */
 function artPathsIn(base, ext){
   /* ★ v1.7.12：名字里自带路径的（她画的序列帧 mimi/动作/挥手/01.png）→ **就这一个地址**。
      这种名字是她自己分的文件夹，不用猜「它该住哪儿」；不特殊处理的话，
-     artFolder 认不出来 → 会把同一个名字往 5 个家里各拼一遍，
-     凭空多出 10 个绝不会存在的地址（每张帧白探 10 次，21 张就是 200 多次无用请求） */
-  if(base.indexOf('/') >= 0) return ['mimi/' + base + ext];
+     artFolder 认不出来 → 会把同一个名字往几个家里各拼一遍，
+     凭空多出十几个绝不会存在的地址（每张帧白探十几次，21 张就是 200 多次无用请求） */
+  if(base.indexOf('/') >= 0) return [base + ext];
   const home = artFolder(base);
   const out = [];
-  if(home) out.push('mimi/' + home + '/' + base + ext);
-  out.push('mimi/' + base + ext);                   // 根目录：她的老习惯，也是已部署那份的位置
-  for(const d of ART_DIRS) if(d !== home) out.push('mimi/' + d + '/' + base + ext);
+  if(home) out.push(home + '/' + base + ext);
+  out.push(base + ext);                             // 网站根目录：她的老习惯，也是平铺那份的位置
+  for(const d of ART_DIRS) if(d !== home) out.push(d + '/' + base + ext);
   return out;
 }
 /* 一个名字 → 该依次试的一串地址（**先把 PNG 那 6 个试完，再轮到 .webp 那 6 个**） */
@@ -6635,7 +6647,8 @@ function artCands(u){
 function artRest(u){ return artCands(u).slice(1); }
 
 /* ── v1.7.12 序列帧的地址 ────────────────────────────────────────
-   她画的动作帧住在 mimi/动作/<文件夹>/01.png、02.png、03.png（见 CONFIG.SEQ.LIST）。
+   她把动作帧画在网站根目录的「动作」文件夹里：动作/<文件夹>/01.png、02.png、03.png（见 CONFIG.SEQ.LIST）。
+   下面拼出来的名字带 'mimi/' 记号（逻辑名，见 artPathsIn），发出去的地址不带。
    帧号从 0 开始数（内部索引），文件名从 01 开始写（她看得懂的那个）。
    ★ 一个帧名字只展开 2 个候选（.png 与它的 .webp）——名字里带着完整路径，
      不用猜它该住哪个家（见 artPathsIn 里那条）。PNG 依旧排在 .webp 前面。 */
@@ -6650,7 +6663,7 @@ function seqCands(id, i){
   return n ? artCands(n) : [];
 }
 /* ── v1.7.13 Q版专用帧的地址 ─────────────────────────────────────
-   同上，只是住在 mimi/动作/q-<文件夹>/ 里（q- 前缀 = Q版专用，她自己画的小帧）。
+   同上，只是住在「动作」文件夹的 q-<文件夹>/ 里（q- 前缀 = Q版专用，她自己画的小帧）。
    忙碌页右下角那个 Q版优先播这一组；没画 → 回落成正常帧缩小了播（v1.7.12 的样子）。 */
 function seqFrameNameQ(id, i){
   const d = (CONFIG.SEQ.LIST || {})[id];
@@ -6690,7 +6703,7 @@ const HerBody = {
     for(const f of this.forms()){ const g = this.assets()[f] || {}; for(const k in g) if(g[k]) out.push(g[k]); }
     return out;
   },
-  /* 系统默认的她住在 mimi/ 文件夹：文件名由槽位名推出来（普通→normal.png、开心→happy.png、
+  /* 系统默认的她住在根目录那几个图文件夹里（v1.7.16 前是 mimi/）：文件名由槽位名推出来（普通→normal.png、开心→happy.png、
      Q版开心→q-happy.png、动作→sit.png…）。传过图时用传的，没传过就从这里取 */
   builtinFile(form, key){
     const B = CONFIG.BODY.BUILTIN_BASE;
@@ -6704,13 +6717,13 @@ const HerBody = {
     return CONFIG.BODY.BUILTIN_DIR + name + '.png';
   },
   /* ── 「有没有都行」的动作图（v1.7.3 起：拉页面的小拉 / 用力拉）──
-     该用哪张：你传的 > mimi/<key>.png；都没有 = null（那就用回 Q版 + 姿势替身，什么都不影响）
+     该用哪张：你传的 > 她画的那张（逻辑名 mimi/<key>.png）；都没有 = null（那就用回 Q版 + 姿势替身）
      back = 这张图裂了之后接力用哪张（永远先回到她平常的样子，不会变成一张不相干的图）
-     ⚠️ mimi/ 里那张要先被 warm() 探到才用：那种文件「不在」是常态，
+     ⚠️ 她画的那张要先被 warm() 探到才用：那种文件「不在」是常态，
         不能探到一半先给她闪一张裂图（探之前一律当没有） */
   _probe:{}, _img:{},        // _img = 正在探的那几张图：**得攥着引用**
   warm(files){
-    /* v1.7.6：每个名字连它的另一个后缀一起探（mimi/ 里放的是 .webp 就先探到那张，
+    /* v1.7.6：每个名字连它的另一个后缀一起探（她那边放的是 .webp 就先探到那张，
        放的是 .png 就先探到那张）——两边都探过，probed(谁) 都答得上来 */
     const all = [];
     for(const f of (files || [])) for(const c of artCands(f)) all.push(c);
@@ -6774,7 +6787,7 @@ const HerBody = {
     const p = this.pick(form, key);
     const fb = (p.fb && p.fb.length) ? ' data-fb="'+esc(JSON.stringify(p.fb))+'"' : '';
     /* 图裂了：**先把名单里的下一张试完，名单走空了才露出内置小可爱**（v1.7.6 修）
-       ⚠️ 这个顺序不能反：名单第一项永远是她画的 .png，而上传那份 mimi/ 里只有 .webp，
+       ⚠️ 这个顺序不能反：名单第一项永远是她画的 .png，而上传那份只有 .webp，
           所以第一张**必然 404 一次**。要是写成「先亮小可爱、再换下一张」，
           每次开机小可爱都会露出来——一直挂在那儿，直到某次换脸被 paintHer 顺手藏回去
           （真机实测：主页立绘和角落 Q版都会露，e2e 是采样点选晚了才没抓到）。
@@ -6828,7 +6841,7 @@ const HerBody = {
     if(this.any()) return '你上传的「她的身体」';
     const mId = S.settings.mascotId;
     if(mId === 'placeholder') return '内置小可爱';
-    return mId ? Outfit.name(mId) : '系统默认的「米米」（mimi/ 文件夹）';
+    return mId ? Outfit.name(mId) : '系统默认的「米米」（那 6 个图文件夹）';
   }
 };
 /* 身体槽位的上传（一次一张：点哪个槽位就补哪张） */
@@ -6932,7 +6945,7 @@ function paintHer(){
       const slot = Emo.slot();
       /* ★ v1.7.13：Q版也跟心情换脸——但只换她**画过**的 q- 槽位（slots('q') = base/happy）。
          不开心/生气/困 这几个她还没画 Q版差分 → 落回 base；
-         不这么挡着的话，pick 会去试 mimi/表情/q-sad.png 那一长串不存在的地址（每夜每 90 秒一次） */
+         不这么挡着的话，pick 会去试「表情/q-sad.png」那一长串不存在的地址（每夜每 90 秒一次） */
       const key = (form === 'normal') ? slot
         : (form === 'q' ? (HerBody.slots('q').some(s => s[0] === slot) ? slot : 'base') : 'base');
       const p = HerBody.pick(form, key);
@@ -8096,7 +8109,7 @@ const Grow = {
   },
   /* 迷你头像（v1.6a）：q=true 用「Q版」那张（投喂演出）；否则用正常形态的迷你版——
      她说话的地方（她眼中的我 / 她的日记 / 她的问题）也跟着此刻的心情换脸。
-     没传过图就照旧回退：现穿着的那套 > 系统默认的她（mimi/）> 内置占位小可爱 */
+     没传过图就照旧回退：现穿着的那套 > 系统默认的她（她的图文件夹）> 内置占位小可爱 */
   _miniHtml(q){
     return q ? HerBody.imgHtml('q', 'base', {small:true})
              : HerBody.imgHtml('normal', Emo.slot(), {small:true});
@@ -8541,7 +8554,7 @@ const MSPACE_PULL_META = {
 };
 /* ⚠️ v1.7.6 起：下面这些函数返回的地址**一律是 .png 那个名字**，它只是「第一个候选」——
    真去找图的是 artCands（同名 .webp 排第二）。所以别把这里的 .png 改成 .webp：
-   一改，她新画一张 PNG 丢进 mimi/ 就赢不了了（换图零代码靠的就是这个顺序） */
+   一改，她新画一张 PNG 丢进任何一个图文件夹就赢不了了（换图零代码靠的就是这个顺序） */
 /* 提示卡上的插画（v1.7.3）：默认看 mimi/<页面名>.png——
    我们的共识.png / 待办.png / 节律表.png…（她的空间那四页同理：等级成长.png 等，放进去就有）
    名字和页面名对不上的，在 FILE 里点一下名（比如「空间」这页的标题是「可能性空间」）
@@ -8796,12 +8809,17 @@ const Gestures = {
       "else{this.remove();}";
     h += Object.keys(meta).map(d=>{
       const pm = meta[d], m = PAGE_META[pm.page];
-      const art = cardImg(pm.page), ready = cardReadyImg(pm.page);
+      const artName = cardImg(pm.page), rdyName = cardReadyImg(pm.page);
+      /* ⚠️ v1.7.16：占位那两张（art / ready）**必须是发出去的地址**——
+         cardImg() 给的是逻辑名（带 'mimi/' 记号），直接写进 src 就是请求一个不存在的
+         文件夹，白白先 404 一次。取候选名单里打头那张（她那个文件夹 → 根目录 → …）。 */
+      const art = artName ? artCands(artName)[0] : null;
+      const ready = rdyName ? artCands(rdyName)[0] : null;
       /* v1.7.6：每张图后面跟一串「还能试谁」——先是同名另一个后缀（.webp），再是通用那张。
          例子：待办.png 不在 → 待办.webp → 松手.png → 松手.webp */
-      const artAlt = artRest(art).filter(x => x !== art);
-      const rdyAlt = artRest(ready).concat(artCands(CARD_READY))
-                        .filter((x, i, a) => a.indexOf(x) === i && x !== ready);
+      const artAlt = artName ? artRest(artName).filter(x => x !== art) : [];
+      const rdyAlt = rdyName ? artRest(rdyName).concat(artCands(CARD_READY))
+                        .filter((x, i, a) => a.indexOf(x) === i && x !== ready) : [];
       return '<div class="gv-edge '+pm.edge+(art?' has-art':'')+'" data-dir="'+d+'" style="--gvc:'+m.color+';--gw:'+GW+'px">'+
                (art ? '<img class="gve-img" src="'+esc(art)+'" alt="" draggable="false"'+
                         (artAlt.length ? ' data-alt="'+esc(JSON.stringify(artAlt))+'"' : '')+
@@ -9027,7 +9045,7 @@ const PullMini = {
       const u = id ? Store.getImage(id) : null;
       if(u) return {src:u, fb, key:k};
     }
-    for(const k of keys){                           // ② mimi/ 里的文件（探到了才算数）
+    for(const k of keys){                           // ② 她画的那几个文件（探到了才算数）
       const f = HerBody.builtinFile('acts', k);
       const hit = f ? HerBody.warmed(artCands(f)) : null;   // v1.7.6：.png 不在就看同名 .webp
       if(hit) return {src:hit, fb, key:k};
