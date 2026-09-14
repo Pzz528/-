@@ -608,6 +608,8 @@ body[data-daypart="night"] .msp-bg{background-image:url('背景/深夜.png'),url
     rgba(18,11,32,.56) 46%,rgba(13,8,24,.86) 78%,rgba(11,7,20,.92) 100%);
   padding:0 0 calc(10px + env(safe-area-inset-bottom));
   animation:hsIn .26s cubic-bezier(.2,1.1,.4,1)}
+.home-story.instant{animation:none}               /* v1.14.0：接着读的重画不带入场动画（防闪） */
+.home-story.instant .st-line{animation:none}
 @keyframes hsIn{0%{transform:translateY(22px);opacity:0}100%{transform:none;opacity:1}}
 .hs-head{display:flex;align-items:center;gap:8px;padding:9px 12px 2px}
 .hs-title{flex:1;min-width:0;text-align:center;font-size:13px;font-weight:800;letter-spacing:1px;
@@ -1309,7 +1311,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.12.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.14.0', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -6201,6 +6203,155 @@ const Alarms = {
     }catch(e){}
   }
 };
+/* ══════════════════════════════════════════════════════════════
+   v1.13.0 声音系统：短音效先代码合成（零文件），「声音/」里有同名文件就覆盖（开机探到才用）；
+   BGM = 声音/bgm.mp3 一条循环（可选，没有就安静兜底）。
+   无音频环境静默降级：顶层零构造、一切懒建、全 try/catch（冒烟环境没有 AudioContext 也能跑）。
+   ⚠️ 复用 Alarms._ctx（iOS 限 4 个 AudioContext）；解锁与闹钟共用同一次「第一下点屏幕」。
+   ══════════════════════════════════════════════════════════════ */
+const Snd = {
+  _files:{}, _probed:{}, _probeKeep:{},     // 探到的用户文件 / 探过的答案 / 探的过程中攥住的引用
+  _bgmEl:null, _sfx:null, _last:null,       // _last = 最后一次 play 的名字（e2e 探针专用，逻辑不看它）
+
+  ctx(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      if(!Alarms._ctx) Alarms._ctx = new AC();
+      return Alarms._ctx;
+    }catch(e){ return null; }
+  },
+  /* 与 Alarms.unlockAudio 在同一个 once 监听里叫：resume 共享 ctx + 拉起 BGM */
+  unlock(){
+    this.ctx();
+    try{ if(Alarms._ctx && Alarms._ctx.state === 'suspended') Alarms._ctx.resume(); }catch(e){}
+    try{ if(this._bgmEl) this._bgmEl.play().catch(function(){}); }catch(e){}
+  },
+  /* 23:00~4:00 她收声：音量自动减半（懒计算，不挂定时器） */
+  nightFactor(now){
+    const h = new Date(now == null ? Date.now() : now).getHours();
+    return (h >= CONFIG.SND.NIGHT_FROM || h < CONFIG.SND.NIGHT_TO) ? 0.5 : 1;
+  },
+  on(){ return S.settings.soundOn !== false; },                      // 默认开
+  vol(){
+    return (CONFIG.SND.VOL[S.settings.soundVol] != null ? CONFIG.SND.VOL[S.settings.soundVol] : 1) * this.nightFactor();
+  },
+  /* 设置变了 / 回到前台 / 开机时刷一遍（总开关 × 音量档 × 深夜系数，单一来源不双重乘算） */
+  apply(){
+    try{
+      const g = this.on() ? this.vol() : 0;
+      if(this._sfx) this._sfx.gain.value = g;
+      if(this._bgmEl){
+        const v = (this.on() && S.settings.bgmOn !== false)
+          ? (CONFIG.SND.BGM_VOL[S.settings.soundVol] != null ? CONFIG.SND.BGM_VOL[S.settings.soundVol] : 0.18) * this.nightFactor()
+          : 0;
+        this._bgmEl.volume = v;
+        if(v <= 0){ try{ this._bgmEl.pause(); }catch(e){} }
+        else if(this._bgmEl.paused && !document.hidden){ this._bgmEl.play().catch(function(){}); }
+      }
+    }catch(e){}
+  },
+  boot(){ this.apply(); },
+
+  /* 单振荡器 + 指数包络。挂组 gain，自身不管设置（避免双重乘算） */
+  tone(freq, dur, opt){
+    const ctx = this.ctx(); if(!ctx) return false;
+    opt = opt || {};
+    try{
+      if(ctx.state === 'suspended'){ ctx.resume().catch(function(){}); return false; }
+      const t0 = ctx.currentTime + (opt.delay || 0);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = opt.type || 'sine';
+      o.frequency.setValueAtTime(freq, t0);
+      if(opt.to) o.frequency.exponentialRampToValueAtTime(opt.to, t0 + dur);
+      const v = Math.max(0.0001, ((opt.vol != null ? opt.vol : 1) * 0.3));   // 0.3 = 温和底
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(v, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      const out = this._sfxGain(); if(!out) return false;
+      o.connect(g); g.connect(out);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+      return true;
+    }catch(e){ return false; }
+  },
+  _sfxGain(){
+    try{
+      if(this._sfx) return this._sfx;
+      const ctx = this.ctx(); if(!ctx) return null;
+      this._sfx = ctx.createGain();
+      this._sfx.gain.value = this.on() ? this.vol() : 0;
+      this._sfx.connect(ctx.destination);
+      return this._sfx;
+    }catch(e){ return null; }
+  },
+  /* 统一入口：文件覆盖优先，其次合成配方 */
+  play(name){
+    try{
+      const file = this._files[name];
+      if(file) return this.playFile(file);
+      const r = (CONFIG.SND.RECIPES || {})[name];
+      if(typeof r === 'function'){ r(this); this._last = name; return true; }
+      return false;
+    }catch(e){ return false; }
+  },
+  event(kind){ return this.play(kind); },      // Her.onEvent 的统一入口（与 EVENTS 表同名）
+
+  playFile(url){
+    try{
+      if(typeof Audio !== 'function') return false;
+      const a = new Audio(url);
+      a.volume = this.on() ? this.vol() : 0;   // 文件也吃深夜减半（音效不单独设开关）
+      a.play().catch(function(){});
+      return true;
+    }catch(e){ return false; }
+  },
+  /* 候选链：声音/ 文件夹优先、.mp3 → .m4a → 根目录（不设 .ogg，只会多白 404） */
+  cands(name){
+    const n = (CONFIG.SND.FILE || {})[name]; if(!n) return [];
+    return ['声音/' + n + '.mp3', '声音/' + n + '.m4a', n + '.mp3'];
+  },
+  /* 开机探测（照 HerBody.warm 的「探到才用 + 攥住引用」教训）：请求是同源 GET，
+     sw.js 的 cacheFirst 顺手就把文件（和 404）存了 → 之后播放零延迟、断网可听。
+     「刷新她的图」不纳入声音：发版必换缓存名 → 旧缓存整批作废 → 下次开机自动重探。 */
+  probeAll(){
+    if(typeof Audio !== 'function') return;
+    try{
+      Object.keys(CONFIG.SND.FILE || {}).forEach(name=>{
+        for(const u of this.cands(name)){
+          if(this._files[name]) break;                  // 这个配方已探到 → 换下一个配方
+          if(this._probed[u] !== undefined) continue;   // 这个地址问过（有没有都算）→ 不再问
+          this._probed[u] = false;
+          this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok && !this._files[name]) this._files[name] = u; });
+        }
+      });
+      for(const u of ['声音/bgm.mp3','声音/bgm.m4a','bgm.mp3']){
+        if(this._bgmEl) break;
+        this._probeOne(u, ok=>{ if(ok && !this._bgmEl) this._bgmEl = this.makeBgm(u); });
+      }
+    }catch(e){}
+  },
+  _probeOne(url, cb){
+    try{
+      const a = new Audio();
+      this._probeKeep[url] = a;                        // ⚠️ 攥住引用（元素被回收连 onload 一起没）
+      a.preload = 'auto';
+      a.oncanplaythrough = ()=>{ delete this._probeKeep[url]; cb(true); };
+      a.onerror = ()=>{ delete this._probeKeep[url]; cb(false); };
+      a.src = url;
+    }catch(e){ try{ cb(false); }catch(e2){} }
+  },
+  /* BGM：HTMLAudioElement（不走 AudioBufferSource——文件可能 2~4MB，解码要等 ctx 解锁；
+     element.volume 不依赖 ctx；loop 属性流式播放对手机最稳） */
+  makeBgm(u){
+    try{
+      const a = new Audio(u);
+      a.loop = true; a.preload = 'auto';
+      a.volume = 0;                                    // apply() 再定档
+      this.apply();
+      return a;
+    }catch(e){ return null; }
+  }
+};
 /* 闹钟弹窗（id 为空则新建） */
 function openAlarmFormModal(id){
   const a = id ? (S.alarms||[]).find(x=>x.id===id) : null;
@@ -6906,7 +7057,7 @@ const Actions = {
        ★ v1.8.1：剧情里这张脸是**常驻**的 —— 不挂闹钟，一直挂到下一段 / 合上（Storyline.showLine） */
     if(ln && !ln.sel) Storyline.showLine(ch, now);
     if(i + 1 >= L.length) Storyline.finish(ch.id, now);     // 这是最后一段 → 这一章讲完了
-    scheduleRender();
+    Storyline.refreshPanel();   // v1.14.0：只换板不整屏重画（防闪）
   },
   'story-pick'(btn){
     const now = Date.now();
@@ -6922,7 +7073,7 @@ const Actions = {
     Storyline.add(now, 1);
     if(o.emo && typeof Emo !== 'undefined') Emo.set(o.emo, '剧情', now);
     if(typeof Talk !== 'undefined') Talk.showFace(o.face, o.emo, true);   // 常驻（同剧情那一段）
-    scheduleRender();
+    Storyline.refreshPanel();   // v1.14.0：只换板不整屏重画（防闪）
   },
   /* ── ★ v1.8.0：全部时间轴日记 ── */
   'goto-tdiary'(){ S.tdMonth = ''; goView('tdiary'); },
@@ -7152,6 +7303,29 @@ const Actions = {
     saveSettings();
     scheduleRender();
     UI.toast(S.settings.transMode === 'tap' ? '进页过渡：点一下才进去' : '进页过渡：自动进页');
+  },
+  /* —— 声音（v1.13.0）—— */
+  'sound-toggle'(btn){
+    S.settings.soundOn = btn.dataset.on !== '0';
+    saveSettings();
+    if(typeof Snd !== 'undefined') Snd.apply();
+    scheduleRender();
+    UI.toast(S.settings.soundOn ? '声音：开' : '声音：关');
+  },
+  'sound-vol'(btn){
+    S.settings.soundVol = btn.dataset.level || 'mid';
+    saveSettings();
+    if(typeof Snd !== 'undefined') Snd.apply();
+    scheduleRender();
+    if(typeof Snd !== 'undefined' && S.settings.soundOn !== false) Snd.play('levelUp');   // 顺手试听一耳朵
+    UI.toast({'low':'音量：轻','mid':'音量：中','high':'音量：响'}[S.settings.soundVol]);
+  },
+  'bgm-toggle'(btn){
+    S.settings.bgmOn = btn.dataset.on !== '0';
+    saveSettings();
+    if(typeof Snd !== 'undefined') Snd.apply();
+    scheduleRender();
+    UI.toast(S.settings.bgmOn ? '背景音乐：开' : '背景音乐：关');
   },
   /* —— 看板娘互动 / 她的空间（v1.3：等级成长/服装/她眼中的我 都在她的空间里） —— */
   /* —— 她的衣柜（服装页）—— */
@@ -8903,6 +9077,25 @@ const Views = {
         : '拉出页面 / 长按水晶球之后，她的画从模糊到清晰（共 1 秒）就自动进页。想多看一会儿画，就切到「点击跳转」。')+
       '</div>'+
     '</div></section>';
+    /* 声音（v1.13.0）：音效默认代码合成（零文件零上传）；「声音/」文件夹放同名文件即可替换；
+       BGM = 声音/bgm.mp3 一条循环（可选，没有就安静）。深夜 23:00~4:00 她收声，音量自动减半 */
+    const sndOn = S.settings.soundOn !== false;
+    const sndVol = S.settings.soundVol || 'mid';
+    const bgmOn = S.settings.bgmOn !== false;
+    h += '<section class="sec"><h2 class="sec-title">声音</h2><div class="card pad">'+
+      '<div class="field"><label>声音开关</label>'+
+        '<div class="chip-row"><button class="chip'+(sndOn?' on':'')+'" data-action="sound-toggle" data-on="1">开</button>'+
+        '<button class="chip'+(sndOn?'':' on')+'" data-action="sound-toggle" data-on="0">关</button></div></div>'+
+      '<div class="field"><label>音量</label>'+
+        '<div class="chip-row">'+
+        [['low','轻'],['mid','中（推荐）'],['high','响']].map(o=>
+          '<button class="chip'+(sndVol===o[0]?' on':'')+'" data-action="sound-vol" data-level="'+o[0]+'">'+o[1]+'</button>').join('')+
+        '</div></div>'+
+      '<div class="field"><label>背景音乐（声音/bgm.mp3，可选）</label>'+
+        '<div class="chip-row"><button class="chip'+(bgmOn?' on':'')+'" data-action="bgm-toggle" data-on="1">开</button>'+
+        '<button class="chip'+(bgmOn?'':' on')+'" data-action="bgm-toggle" data-on="0">关</button></div></div>'+
+      '<div class="hint">音效是现场合成的，不占空间；把文件放进「声音/」文件夹（如 声音/完成待办.mp3）就能替换成你自己的。23:00~4:00 她收声，音量自动减半。</div>'+
+    '</div></section>';
     /* 她说话的频率（v1.4：她会主动开口了） */
     const herLv = S.settings.herVoice || 'normal';
     const herOpts = [{k:'loud',n:'多'},{k:'normal',n:'正常（推荐）'},{k:'quiet',n:'少'},{k:'off',n:'安静'}];
@@ -9600,6 +9793,7 @@ const Her = {
     try{
       const g = (CONFIG.HER.EVENTS || {})[kind];
       if(!g) return false;
+      if(typeof Snd !== 'undefined') Snd.event(kind);   // v1.13.0：事件必有反馈声（没开口也响）
       data = data || {};
       const now = Date.now();
       /* ① 帧：演上了就不放 CSS 小动作（两套一起上会打架）；没图 = 她还没画 → 回落小动作 */
@@ -9725,7 +9919,8 @@ const Her = {
       c.was = Grow.streakDaysUpTo(before);
       return this.say('missStreak', c, {key:'her-streakbrk-'+dk, sub:'她惦记着', go:()=>goView('mcons')});
     }
-    /* ③ 问候 */
+    /* ③ 问候（v1.13.0：配一声「问候」——断签那条不响，深夜收声） */
+    if(typeof Snd !== 'undefined') Snd.event('greet');
     return this.say('greet', c, {key:'her-greet-'+dk, sub:'她'});
   },
 
@@ -9830,6 +10025,7 @@ const Talk = {
   _lastAsk:'',      // 她最近一次是拿哪条由头问的（问句里就带着这个由头）
   _pool:[],         // ★ v1.7.18：这一轮洗好的话题顺序（见 three）
   _pi:0,            // 已经端到第几个了
+  _boxShown:false,  // ★ v1.14.0：你点过她 → 那串「........」对话框才留出来（她：不要常态露出）
 
   /* ── 对话框（那个「闲着」的状态）──
      什么时候留框：纯净页 + 操控台没开着。其余页面清掉（忙碌页的角上塞个框会挡按钮） */
@@ -9839,7 +10035,11 @@ const Talk = {
        ★ v1.9.0：storyBox 这一份还是在这儿给（纯净页 + 没在读剧情时才有），
          但**挂不挂出去由那条气泡自己定**（点开后的「想跟我说点什么？」带 story:true 才挂） */
     const reading = (typeof Storyline !== 'undefined') && Storyline.on();
-    Bubbles.idleText = (on && !reading) ? CONFIG.TALK.HINT : '';
+    /* ★ v1.14.0（她点名的「对话框不要常态露出」）：那串「........」平时藏起来，
+       点过她（Mascot.tap 置 _boxShown）之后才留出来——点它还是老规矩弹话题。
+       离开纯净页/读剧情时照旧让开；回来若没再点她，就还是藏着 */
+    if(!on) this._boxShown = false;
+    Bubbles.idleText = (on && !reading && this._boxShown) ? CONFIG.TALK.HINT : '';
     Bubbles.storyBox = (on && !reading) ? CONFIG.STORYLINE.BOX : null;
     return on;
   },
@@ -10561,10 +10761,10 @@ const Storyline = {
     return h;
   },
   /* ── 整块台词板（纯净主页底下浮出来的那一块）── */
-  panelHtml(){
+  panelHtml(instant){
     const ch = this.scene();
     if(!ch) return '';
-    return '<div class="home-story" id="story-panel" role="region" aria-label="剧情">'+
+    return '<div class="home-story'+(instant ? ' instant' : '')+'" id="story-panel" role="region" aria-label="剧情">'+
       '<div class="hs-head">'+
         '<button class="hs-toc" data-action="story-toc">‹ 目录</button>'+
         '<span class="hs-title"><i class="hs-no">'+esc(this.noText(ch))+'</i>'+esc(ch.name)+'</span>'+
@@ -10574,6 +10774,18 @@ const Storyline = {
     '</div>';
   },
 
+  /* ★ v1.14.0：点「继续 ▸」/ 选项之后**只换台词板**，不整屏重画——
+     以前每次点一下都整屏 innerHTML 重建，板子的入场动画（hsIn/lvPop）跟着重播一遍，
+     就是她报的「过剧情点继续和屏幕，界面会一闪一闪的」。
+     instant 类 = 这次是「接着读」不是「刚翻开」→ 入场动画一律不播（见 CSS） */
+  refreshPanel(){
+    try{
+      const el = document.getElementById('story-panel');
+      if(!el){ if(typeof scheduleRender === 'function') scheduleRender(); return; }
+      el.outerHTML = this.panelHtml(true);
+      this.afterRender();
+    }catch(e){ if(typeof scheduleRender === 'function') scheduleRender(); }
+  },
   /* ── 重画之后：把台词面板滚到最新那一段（像翻到书的下一页）── */
   afterRender(){
     try{
@@ -11078,11 +11290,12 @@ const Mascot = {
     if(angry){
       /* 生气：不撒爱心，只说一句（走本地气泡，不受每日说话次数限制——这是她在回应你） */
       Emo.set('angry', '连戳', now);
-      buzz(110);
+      buzz(110); if(typeof Snd !== 'undefined') Snd.play('tapAngry');
       this.react('tapAngry', 3200);
     }else{
       /* 台词气泡（按当前等级取台词池） */
       this.say(this.randomLine(Grow.level()), 2600);
+      if(typeof Snd !== 'undefined') Snd.play('tap');
       /* 爱心粒子 */
       this.hearts();
       /* v1.7 点击必有变化：每戳必换脸——按连戳计数递进（1=开心 2=害羞 3=开心 4=担心，5=生气） */
@@ -11091,6 +11304,9 @@ const Mascot = {
     }
     /* 「戳她一下」好感 +1（30 秒冷却 + 每天最多 5 次——连戳不刷分，见 CONFIG.LOVE.SOURCES） */
     if(typeof Love !== 'undefined') Love.gain('tap', Date.now());
+    /* ★ v1.14.0：点过她 → 那串「........」对话框允许留出来（她拍板的两个动作：
+       点她出对话框 → 再点对话框弹话题） */
+    if(typeof Talk !== 'undefined'){ Talk._boxShown = true; try{ Bubbles.render(); }catch(e){} }
     /* 白圆黑星入口（几秒后收起）：长按进她的空间 / 长按回来。大小位置不用调钮：单指拖动、双指缩放 */
     this.showPortal();
   },
@@ -12239,7 +12455,7 @@ const Shake = {
       this._n = 0;
       Emo.set('angry', '你摇了手机', now);
       if(typeof Director !== 'undefined') Director.act('act-shake');
-      buzz(160);
+      buzz(160); if(typeof Snd !== 'undefined') Snd.play('shake');
       if(typeof Mascot !== 'undefined') Mascot.react('shakeAngry', 2600);
       return true;
     }
@@ -13735,6 +13951,7 @@ const Gestures = {
       root.classList.add('gv-tick');
       setTimeout(()=>{ try{ root.classList.remove('gv-tick'); }catch(e){} }, 300);
     }
+    if(typeof Snd !== 'undefined') Snd.play('magnet');   // v1.13.0：iPhone 没震动也有那一下「吸住」的轻响
     return ok;
   },
   /* ── 动画的小引擎（v1.11.0）：rAF + 弹簧/缓动，只写 CSS 变量 ──
@@ -13767,6 +13984,7 @@ const Gestures = {
   _springBack(){
     const root = document.getElementById('gesture-root');
     if(!root) return;
+    if(typeof Snd !== 'undefined') Snd.play('spring');   // v1.13.0：没拉够弹回那一下的软响
     const p0 = this._gvp, v0 = this.curve(p0);
     const s = { p:p0, i:this.iconP(p0), v:v0, r:this._ride };
     if(typeof PullMini !== 'undefined') PullMini.back();   // 她和那一簇一起弹回去
@@ -13790,6 +14008,7 @@ const Gestures = {
   _launch(dir){
     const pm = this._meta()[dir];
     if(!pm) return;
+    if(typeof Snd !== 'undefined') Snd.play('launch');   // v1.13.0：拉够松手「嗖」进页
     const page = pm.page;
     /* 她替你拉出页面 = 你回应了她的表演 → 好感 +1（预留来源 v1.5 起就等着这一天） */
     if(typeof Love !== 'undefined') Love.gain('pull', Date.now());
@@ -14253,7 +14472,16 @@ function renderView(){
     html = Views[S.view] ? Views[S.view]() : '';
     document.getElementById('hdr-title').textContent = VIEW_TITLES[S.view]||'';
   }
+  /* ★ v1.14.0：板本来开着的话，这次重画出来的板是「接着读」——入场动画不播
+     （不然点她一下 / 随便一次重画，板子就重播一遍 hsIn，看着一闪一闪） */
+  const storyWasOpen = !!document.getElementById('story-panel');
   root.innerHTML = html;
+  if(storyWasOpen){
+    try{
+      const sp2 = document.getElementById('story-panel');
+      if(sp2 && sp2.classList) sp2.classList.add('instant');
+    }catch(e){}
+  }
   /* ★ v1.7.15：立绘刚被换成新的一只 —— 正在播的帧跟着搬到新节点上接着演。
      纯净页（首页/她的空间）的她是随 innerHTML 一起重建的：不搬的话，
      她演到一半的帧留在**已经被扔掉**的旧节点上，你看到的是定格 */
@@ -14342,6 +14570,7 @@ function bootMain(){
   reconcileNow();
   applyBg();                // 应用自定义背景
   applyAnimLevel();         // 动画强度三档
+  if(typeof Snd !== 'undefined') Snd.boot();   // v1.13.0：按「开关×音量×深夜」刷一遍声音
   /* 拉页面那几张图（mimi/pull*.png，见 PullMini.allFiles）先探一次在不在：
      在 → 待会儿长按拖动就换成它；不在 → 一直用 Q版 + 姿势替身，不会闪一张裂图 */
   if(typeof HerBody !== 'undefined' && HerBody.warm && typeof PullMini !== 'undefined'){
@@ -14393,6 +14622,11 @@ function bootMain(){
           HerBody.warm(list);
         }catch(e){}
       }, 2600);
+    }
+    /* v1.13.0：声音文件探测（「声音/」里她放没放文件）延迟到 3 秒后才跑——探测是异步的，
+       而且第一次会整段下载她放的文件（被 sw 顺手缓存），别挡首屏 */
+    if(typeof Snd !== 'undefined' && Snd.probeAll){
+      setTimeout(()=>{ try{ Snd.probeAll(); }catch(e){} }, 3000);
     }
   }catch(e){}
   renderView();
@@ -14493,6 +14727,18 @@ function bootMain(){
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape') UI.closeModal();
   });
+  /* v1.13.0 通用按钮 tick：点任何 [data-action] 按钮都有一声极轻的响。
+     三个声音 chip（sound-toggle/sound-vol/bgm-toggle）除外——它们自己会响（试听/开关声），
+     叠着响反而乱。手势音走 pointer 处理器、不产生 [data-action] 点击，天然不叠 */
+  document.addEventListener('click', e=>{
+    try{
+      const t = e.target && e.target.closest ? e.target.closest('[data-action]') : null;
+      if(!t) return;
+      const a = t.getAttribute('data-action');
+      if(a==='sound-toggle' || a==='sound-vol' || a==='bgm-toggle') return;
+      if(typeof Snd !== 'undefined') Snd.play('ui');
+    }catch(e2){}
+  });
   /* 共享的隐藏文件框（v1.4.1 起支持多选）：回调统一收到「文件数组」，
      用几张由各处理器自己决定（multiple 每次都由调用方显式设置，避免串档） */
   document.getElementById('file-input').addEventListener('change', e=>{
@@ -14500,11 +14746,12 @@ function bootMain(){
     const files = e.target.files ? Array.from(e.target.files) : [];
     if(cb && files.length) cb(files);
   });
-  /* 首次交互解锁音频（闹钟提示音需要） */
-  document.addEventListener('pointerdown', function unlockAudio(){ Alarms.unlockAudio(); }, {once:true});
+  /* 首次交互解锁音频（闹钟提示音 + v1.13.0 声音系统都需要） */
+  document.addEventListener('pointerdown', function unlockAudio(){ Alarms.unlockAudio(); if(typeof Snd !== 'undefined') Snd.unlock(); }, {once:true});
   window.addEventListener('beforeunload', ()=>{ Store.set('heartbeat', {lastActiveAt:Date.now()}); });
   document.addEventListener('visibilitychange', ()=>{
-    if(document.hidden) return;
+    if(document.hidden){ if(typeof Snd !== 'undefined' && Snd._bgmEl){ try{ Snd._bgmEl.pause(); }catch(e){} } return; }
+    if(typeof Snd !== 'undefined') Snd.apply();          // v1.13.0：回前台按「开关×音量×深夜」重刷一遍
     const back = ()=>{
       Store.set('heartbeat', {lastActiveAt:Date.now()});
       reconcileNow();
