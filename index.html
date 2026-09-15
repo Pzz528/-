@@ -461,6 +461,14 @@ img{max-width:100%;display:block}
 .gl-src:last-of-type{border-bottom:none}
 .gl-src b{color:#E8618C;font-weight:700}
 .gls-ico{font-size:14px;flex:none}
+/* 她的本子（v1.18.0，在「我们的羁绊」页里）：一条条按时间倒序，新的在最上面；
+   ✎ 那种日期是浅蓝的 = 你自己写的那几行（她记的那些是灰的） */
+.achv-row{display:flex;gap:9px;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}
+.achv-row:last-of-type{border-bottom:none}
+.achv-d{flex:none;font-size:11.5px;color:var(--text-2)}
+.achv-t{font-size:13px;line-height:1.5;flex:1;min-width:0}
+.achv-row.mine .achv-d{color:#7FB2E5}
+.achv-empty{font-size:12.5px;color:var(--text-2);line-height:1.6;padding:2px 0 4px}
 .mcons-hero{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,rgba(255,226,240,.92),rgba(255,246,228,.88));
   border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:12px 14px;box-shadow:0 6px 16px rgba(220,150,180,.16)}
 .mcons-ava{width:56px;height:80px;flex:none;position:relative;display:flex;align-items:center;justify-content:center;
@@ -1331,7 +1339,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.17.9', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.19.0', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -1355,6 +1363,72 @@ const CONFIG = {
     FEED_SAY_CHANCE:0.35, // 喂食后说一句投喂台词的概率
     FEED_LINES:['谢谢！好好吃～','嗷呜，能量补充完成！','这个点心我最喜欢了！','吃完继续加油！','叮！收到你的努力啦'],
     SAY_MS:2600           // 台词气泡停留时长
+  },
+  /* ── 她的本子 v1.18.0：成就系统（她 2026-09-15 点名「我们要在我们的羁绊中加入成就系统了」）──
+     ★ 她给的概念（她的原话）：
+       「不是真正幸运的一天，不是真正乘风起的一天／更像是种子破壳但仍在土里未见天空。
+        卡住的齿轮终于松动轻微旋转。百公里加速的初始？」
+       「变化速度与变化的加速度……变化速度过快、变化程度过大每个人都接受不了」
+       「这不是突然的变化，而是一种温柔的过渡过程」
+       「从之前每天掉0.1斤，到每天掉1斤，再到2斤直至稳定。我们拥有了稳定的减肥状态，
+        这将变成新的日常的稳态。」
+     ★ 所以这本本子记的**不是「做成了什么」（位移），是「开始动了」（加速度）**。四层：
+         · 破土 = 位置从 0 变成非 0（第一次发生——种子裂了，还没见到天空）
+         · 松动 = 速度从 0 变成非 0（停了很久之后，齿轮又转了一下）
+         · 加速 = 速度本身在变大（这个月比上个月快）
+         · 稳态 = 加速度归零、速度留在高位（它变成了新的日常）
+     ★ 数据**全是既有的**（S.todos 的 doneKeys / S.sessions / day doc / S.spaces 的 createdAt），
+       和等级一样**纯推导、不落库**——本子会跟着真实数据一起长、也一起退（删掉记录它也会少一行，
+       不刷分也不冤枉你）。唯一的新存储键：
+         settings.achv      = {id:{at, dk, text}}  已记下的（含 text 快照，防重复演出）
+         settings.achvLines = [{id, at, text}]     你自己在本子上写的那几行
+         settings.achvInit  = 时间戳              首次静默补记的标记
+     ★ DEFS 的**顺序 = 重要性顺序**：同一次同时达成好几条时，她只说靠前的那一条，
+       其余的静默入账（本子上一样有那一行，只是不当场说）。
+     ★ hit(env) → [] 或 [{id, dk, text}]；dk = 这件事**发生的那一天**（补记时写的是真实那天，
+       不是今天）；text = **写在本子上的那一行字**（解锁当下存成快照，日后空间改名了也不改字——
+       本子记的是当时写下的那句话）。 */
+  ACHV:{
+    REVIVE_DAYS:14,     // 「它又动了」：一个空间停了这么多天以上、之后再动，才算松动
+    BACK_DAYS:3,        // 「你回来了」：断了这么多天以上、又回来打卡，才算回来
+    STEADY_WEEKS:4,     // 「成了日常」：连着这么多周、每周都动过，才算新的稳态
+    HOME_N:6,           // ★ v1.19.0：羁绊页上最多露几行（她报「本子厚了页面会很挤」）——
+                        //   再多就只留右上角「全部 ›」，翻整本去 Views.achvall()
+    DEFS:[
+      /* ———— 破土：从 0 到 1 ———— */
+      {hit:e=>e.first.done  ? [{id:'first_done',  dk:e.first.done,  text:'第一件待办，划掉了'}] : []},
+      {hit:e=>e.first.rec   ? [{id:'first_rec',   dk:e.first.rec,   text:'第一次写下来——「可能性确定」有第一条了'}] : []},
+      {hit:e=>e.first.focus ? [{id:'first_focus', dk:e.first.focus, text:'第一次坐下来，认认真真递归了一次'}] : []},
+      {hit:e=>e.sp.map(s=>s.seed ? {id:'seed:'+s.id, dk:s.seed,
+              text:'你埋下了一颗种子——「'+s.name+'」'} : null).filter(Boolean)},
+      {hit:e=>e.sp.map(s=>s.bloom ? {id:'bloom:'+s.id, dk:s.bloom,
+              text:'「'+s.name+'」里那颗种子，今天破土了'} : null).filter(Boolean)},
+      /* ———— 松动：卡住的齿轮终于转动了一下 ———— */
+      {hit:e=>e.sp.map(s=>s.revive ? {id:'revive:'+s.id, dk:s.revive.dk,
+              text:'「'+s.name+'」停了 '+s.revive.gap+' 天，你又碰了它一下'} : null).filter(Boolean)},
+      {hit:e=>e.comeback ? [{id:'comeback', dk:e.comeback.dk,
+              text:'断了 '+e.comeback.gap+' 天，你回来了'}] : []},
+      /* ———— 加速：变化的速度本身在变大 ———— */
+      {hit:e=>e.week  ? [{id:'faster_week',  dk:e.week.dk,
+              text:'这一周比上一周快：上周 '+e.week.prev+' 件，这周已经 '+e.week.now+' 件'}] : []},
+      {hit:e=>e.month ? [{id:'faster_month', dk:e.month.dk,
+              text:'这个月比上个月快：上个月一整月 '+e.month.prev+' 件，这个月已经 '+e.month.now+' 件'}] : []},
+      /* ———— 稳态：它变成了新的日常 ———— */
+      {hit:e=>e.steadyAll ? [{id:'steady_all', dk:e.steadyAll,
+              text:'连着 '+CONFIG.ACHV.STEADY_WEEKS+' 周，你都在'}] : []},
+      {hit:e=>e.sp.map(s=>s.steady ? {id:'steady:'+s.id, dk:s.steady,
+              text:'「'+s.name+'」连着 '+CONFIG.ACHV.STEADY_WEEKS+' 周没断过'} : null).filter(Boolean)}
+    ],
+    /* 她说的话（解锁那一刻）：{n} = 本子上那一行字。
+       ★ 都是「她当场记一笔」的口吻——不是「恭喜解锁」，是「我要把它写下来」。 */
+    SAY:[
+      '（她翻开本子，低头写了一行。）「{n}」——写好了。',
+      '等一下，这一笔我要记下来。「{n}」……嗯。',
+      '（她把本子摊在膝盖上，一笔一笔地写。）「{n}」',
+      '这个得记。「{n}」——记在本子上了，以后你翻得到。'
+    ],
+    /* 本子页底部的那行小字 */
+    FOOT:'本子还厚着呢。'
   },
   /* ── 她活过来了 v1.4：她主动说话的数值与全部台词，改数值/改台词只改这一块 ──
      ★ 所有主动台词的唯一出口是 Her.voice()：将来想接真 AI，只改那一个函数。
@@ -1652,7 +1726,11 @@ const CONFIG = {
          升段走 Love 的 loveUp 台词池、升级走刚刚解锁的那句新台词（Grow.pickLine）。
         事件总线只负责「鼓掌 + 变脸」，开口交给原来那条线，免得同一件事说两遍 */
       loveUp:     {seq:'clap',  emo:'happy',       act:'act-bounce'},
-      levelUp:    {seq:'clap',  emo:'happy',       act:'act-spin'}
+      levelUp:    {seq:'clap',  emo:'happy',       act:'act-spin'},
+      /* ★ v1.18.0 她的本子：「开始动了」的那一刻 → 她低头往本子上记一笔（「记下来」那组帧）。
+         **故意不写台词**——每一条成就要说的话都不一样，走 Her.reply 由 Achv.tick 现拼
+         （模板在 CONFIG.ACHV.SAY）。这里只管帧 + 变脸 + 音效。 */
+      achv:       {seq:'note',  emo:'happy',       act:'act-jiggle'}
     },
     /* 反唠叨闸（v1.7.12）：她回应你做的事，也不能变成复读机
        ★ v1.9.0：一天最多出声几次那条额度也去了（她说的「不要有说话额度」）——
@@ -1834,7 +1912,7 @@ const CONFIG = {
           rhythmStart:'开始计时', rhythmStop:'计时结束', slotEnd:'时段结束',
           quotaEnd:'额度用完', loveUp:'好感上升', levelUp:'升级', greet:'问候',
           tap:'点她', tapAngry:'戳生气了', shake:'摇晃', magnet:'磁吸',
-          launch:'进页', spring:'弹回', ui:'按钮'},
+          launch:'进页', spring:'弹回', ui:'按钮', achv:'记本子'},
     /* 配方 = (Snd)=>void，可用 s.tone(freq, dur, opt) 组合；全部 ≤1 秒、音量温和。
        上行音=正向事件、下行音=收尾/担心；triangle 为主（有存在感又不刺耳） */
     RECIPES:{
@@ -1859,7 +1937,10 @@ const CONFIG = {
       magnet:     s=>{ s.tone(1200,.05,{vol:.4}); s.tone(1500,.06,{delay:.05,vol:.4}); }, // 磁吸：两下极轻高频 tick
       launch:     s=>{ s.tone(440,.30,{to:880}); s.tone(1760,.15,{delay:.16,vol:.6}); }, // 松手进页：嗖 + 亮音
       spring:     s=>s.tone(300,.09,{type:'triangle',to:180,vol:.6}),                   // 弹回：软软一弹
-      ui:         s=>s.tone(1760,.032,{type:'sine',vol:.75})                            // 通用按钮：又短又清的一下（A6；v1.17.9 抬过音量）
+      ui:         s=>s.tone(1760,.032,{type:'sine',vol:.75}),                           // 通用按钮：又短又清的一下（A6；v1.17.9 抬过音量）
+      /* ★ v1.18.0 她的本子：两下笔尖落在纸上（A5、C6）+ 一个柔柔的上行（E6）。
+         比 levelUp 轻、比 loveUp 收——她要的是「温柔的过渡」，不是鞭炮 */
+      achv:       s=>{ s.tone(880,.06,{type:'sine',vol:.5}); s.tone(1046,.06,{type:'sine',delay:.10,vol:.5}); s.tone(1318,.30,{type:'sine',delay:.20,vol:.6}); }
     }
   },
   /* ── 她的房间背景（v1.7.3）：她的空间的背景按时间段换（图在她的图文件夹里，名字就是时段名）──
@@ -6559,6 +6640,7 @@ function tick(){
   if(typeof Console !== 'undefined') Console.tick(now);
   if(typeof Notify !== 'undefined') Notify.tick(now);
   if(typeof Grow !== 'undefined') Grow.tick(now);     // 看板娘养成：分钟边界重算经验 + 升级检测
+  if(typeof Achv !== 'undefined') Achv.tick(now);     // 她的本子：又有「开始动了」的时刻 → 她记一笔（v1.18.0）
   if(typeof Her !== 'undefined') Her.tick(now);       // 她主动开口（睡前总结/过点督促/她惦记的事/念叨）
   if(typeof Love !== 'undefined') Love.tick(now);     // 感情线：升段演出 / 她问你问题 / 拿旧回答接话（v1.5）
   if(typeof Emo !== 'undefined') Emo.tick(now);       // 她的情绪会自己淡下来（v1.6a）
@@ -6645,6 +6727,7 @@ const Actions = {
     /* v1.8.0：阅读页的返回键 = 合上书回目录（阅读页上页头是藏着的，这条管的是目录页那一半）*/
     else if(S.view==='story'){ if(typeof Storyline !== 'undefined' && Storyline.scene()){ Storyline.close(); scheduleRender(); } else goView('home'); }
     else if(S.view==='tdiary') goView('summary');   // 全部时间轴日记 → 回「我们的共识」
+    else if(S.view==='achvall') goView('mgrow');    // ★ v1.19.0 全部本子 → 回「我们的羁绊」
     else goView('home');
   },
   'open-settings'(){ openSettings(); },
@@ -6681,15 +6764,42 @@ const Actions = {
     if(!Notify.swOK() || !Notify._reg){ UI.toast('这个形态用不了刷新（要部署在网上才有效）','err'); return; }
     UI.toast('正在重新找她的图…别关掉，一会儿就好');
     Notify.refreshArt(n=>{
-      /* 清掉「探过没有」的记忆再重探一遍：刷新前记下的「没有」现在可能已经有了。
-         ⚠️ 探测是异步的（onload 才算数），所以画脸要排在这之后——而且多画几次兜底 */
-      try{ HerBody._probe = {}; HerBody.warm(Notify.artNames()); }catch(e){}
+      /* ⚠️ v1.19.0：**只有刷新成功（n>=0）才**忘掉旧结论、重探一遍 ——
+         刷新失败多半是网断了，那会儿重探出来的「没有」全是假的，
+         记下去反而会让她以后新传的图永远不显示（见 HerBody._memo 上面那条 ⚠️）。
+      清掉「探过没有」的记忆再重探：刷新前记下的「没有」现在可能已经有了。 */
+      if(n >= 0){
+        try{ HerBody._probe = {}; HerBody._memoClear(); HerBody.warm(Notify.artNames()); }catch(e){}
+      }
       const repaint = ()=>{ try{ paintHer(); renderView(); }catch(e){} };
       repaint();
       try{ setTimeout(repaint, 1500); setTimeout(repaint, 4000); }catch(e){}
       if(n < 0) UI.toast('刷新没成功（可能网断了，过会儿再点一次）','err');
       else UI.toast(n > 0 ? ('刷新好了，找到 '+n+' 张图') : '刷新完了，服务器上没有新图');
     });
+  },
+  /* ★ v1.18.0 她的本子：你自己往上写一行（机器看不见的那些「开始动了」） */
+  'achv-write'(){
+    UI.openModal(
+      '<div class="modal-title">自己写一行<button class="x" data-action="modal-close">×</button></div>'+
+      '<div class="field"><label>今天想记下来的事</label>'+
+        '<input class="input" id="achv-text" maxlength="140" placeholder="如：想通了一直卡着的那个问题"></div>'+
+      '<div class="hint">机器看不见的那些——发现了一个疑惑很久的问题的答案、给以后埋下的伏笔、'+
+        '一件小到不好意思说的开始……只有你知道，所以由你写。会写在本子的最上面。</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn" data-action="modal-close">取消</button>'+
+        '<button class="btn btn--primary" data-action="achv-save">写上去</button>'+
+      '</div>');
+    try{ document.getElementById('achv-text').focus(); }catch(e){}
+  },
+  'achv-save'(){
+    const el = document.getElementById('achv-text');
+    const v = el ? el.value : '';
+    if(!Achv.write(v)){ UI.toast('还没写呢'); return; }
+    UI.closeModal();
+    scheduleRender();
+    try{ Snd.play('achv'); }catch(e){}
+    UI.toast('写在本子上了 ✎');
   },
   'save-settings'(){
     const g = id => document.getElementById(id)?.value;
@@ -7245,6 +7355,9 @@ const Actions = {
   },
   /* ── ★ v1.8.0：全部时间轴日记 ── */
   'goto-tdiary'(){ S.tdMonth = ''; goView('tdiary'); },
+  /* ★ v1.19.0 全部本子：羁绊页上那块只露最上面几行，翻整本上这儿来 */
+  'goto-achvall'(){ S.achvMonth = ''; goView('achvall'); },
+  'achv-month'(btn){ S.achvMonth = btn.dataset.m || ''; scheduleRender(); },
   'td-month'(btn){ S.tdMonth = btn.dataset.m || ''; scheduleRender(); },
   /* 编辑/删除都复用同一个日记弹窗——目标日从按钮上带（哪一天的都不会改错） */
   'td-entry'(btn){ openRhythmEntryModal(btn.dataset.dk || D.dateKey(Date.now()), btn.dataset.id || null); },
@@ -8589,6 +8702,7 @@ const Views = {
   },
   /* —— 我们的羁绊（她的空间 · 向上拉出）：等级/称号/经验条/台词解锁/经验来源 —— */
   mgrow(){
+    const now = Date.now();
     const info = Grow.xpInfo();
     const caught = Grow.catchUp();      // 升级时你不在场 → 打开这页补报一次（幂等，只补一次）
     const lp = Grow.lineProgress();
@@ -8602,6 +8716,29 @@ const Views = {
       '<div class="gl-bar"><i class="gl-fill" style="width:'+Math.round(info.pct*100)+'%"></i></div>'+
       '<div class="gl-meta">经验 '+info.cur+' / '+info.need+' · '+streakText+'</div>'+
       '<div class="gl-next">'+(info.next ? '下一个称号：Lv.'+info.next.level+' · '+esc(info.next.name) : '已达成最高称号 ✦')+'</div>'+
+    '</div>';
+    /* 她的本子（v1.18.0）：记的不是「做成了什么」，是「开始动了」——
+       破土 / 松动 / 加速 / 稳态四层，全部从既有数据推出来，没有一条是新采集的；
+       ✎ 那种日期是浅蓝的行 = 你自己写上去的（机器看不见的那些） */
+    const lns = Achv.lines();
+    /* ★ v1.19.0：本子越记越厚，全摊在羁绊页上会把页面撑得老长（她报的）——
+       现在只露最上面 HOME_N 行，其余的点右上角「全部 ›」翻整本（见 Views.achvall） */
+    const hn = CONFIG.ACHV.HOME_N, more = lns.length - hn;
+    h += '<div class="card pad" style="margin-top:12px">'+
+      '<div class="gl-sec-t">她的本子 <span class="gl-sec-n" style="margin-left:auto">'+(lns.length ? lns.length+' 行' : '还空着')+'</span>'+
+        (more > 0 ? '<button class="sec-link" style="margin-left:0" data-action="goto-achvall">全部 ›</button>' : '')+'</div>'+
+      (lns.length
+        ? lns.slice(0, hn).map(L =>
+            '<div class="achv-row'+(L.mine ? ' mine' : '')+'">'+
+              '<span class="achv-d">'+esc(D.fmtDateShort(L.dk || D.dateKey(L.at || now))) + (L.mine ? ' ✎' : '')+'</span>'+
+              '<span class="achv-t">'+esc(L.text)+'</span>'+
+            '</div>').join('')
+        : '<div class="achv-empty">本子摊开着，第一页还是白的。<br>你做完第一件小事的那天，我就写上第一行。</div>')+
+      (more > 0 ? '<div class="hint">再往前还有 '+more+' 行压在下面——点右上角「全部 ›」翻整本。</div>' : '')+
+      '<button class="btn" style="width:100%;margin-top:10px" data-action="achv-write">✎ 我自己写一行</button>'+
+      '<div class="hint" style="margin-top:8px">'+esc(CONFIG.ACHV.FOOT)+
+        '这本子记的不是「你做成了什么」，是「你开始动了」——变化还没发生、但已经在发生的那一下。'+
+        '机器看不见的那些（想通了一直卡着的事、给以后埋的伏笔），点上面的笔自己写。</div>'+
     '</div>';
     /* 台词解锁进度 */
     h += '<div class="card pad" style="margin-top:12px">'+
@@ -9553,6 +9690,51 @@ const Views = {
     }
     out.sort((a,b)=> a.dk < b.dk ? 1 : -1);          // 新的在最上面
     return out;
+  },
+  /* 全部本子（v1.19.0）：羁绊页上只露最上面几行，想翻整本上这儿来 ——
+     跟「全部时间轴日记」一个套路：倒着排、最新的在最上面、能按月筛。
+     ✎ 那种日期是浅蓝的行 = 你自己写上去的（她记的那些是灰的） */
+  achvall(){
+    const all = Achv.lines();
+    const dkOf = L => L.dk || D.dateKey(L.at || Date.now());
+    const months = [];
+    for(const L of all){ const m = dkOf(L).slice(0,7); if(months.indexOf(m) < 0) months.push(m); }
+    const fil = S.achvMonth || '';
+    const shown = fil ? all.filter(L => dkOf(L).slice(0,7) === fil) : all;
+    let h = '<section class="sec"><h2 class="sec-title">全部本子<span class="sec-extra">共 '+all.length+' 行 · 跨 '+months.length+' 个月</span></h2>';
+    if(!all.length){
+      h += '<div class="empty"><span class="empty-ico">📖</span>本子摊开着，第一页还是白的<br>你做完第一件小事的那天，我就写上第一行</div>'+
+           '<div class="hint">这本子记的不是「你做成了什么」，是「你开始动了」——变化还没发生、但已经在发生的那一下。'+
+             '机器看不见的那些（想通了一直卡着的事、给以后埋的伏笔），点下面的笔自己写。</div>'+
+           '<button class="btn" style="width:100%;margin-top:10px" data-action="achv-write">✎ 我自己写一行</button>';
+      return h + '</section>';
+    }
+    if(months.length > 1){
+      h += '<div class="chip-row" style="margin-bottom:12px">'+
+        '<button class="chip'+(fil?'':' on')+'" data-action="achv-month" data-m="">全部</button>'+
+        months.map(m=>{
+          const y = m.slice(0,4), mm = Number(m.slice(5,7));
+          return '<button class="chip'+(fil===m?' on':'')+'" data-action="achv-month" data-m="'+esc(m)+'">'+y+'年'+mm+'月</button>';
+        }).join('')+
+      '</div>';
+    }
+    if(!shown.length){
+      h += '<div class="empty"><span class="empty-ico">📖</span>这个月本子上没有字<br>点上面的「全部」看回来</div>';
+    }else{
+      h += '<div class="card pad">' + shown.map(L => {
+        const dk = dkOf(L);
+        return '<div class="achv-row'+(L.mine ? ' mine' : '')+'">'+
+                 '<span class="achv-d">'+esc(D.fmtDateShort(dk))+' 周'+D.WEEKDAYS[D.weekdayOf(dk)]+(L.mine ? ' ✎' : '')+'</span>'+
+                 '<span class="achv-t">'+esc(L.text)+'</span>'+
+               '</div>';
+      }).join('') + '</div>';
+    }
+    h += '<button class="btn" style="width:100%;margin-top:10px" data-action="achv-write">✎ 我自己写一行</button>'+
+      '<div class="hint">整本都在这儿了，倒着排——最上面是最近的那一笔'+
+        (fil ? ('（现在只看 '+fil.slice(0,4)+'年'+Number(fil.slice(5,7))+'月，点上面的「全部」看回来）') : '')+
+        '。✎ 是日期浅蓝的那些行 = 你自己写上去的。'+
+        '这本子记的不是「你做成了什么」，是「你开始动了」。</div>';
+    return h + '</section>';
   },
   tdiary(){
     const groups = this._tdDays();
@@ -11960,21 +12142,60 @@ const HerBody = {
      ⚠️ 她画的那张要先被 warm() 探到才用：那种文件「不在」是常态，
         不能探到一半先给她闪一张裂图（探之前一律当没有） */
   _probe:{}, _img:{},        // _img = 正在探的那几张图：**得攥着引用**
+  /* ★ v1.19.0：把「哪个地址有图」这件事记在本地，下次开机不再问一遍 ——
+     她 2026-09-15 报「手机端加载文件过慢」。真因不在网络，在这儿：
+     warm 会把**每个名字的 12 个候选**（6 个家 × 2 个后缀）一次全发出去，
+     开机那三批加起来四百多个请求；而每换一版缓存名（每版必换）这些都要重打一遍，
+     光等它们回来就是十几秒。结论存下来之后，第二次开机是 **0 个探测请求**。
+     ⚠️ 代价 = 她换了图要**点一下「刷新她的图」**才会重新认 —— 这本来就是那个按钮的契约
+        （见 Actions['refresh-art']：刷新成功时会把这份结论整个清掉重探）。
+     ⚠️ 断网时一个字都不记：那会儿的 onerror 分不清「404」和「网断了」，
+        把网断记成「这张没有」，网好了她那张图也永远不出来了。 */
+  _memoCache:null, _memoT:0,
+  _memo(){
+    if(this._memoCache) return this._memoCache;
+    let m = null;
+    try{ m = Store.get('artprobe', null); }catch(e){}
+    return (this._memoCache = (m && typeof m === 'object') ? m : {});
+  },
+  _memoCan(){    // 这会儿在网上吗（断网就不记，见上面那条 ⚠️）
+    try{ return !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false); }
+    catch(e){ return true; }
+  },
+  _memoSave(){   // 探测是一批批回来的 → 攒 1.5 秒写一次库，别每张图都写一次
+    if(this._memoT || !this._memoCan()) return;
+    try{ this._memoT = setTimeout(()=>{ this._memoT = 0; try{ Store.set('artprobe', this._memo()); }catch(e){} }, 1500); }catch(e){}
+  },
+  _memoClear(){  // 「刷新她的图」用：忘掉全部结论，重新一张张去问
+    this._memoCache = {};
+    try{ if(this._memoT){ clearTimeout(this._memoT); this._memoT = 0; } }catch(e){}
+    try{ Store.set('artprobe', {}); }catch(e){}
+  },
   warm(files){
     /* v1.7.6：每个名字连它的另一个后缀一起探（她那边放的是 .webp 就先探到那张，
        放的是 .png 就先探到那张）——两边都探过，probed(谁) 都答得上来 */
     const all = [];
     for(const f of (files || [])) for(const c of artCands(f)) all.push(c);
+    const memo = this._memo();
     for(const f of all){
       if(!f) continue;
       if(this._probe[f] === true || this._img[f]) continue;   // 探到了 / 正在探 → 不用再来一次
+      /* ★ v1.19.0：上次问过的 → 直接照上次的结论，一个请求都不发（这是「加载过慢」的解法） */
+      if(memo[f] !== undefined){ this._probe[f] = !!memo[f]; continue; }
       this._probe[f] = false;
       let im; try{ im = new Image(); }catch(e){ continue; }
       /* ⚠️ 这个引用必须留着：只挂个 onload 就把 im 丢掉的话，
          这张还没加载完的图会被当垃圾收走、连 onload 一起没了 —— 探到一半永远停在那儿
          （e2e 里就撞见过：小拉探到了、用力拉没探到，于是「用力拉」一直显示小拉那张） */
       this._img[f] = im;
-      const done = (ok)=>{ this._probe[f] = ok; delete this._img[f]; };
+      /* ★ v1.19.0：结论顺手记下来（攒批写库，见 _memoSave）——下次开机不再问它 */
+      const done = (ok)=>{ this._probe[f] = ok; delete this._img[f];
+                           if(this._memoCan()){
+                             /* ⚠️ 这儿**重新取一次**小账本，不用上面那个 memo：她要是正好在开机那几秒
+                                点「刷新她的图」，_memoClear() 会把账本整个换成新的一本，旧那个从此没人再看
+                                —— 结论白记，下次开机照旧一张张问（就是她报的那件慢事没修好） */
+                             const mm = this._memo(); mm[f] = ok ? 1 : 0; this._memoSave();
+                           } };
       /* ⚠️ 就认 onload（= 数据到了），**别**改成等 decode()：
          试过一版「等 decode 完才算探到」（想让 probed 真的=「现在贴上去就能看见」），
          e2e 的无头环境里 decode() 的 Promise 根本不落地 → probed 永远是 false
@@ -13067,7 +13288,12 @@ const Portal = {
 const Grow = {
   _dirty:true, _ev:null, _total:0, _min:null,
   _feedPending:0, _zoneT:null, _sayT:null,      // 投喂演出的计数与定时器（并发多批互不误删）
-  invalidate(){ this._dirty = true; },
+  invalidate(){
+    this._dirty = true;
+    /* v1.18.0：她的本子跟等级共用同一个「数据动过了」的信号——
+       一处置脏、两本一起重算（本子就是这么跟着真实数据一起长、一起退的） */
+    if(typeof Achv !== 'undefined') Achv.invalidate();
+  },
   /* 全量推导：dk → {min,done,rec,streak,xp}；按日升序推进算连续天数（避免 O(n²)） */
   rebuild(now){
     now = now || Date.now();
@@ -13415,6 +13641,202 @@ const Grow = {
     }catch(e){}
     const w = window.innerWidth || 360, h = window.innerHeight || 640;
     return {x: w/2, y: h*0.62};
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   9.6b 她的本子 Achv（v1.18.0）
+   —— 把 CONFIG.ACHV.DEFS 里那些「开始动了」的时刻，从既有数据推出来，记成一本
+      按时间倒序的本子；她当场说一句；你自己也能往上写一行。
+   —— 和 Grow 同款：**纯推导、懒重算、不落库**（脏标记跟着 Grow.invalidate 一起置位）。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 那一周（周一那天）的日期键 —— 「连着几周」的步长按周一起算，跟今天是周几无关 */
+function weekKey(dk){
+  const t = D.dkToTs(dk);
+  return D.dateKey(D.addDaysTs(t, -(((D.weekdayOf(dk) + 6) % 7))));
+}
+function prevWeekKey(w){ return D.dateKey(D.addDaysTs(D.dkToTs(w), -7)); }
+function prevMonthKey(m){
+  let a = m.split('-'), y = Number(a[0]), mo = Number(a[1]) - 1;
+  if(mo < 1){ mo = 12; y--; }
+  return y + '-' + pad2(mo);
+}
+/* 连着 N 周、每周都至少有一天 → 返回命中那一周里最晚的那天；没连着就 null */
+function steadyHit(days){
+  const N = CONFIG.ACHV.STEADY_WEEKS;
+  const ws = [...new Set(days.map(weekKey))].sort();
+  let run = 0, prev = null, hit = null;
+  for(const w of ws){
+    run = (prev && D.dateKey(D.addDaysTs(D.dkToTs(prev), 7)) === w) ? run + 1 : 1;
+    if(run >= N && !hit) hit = w;
+    prev = w;
+  }
+  if(!hit) return null;
+  const inWeek = days.filter(d => weekKey(d) === hit).sort();
+  return inWeek.length ? inWeek[inWeek.length - 1] : hit;
+}
+
+const Achv = {
+  _dirty:true, _env:null,
+
+  invalidate(){ this._dirty = true; },
+
+  /* —— 全量推导一张环境快照：一次扫完，DEFS 只读它（跟 Grow.rebuild 同一个套路） —— */
+  _build(now){
+    now = now || Date.now();
+    const A = CONFIG.ACHV, DAY = 86400000;
+    const G = Grow._ensure();          // ★ 直接复用等级那本按天账本（min/done/rec/streak 已经算好了）
+    const ev = G._ev || new Map();
+    const dks = [...ev.keys()].sort();
+    const doneOf = dk => (ev.get(dk) || {}).done || 0;
+    const on = dk => { const e = ev.get(dk); return !!e && (e.min >= 1 || e.done > 0 || e.rec > 0); };
+
+    /* ① 三个「第一次」：按天升序，第一个满足的日子 */
+    const firstOf = f => { for(const dk of dks){ if(f(ev.get(dk))) return dk; } return null; };
+    const first = {
+      done:  firstOf(e => e.done > 0),
+      rec:   firstOf(e => e.rec  > 0),
+      focus: firstOf(e => e.min >= 1)
+    };
+
+    /* ② 每个空间：种下的那天 / 破土 / 又动了 / 没断过 */
+    const sp = [];
+    for(const s of (S.spaces || [])){
+      if(s.archived) continue;
+      const row = {id:s.id, name:s.name || '（未命名）', seed:null, bloom:null, revive:null, steady:null};
+      try{ row.seed = D.dateKey(s.createdAt || now); }catch(e){ row.seed = null; }
+      /* 这个空间「有东西被完成」的每一天（待办按 doneKeys 归天，单次待办按 completedAt） */
+      const ds = [];
+      for(const t of (S.todos || [])){
+        if(t.spaceId !== s.id) continue;
+        for(const k of (t.doneKeys || [])){
+          const dk = (k === 'once') ? (t.completedAt ? D.dateKey(t.completedAt) : null) : k;
+          if(dk && /^\d{4}-\d{2}-\d{2}$/.test(dk)) ds.push(dk);
+        }
+      }
+      ds.sort();
+      if(!ds.length){ sp.push(row); continue; }
+      row.bloom = ds[0];
+      /* 又动了：相邻两次之间断够了 REVIVE_DAYS —— 只记**第一次**重新动起来的那一刻 */
+      for(let i=1;i<ds.length;i++){
+        const gap = Math.round((D.dkToTs(ds[i]) - D.dkToTs(ds[i-1])) / DAY);
+        if(gap >= A.REVIVE_DAYS){ row.revive = {dk:ds[i], gap:gap - 1}; break; }
+      }
+      row.steady = steadyHit(ds);      // 这个空间连着 N 周没断过
+      sp.push(row);
+    }
+
+    /* ③ 你回来了：相邻两次打卡之间断够了 BACK_DAYS */
+    let comeback = null, prev = null;
+    for(const dk of dks){
+      if(!on(dk)) continue;
+      if(prev){
+        const gap = Math.round((D.dkToTs(dk) - D.dkToTs(prev)) / DAY) - 1;
+        if(gap >= A.BACK_DAYS){ comeback = {dk:dk, gap:gap}; break; }
+      }
+      prev = dk;
+    }
+
+    /* ④ 这一周/这个月比上一周/上个月快：
+       逐日推进，第一次「到这天为止的完成件数 > 上一整周/一整月」的那天就是达成日。
+       先按周/月把件数摊好，免得每天都重扫一遍。 */
+    const perWeek = {}, perMonth = {};
+    for(const dk of dks){
+      const d = doneOf(dk); if(!d) continue;
+      const w = weekKey(dk), m = dk.slice(0,7);
+      perWeek[w] = (perWeek[w] || 0) + d;
+      perMonth[m] = (perMonth[m] || 0) + d;
+    }
+    const ramp = (keyOf, prevOf, per) => {
+      let cur = null, n = 0, base = 0;
+      for(const dk of dks){
+        const k = keyOf(dk);
+        if(k !== cur){ cur = k; n = 0; base = per[prevOf(k)] || 0; }
+        n += doneOf(dk);
+        if(base >= 1 && n > base) return {dk:dk, prev:base, now:n};
+      }
+      return null;
+    };
+    const week  = ramp(weekKey, prevWeekKey, perWeek);
+    const month = ramp(dk => dk.slice(0,7), prevMonthKey, perMonth);
+
+    /* ⑤ 成了日常：连着 N 周、每周都打过卡 */
+    const steadyAll = steadyHit(dks.filter(on));
+
+    return this._env = {now, first, sp, comeback, week, month, steadyAll};
+  },
+
+  _ensure(now){ if(this._dirty || !this._env) this._build(now); return this._env; },
+
+  /* —— 现在**已经达成**的全部条目（纯推导，不落库；删掉记录它也会跟着少） —— */
+  all(now){
+    const env = this._ensure(now), out = [];
+    for(const d of (CONFIG.ACHV.DEFS || [])){
+      let arr = [];
+      try{ arr = d.hit(env) || []; }catch(e){ arr = []; }
+      for(const a of arr){ if(a && a.id && a.dk) out.push(a); }
+    }
+    return out;
+  },
+
+  /* —— 本子上现有的全部行（她记的 + 你自己写的），按时间倒序（新的在最上面） —— */
+  lines(){
+    const out = [], m = S.settings.achv || {};
+    for(const id in m){
+      const r = m[id]; if(!r) continue;
+      out.push({id:id, at:r.at || 0, dk:r.dk || '', text:r.text || '', mine:false});
+    }
+    for(const r of (S.settings.achvLines || [])){
+      if(!r) continue;
+      out.push({id:r.id, at:r.at || 0, dk:r.dk || '', text:r.text || '', mine:true});
+    }
+    out.sort((a,b)=> (b.at || 0) - (a.at || 0));
+    return out;
+  },
+
+  /* —— 检测新解锁（主循环每拍跑一次，但只有数据动过才会真算）——
+     ★ 首次运行 = **静默补记**：她已经记着的那几十笔一次写进本子，但**不说话**。
+       她的人设是「我一直在记」，不是「恭喜解锁」——你第一次翻开本子才发现已经这么厚了。
+     ★ 之后每解锁一条就说一句；同一次同时达成好几条时只说 DEFS 里最靠前的那条，
+       其余的静默入账（本子上一样有那一行）。 */
+  tick(now){
+    try{
+      if(!this._dirty) return;
+      now = now || Date.now();
+      const all = this.all(now);
+      const m = S.settings.achv || (S.settings.achv = {});
+      const first = !S.settings.achvInit;      // 第一次跑（不管新老用户）→ 补记不演出
+      const fresh = [];
+      for(const a of all){
+        if(m[a.id]) continue;
+        m[a.id] = {at: first ? D.dkToTs(a.dk) : now, dk:a.dk, text:a.text};
+        if(!first) fresh.push(a);
+      }
+      if(first) S.settings.achvInit = now;
+      this._dirty = false;
+      if(first || fresh.length) saveSettings();
+      if(!fresh.length) return;
+      const a = fresh[0];
+      if(typeof Her !== 'undefined'){
+        Her.onEvent('achv', {id:a.id});        // 帧（记下来）+ 变脸 + 音效
+        const tpl = CONFIG.ACHV.SAY[Math.floor(Math.random() * CONFIG.ACHV.SAY.length)];
+        Her.reply(tpl.replace('{n}', a.text), {key:'her-achv-' + a.id, go:()=>goView('mgrow')});
+      }
+      UI.toast('📖 她记下了一笔：' + a.text);
+    }catch(e){}
+  },
+
+  /* —— 你自己在本子上写一行（那些只有你知道、机器看不见的事） —— */
+  write(text, now){
+    text = String(text == null ? '' : text).trim();
+    if(!text) return false;
+    now = now || Date.now();
+    const s = S.settings.achvLines || (S.settings.achvLines = []);
+    s.push({id:uid('ln_'), at:now, dk:D.dateKey(now), text:text.slice(0, 140)});
+    if(s.length > 300) s.splice(0, s.length - 300);
+    saveSettings();
+    return true;
   }
 };
 
@@ -13861,7 +14283,8 @@ const PAGE_META = {
   mtalk:  {name:'对她说',     ico:'💬', color:'#FFB4D0'},   // 浅粉（v1.5；在 mspace 里双击进入）
   /* v1.8.0 新开的两页：story=她的故事（主线剧情）· tdiary=全部时间轴日记 */
   story:  {name:'她的故事',   ico:'📖', color:'#8E6BD8'},   // 紫（她读故事的那一页）
-  tdiary: {name:'时间轴日记', ico:'🕒', color:'#5FA8D3'}    // 蓝（全部日记总览）
+  tdiary: {name:'时间轴日记', ico:'🕒', color:'#5FA8D3'},   // 蓝（全部日记总览）
+  achvall:{name:'全部本子',   ico:'📖', color:'#7FB2E5'}    // ★ v1.19.0 浅蓝（=「我们的羁绊」那个蓝：它就是羁绊页的延伸）
 };
 /* 她的空间（v1.3 起）：四个方向四个页面——第四个方向（向下）v1.4 补齐成「她的日记」 */
 const MSPACE_PULL_META = {
@@ -14836,7 +15259,7 @@ const Notify = {
 /* 渲染入口：home=纯净看板娘页（无顶栏无静态UI），其余为带返回按钮的子页 */
 const VIEW_TITLES = {home:'', mspace:'', summary:'我们的共识', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:'',
   mgrow:'我们的羁绊', moutfit:'一起玩吧', mcons:'她眼中的我', mdairy:'她的日记', mtalk:'对她说',
-  story:'她的故事', tdiary:'全部时间轴日记'};
+  story:'她的故事', tdiary:'全部时间轴日记', achvall:'全部本子'};
 function renderView(){
   const root = document.getElementById('view-root');
   const ae = document.activeElement;
