@@ -1339,7 +1339,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.19.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.19.1', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -6763,19 +6763,20 @@ const Actions = {
   'refresh-art'(){
     if(!Notify.swOK() || !Notify._reg){ UI.toast('这个形态用不了刷新（要部署在网上才有效）','err'); return; }
     UI.toast('正在重新找她的图…别关掉，一会儿就好');
-    Notify.refreshArt(n=>{
-      /* ⚠️ v1.19.0：**只有刷新成功（n>=0）才**忘掉旧结论、重探一遍 ——
-         刷新失败多半是网断了，那会儿重探出来的「没有」全是假的，
-         记下去反而会让她以后新传的图永远不显示（见 HerBody._memo 上面那条 ⚠️）。
-      清掉「探过没有」的记忆再重探：刷新前记下的「没有」现在可能已经有了。 */
-      if(n >= 0){
-        try{ HerBody._probe = {}; HerBody._memoClear(); HerBody.warm(Notify.artNames()); }catch(e){}
-      }
+    Notify.refreshArt((n, info)=>{
       const repaint = ()=>{ try{ paintHer(); renderView(); }catch(e){} };
       repaint();
       try{ setTimeout(repaint, 1500); setTimeout(repaint, 4000); }catch(e){}
-      if(n < 0) UI.toast('刷新没成功（可能网断了，过会儿再点一次）','err');
-      else UI.toast(n > 0 ? ('刷新好了，找到 '+n+' 张图') : '刷新完了，服务器上没有新图');
+      /* v1.19.1：小账本改由回话直接写（见 refreshArt 的 applyMemo）——「没问着的」那批
+         保持原样，下次开机自然再问；只有「问清了」的才落账，所以图永远不会被记没。 */
+      const unk = (info && info.unknown) ? info.unknown.length : 0;
+      if(n < 0){
+        UI.toast('刷新没成功：没等到回话——先完全关掉再打开一次（新版要开两次才完全生效），再点一次','err');
+      } else if(n > 0){
+        UI.toast(unk > 0 ? ('刷新好了：找到 '+n+' 张，还有 '+unk+' 张没问着（过会儿再点一次）') : ('刷新好了，找到 '+n+' 张图'));
+      } else {
+        UI.toast(unk > 0 ? '没问着服务器，本机的图照用（过会儿再点一次）' : '刷新完了，服务器上没有新图');
+      }
     });
   },
   /* ★ v1.18.0 她的本子：你自己往上写一行（机器看不见的那些「开始动了」） */
@@ -12152,6 +12153,10 @@ const HerBody = {
      ⚠️ 断网时一个字都不记：那会儿的 onerror 分不清「404」和「网断了」，
         把网断记成「这张没有」，网好了她那张图也永远不出来了。 */
   _memoCache:null, _memoT:0,
+  /* ★ v1.19.1：一批探测的「成绩单」——这一批里成功过几张（ok）、记下的「没有」都是谁（zero）。
+     写库前先对账：一整批连一张都没成功 = 那批的「没有」全是网断出来的假的，
+     一个都不落账（见 _memoFlush）。 */
+  _memoMinOk:2, _okSinceSave:0, _zeroSinceSave:[],
   _memo(){
     if(this._memoCache) return this._memoCache;
     let m = null;
@@ -12164,7 +12169,17 @@ const HerBody = {
   },
   _memoSave(){   // 探测是一批批回来的 → 攒 1.5 秒写一次库，别每张图都写一次
     if(this._memoT || !this._memoCan()) return;
-    try{ this._memoT = setTimeout(()=>{ this._memoT = 0; try{ Store.set('artprobe', this._memo()); }catch(e){} }, 1500); }catch(e){}
+    try{ this._memoT = setTimeout(()=>{ this._memoT = 0; this._memoFlush(); }, 1500); }catch(e){}
+  },
+  _memoFlush(){  // 落账前对一遍成绩单：见 _okSinceSave 上面那条 ⚠️
+    try{
+      if(this._okSinceSave < this._memoMinOk){
+        const mm = this._memo();
+        for(let i = 0; i < this._zeroSinceSave.length; i++) delete mm[this._zeroSinceSave[i]];
+      }
+      this._okSinceSave = 0; this._zeroSinceSave = [];
+      try{ Store.set('artprobe', this._memo()); }catch(e){}
+    }catch(e){ this._okSinceSave = 0; this._zeroSinceSave = []; }
   },
   _memoClear(){  // 「刷新她的图」用：忘掉全部结论，重新一张张去问
     this._memoCache = {};
@@ -12194,7 +12209,11 @@ const HerBody = {
                              /* ⚠️ 这儿**重新取一次**小账本，不用上面那个 memo：她要是正好在开机那几秒
                                 点「刷新她的图」，_memoClear() 会把账本整个换成新的一本，旧那个从此没人再看
                                 —— 结论白记，下次开机照旧一张张问（就是她报的那件慢事没修好） */
-                             const mm = this._memo(); mm[f] = ok ? 1 : 0; this._memoSave();
+                             const mm = this._memo(); mm[f] = ok ? 1 : 0;
+                             /* ★ v1.19.1：记进成绩单——写库前 _memoFlush 要对账：
+                                一整批连一张都没成功，那批 0 全部作废（见 _memoFlush） */
+                             if(ok) this._okSinceSave++; else this._zeroSinceSave.push(f);
+                             this._memoSave();
                            } };
       /* ⚠️ 就认 onload（= 数据到了），**别**改成等 decode()：
          试过一版「等 decode 完才算探到」（想让 probed 真的=「现在贴上去就能看见」），
@@ -14325,6 +14344,19 @@ function cardReadyImg(page){
   return n ? CARD_IMG.DIR + n + CARD_IMG.READY + '.png' : null;
 }
 const CARD_READY = CARD_IMG.DIR + CARD_IMG.READY + '.png';    // 通用兜底（她没做也行）
+/* ★ v1.19.1：刷新时不用把一张图的 12 个候选全问一遍。
+   账本上记着「这张在 X」的名字 → 只重问**排在 X 前面**的候选（她换的新图一定排在旧图前面，
+   PNG 优先那条红线决定的）+ X 自己（可能整张文件被换掉了）。账本上没记的名字照旧全问。
+   一轮刷新能砍掉一大半请求 —— 服务器慢的地方，问得少一轮就快一轮。 */
+function memoCands(cands){
+  try{
+    const m = HerBody._memo();
+    for(let i = 0; i < cands.length; i++){
+      if(m[cands[i]] === 1) return cands.slice(0, i + 1);
+    }
+  }catch(e){}
+  return cands;
+}
 /* 进页时闪一下的那张整屏画（mimi/待办过渡图.png …）：有就顶掉纯色块，没有就还是纯色 */
 function pageTransImg(page){
   const n = pageArtName(page);
@@ -15165,11 +15197,16 @@ const Notify = {
     if(!this.swOK()) return null;
     try{
       navigator.serviceWorker.register('sw.js').then(reg=>{ this._reg = reg; }, ()=>{});
-      /* sw 刷新完她的图会回一句话（见 refreshArt / sw.js 的 ps-refresh-done） */
+      /* sw 刷新她的图会回话：ps-refresh-prog = 每问完一个名字报一声（心跳，见 refreshArt 的守门员），
+         ps-refresh-done = 收尾的那句（found/zeros/unknown 三本账，页面照它直接写小账本） */
       try{
         navigator.serviceWorker.addEventListener('message', e=>{
           const d = (e && e.data) || {};
-          if(d.type === 'ps-refresh-done' && this._artCb){ const cb = this._artCb; this._artCb = null; cb(d.names|0); }
+          if(d.type === 'ps-refresh-prog' && this._artProg){ try{ this._artProg(); }catch(err){} }
+          else if(d.type === 'ps-refresh-done' && this._artCb){
+            const cb = this._artCb; this._artCb = null;
+            try{ cb(d.found ? d.found.length : (d.names|0), d); }catch(err){}
+          }
         });
       }catch(e){}
     }catch(e){}
@@ -15179,7 +15216,7 @@ const Notify = {
      为什么需要它：图现在存在手机本地（打开才快），而**「这张没有」也会被存下来**——
      存下来的 404 不会自己过期，所以你新丢一张图进去、软件还以为那儿是空的。
      点一下这个按钮 = 让她去服务器上重新找一遍（sw.js 里按 artCands 的顺序试，试到第一张就停）。 */
-  _artCb:null,
+  _artCb:null, _artProg:null,
   /* 软件会用到的全部图的名字（不是地址）——和开机 warm 是同一套，只有这一份清单，不会漂移 */
   artNames(){
     const out = [];
@@ -15206,7 +15243,9 @@ const Notify = {
   },
   refreshArt(cb, extra){
     if(!this.swOK() || !this._reg || !this._reg.active){ if(cb) cb(-1); return; }
-    const names = this.artNames().map(n => ({ name:n, cands:artCands(n) }));
+    /* ★ v1.19.1：候选清单照账本瘦身（memoCands）——账本上记着「这张在 X」的名字只重问
+       X 前面那些 + X 自己，一轮刷新少发一大半请求（服务器慢的地方，问得少就快得多） */
+    const names = this.artNames().map(n => ({ name:n, cands:memoCands(artCands(n)) }));
     /* ★ v1.17.5：声音那一串也走同一条通道（她点了「重新找一遍声音」时传进来） */
     if(extra && extra.length) names.push.apply(names, extra);
     /* ★ v1.17.4：进页那张整屏画再按**它自己的顺序**单独走一遍（pageTransCands）——
@@ -15216,16 +15255,50 @@ const Notify = {
     try{
       Object.keys(PAGE_META).forEach(k => {
         const c = pageTransCands(k);
-        if(c.length) names.push({ name: 'trans:' + k, cands: c });
+        if(c.length) names.push({ name: 'trans:' + k, cands: memoCands(c) });
       });
     }catch(e){}
+    /* ★ v1.19.1：小账本改由**服务器的回话**直接写 —— sw 分得清「404 = 确定没有」和
+       「没问着 = 不知道」，所以只记它确定的；没问着的名字账本一个字不动（留着旧答案，
+       下次开机自然再问）。老版本是「清空账本 + 重新探一遍」——网一不好，重探出来的
+       「没有」全是假的，会把她整本图都记成没有（图全没了，像数据丢了一样）。 */
+    const applyMemo = info => {
+      try{
+        const nameCands = {};
+        names.forEach(n => { nameCands[n.name] = n.cands; });
+        (info.found || []).forEach(f => {
+          const cd = nameCands[f.name] || [];
+          for(let i = 0; i < cd.length; i++){
+            if(cd[i] === f.url){ HerBody._memo()[f.url] = 1; HerBody._probe[f.url] = true; break; }
+            HerBody._memo()[cd[i]] = 0; HerBody._probe[cd[i]] = false;   // 排在命中前面又没中 = 确实没有
+          }
+        });
+        (info.zeros || []).forEach(nm => {
+          (nameCands[nm] || []).forEach(u => { HerBody._memo()[u] = 0; HerBody._probe[u] = false; });
+        });
+        HerBody._memoFlush();
+      }catch(e){}
+    };
     let done = false;
-    const fin = n => { if(done) return; done = true; if(this._artCb === fin) this._artCb = null; if(cb) cb(n); };
+    let watchT = 0;
+    const armWatch = ms => {
+      try{ if(watchT) clearTimeout(watchT); watchT = setTimeout(()=>fin(-1), ms); }catch(e){}
+    };
+    const fin = (n, info) => {
+      if(done) return; done = true;
+      if(this._artCb === fin) this._artCb = null;
+      this._artProg = null;
+      try{ if(watchT){ clearTimeout(watchT); watchT = 0; } }catch(e){}
+      if(n >= 0 && info) applyMemo(info);
+      if(cb) cb(n, info);
+    };
     this._artCb = fin;
+    /* sw 每问完一个名字就回一句 ps-refresh-prog（心跳），每一句都把守门员推后 60 秒——
+       只要它还在干活，这边就不判它死；一句都不回（sw 还是旧版 / 真断了）才按 120 秒收场 */
+    this._artProg = ()=>armWatch(60000);
+    armWatch(120000);
     try{ this._reg.active.postMessage({ type:'ps-refresh', names }); }
     catch(e){ fin(-1); return; }
-    /* 兜底：万一 sw 中途被系统杀掉、回话没到，按钮不能永远转下去 */
-    try{ setTimeout(()=>fin(-1), 120000); }catch(e){}
   },
   /* 请求系统通知权限：回调式（老 Safari 只认回调，新浏览器两种都给，用 done 去重） */
   request(cb){

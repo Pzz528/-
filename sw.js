@@ -20,7 +20,7 @@
 
 /* ⚠️ 改版本就改这个缓存名：一改名字，旧缓存会在下次打开时整个丢掉重来一次
    （所以「我发了新版」和「你换了图」这两件事都是靠它刷新的） */
-const CACHE = 'ps-v1.19.0';
+const CACHE = 'ps-v1.19.1';
 
 /* 装机时先存下来的那几样（图不用列在这儿——软件开机自己会把要用的图探一遍，
    探到什么就存什么，见下面 fetch 里的本地优先逻辑）。
@@ -119,16 +119,36 @@ self.addEventListener('fetch', function(e){
    这里替它一个个去问服务器：**按顺序试，试到第一个有的就停**（顺序就是 PNG 优先那条红线，
    所以新画的 PNG 一定赢过旧的 .webp），试过的 404 也存下来（下次开机就不用再问了）。
    放在 sw 里做是因为只有这里能「绕开缓存」真的去问服务器（fetch 带 cache:'reload'）。 */
+
+/* ★ v1.19.1：每条请求最多等这么久。没有它，github.io 一卡（半死不活的连接最要命，
+   既不回话也不报错）这条链就永远收不了尾，整轮刷新跟着陪葬 —— 页面那边等 2 分钟
+   等不到一句回话就报「刷新没成功」，正是她报的那件。单测里会传 __FETCH_MS 把它调小 */
+const FETCH_MS = (typeof __FETCH_MS === 'number') ? __FETCH_MS : 15000;
+
+async function fetchOnce(u){
+  const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  let t = 0;
+  try{ t = setTimeout(function(){ if(ctl) ctl.abort(); }, FETCH_MS); }catch(e){}
+  try{
+    return await fetch(u, { cache:'reload', signal: ctl ? ctl.signal : undefined });
+  }catch(err){ return null; }      // 网断了 / 超时了 —— 一律当「没问着」，不撒谎
+  finally{ try{ clearTimeout(t); }catch(e){} }
+}
+
+/* 一条链问完，报三种账之一（页面照它直接写小账本，见 index.html 的 applyMemo）：
+   1  = 问到一张真的（排在它前面的那些 404 也是确定答案）
+   0  = 从头到尾全是 404 ——「没有这张」是**确定**的
+  -1 = 没问清（中间有几次根本没答上来，比如 429/500/断网）—— 不知道，不敢下结论 */
 async function refreshOne(cache, cands){
+  let saw404 = false;
   for(const u of (cands || [])){
-    try{
-      const res = await fetch(u, {cache:'reload'});
-      if(!res) continue;
-      if(res.ok){ await cache.put(u, res.clone()); return 1; }
-      if(res.status === 404) await cache.put(u, res.clone());
-    }catch(err){ /* 断了就跳过这个位置 */ }
+    const res = await fetchOnce(u);
+    if(!res) return { r:-1, url:null };                 // 没问着 → 后面不用问了，整条链「没问清」
+    if(res.ok){ await cache.put(u, res.clone()); return { r:1, url:u }; }
+    if(res.status === 404){ saw404 = true; try{ await cache.put(u, res.clone()); }catch(e){} continue; }
+    return { r:-1, url:null };                          // 429 / 500 之类：不是 404，也不算有
   }
-  return 0;
+  return { r: saw404 ? 0 : -1, url:null };
 }
 
 self.addEventListener('message', function(e){
@@ -143,13 +163,21 @@ self.addEventListener('message', function(e){
   e.waitUntil((async function(){
     const cache = await caches.open(CACHE);
     const names = d.names || [];
-    let found = 0;
-    /* 一个名字一条链（各自按顺序试、试到就停）；名字之间并行，太快也不会卡住谁 */
-    const got = await Promise.all(names.map(function(n){
-      return refreshOne(cache, n.cands).catch(function(){ return 0; });
+    const found = [], zeros = [], unknown = [];
+    let done = 0;
+    /* 名字之间并行（各自的链按顺序试、试到就停）；**每问完一个名字就回一句心跳**——
+       页面拿它当「还在干活」的信号，一边干一边亮进度 */
+    await Promise.all(names.map(async function(n){
+      let o = null;
+      try{ o = await refreshOne(cache, n.cands); }catch(err){}
+      if(o && o.r === 1) found.push({ name:n.name, url:o.url });
+      else if(o && o.r === 0) zeros.push(n.name);
+      else unknown.push(n.name);
+      done++;
+      reply({ type:'ps-refresh-prog', found:found.length, zeros:zeros.length,
+              unknown:unknown.length, total:names.length, done:done });
     }));
-    got.forEach(function(v){ found += v; });
-    reply({type:'ps-refresh-done', names:found, total:names.length});
+    reply({ type:'ps-refresh-done', found:found, zeros:zeros, unknown:unknown, total:names.length });
   })());
 });
 
