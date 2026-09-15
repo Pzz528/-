@@ -123,7 +123,7 @@ img{max-width:100%;display:block}
 /* ══════════════════════════════════════════════════════════════
    4. 待办卡片状态（蓝/黄/红 → 确认绿+红问号 → 完成灰+绿勾）
    ══════════════════════════════════════════════════════════════ */
-.todo-card{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+.todo-card{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);position:relative;
   border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;overflow:hidden;margin-bottom:10px;transition:background .2s,border-color .2s}
 .todo-card.t-yellow{border-left-color:var(--gold);background:var(--gold-soft);border-color:var(--gold-line)}
 .todo-card.t-red{border-left-color:var(--red);background:var(--red-soft);border-color:var(--red-line)}
@@ -417,6 +417,10 @@ img{max-width:100%;display:block}
 .portal-overlay.tap-mode{pointer-events:auto;cursor:pointer}
 .portal-overlay.use-art .po-ring,.portal-overlay.use-art .po-star{display:none}
 .portal-overlay.done{opacity:0}
+/* ★ v1.17.1：有传送图那档的消散跟过渡页同一个数（表里的 OUT_MS）——两条路一个节奏；
+   白圆黑星那档没有「画」可化，原本维持它自己的 .3s（那档本来就不是「过渡页」）
+   ★ v1.17.4：她那句「整个消散过程统一延长 0.5 秒」把它也算上了——0.32 → 0.82（见 Portal._land） */
+.portal-overlay.use-art.done{transition:opacity var(--po-out,.8s) ease}
 .mascot-pos{display:block;width:100%}
 .mascot.mascot-hop{animation:mascotHop .55s cubic-bezier(.3,.9,.4,1.2)}
 @keyframes mascotHop{0%,100%{transform:translateY(0) scale(1,1)}
@@ -448,7 +452,7 @@ img{max-width:100%;display:block}
 .grow-level .gl-next{font-size:12px;color:#A8834F;margin-top:3px}
 .grow-level .gl-catchup{font-size:12.5px;font-weight:700;color:#C4568A;background:rgba(255,255,255,.72);
   border-radius:10px;padding:6px 9px;margin-bottom:9px}
-/* 等级成长页 / 她眼中的我（v1.3，她的空间里的子页）*/
+/* 我们的羁绊页 / 她眼中的我（v1.3，她的空间里的子页）*/
 .gl-sec-t{font-size:13.5px;font-weight:700;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
 .gl-sec-n{font-size:12px;font-weight:400;color:var(--text-2);margin-left:auto}
 .grow-level .gl-bar--line,.gl-bar--line{position:relative;height:9px;border-radius:999px;background:var(--gray-soft);overflow:hidden;margin:0 0 8px}
@@ -905,7 +909,7 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
   transition:opacity .26s ease}
 #pull-dim.on{opacity:1}
 @keyframes flashPulse{0%{opacity:0}22%{opacity:.45}100%{opacity:0}}
-/* 「她的身体」页（v1.6a）：一个槽位 = 一张缩略图 + 一个名字；点=上传，右上角 × = 清空 */
+/* 「一起玩吧」页（v1.6a）：一个槽位 = 一张缩略图 + 一个名字；点=上传，右上角 × = 清空 */
 .body-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:9px}
 .body-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 5px 7px;cursor:pointer;
   border-radius:14px;border:1px dashed var(--line-strong);background:rgba(255,255,255,.6);font-family:inherit;text-align:center;color:var(--text)}
@@ -936,6 +940,12 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
    两个变量（都由 Gestures 写在 #gesture-root 上）：
      --gvv 大小 0~1（非线性：前 20% 明显出现 → 中段稳稳长 → 65% 之后明显放缓，封顶 1）
      --gvo 只在「松手铺满」那场用：平边挪到屏幕正中（拖动时恒为 0，不写它）
+     --gvd ★ v1.17.5 外推量：整块半圆往**屏幕外**推多远（拖动早期才非 0）。
+       她原话「拉半圆过程应该像真的有一个半圆被拉出来，而不是一开始就是一个半圆」——
+       光靠缩放做不到这件事：scale 一给就整个半圆都在了。往外推 gvd 之后，
+       屏幕上看得见的深度 = v·R − gvd：早期 gvd ≈ v·R（只从边上探出一条浅浅的弧＝正被拉出来），
+       拉到磁吸区时 gvd 早已归零（= 完整的半圆，跟 v1.11.0 一模一样）。
+       铺满那场 --gvd 恒 0 → 两个半圆拼整圆的几何一个字没变。
    transform-origin 钉在盒子中心（= 屏幕边中点）：缩放从这个点长出去，平边永远贴边 */
 .gv-wedge{position:absolute;width:calc(var(--gvR,300px) * 2);height:calc(var(--gvR,300px) * 2);
   opacity:0;transition:opacity .16s;z-index:1;will-change:transform;backface-visibility:hidden;
@@ -944,13 +954,13 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 .gv-wedge svg{width:100%;height:100%;display:block}
 .gv-wedge path{fill:var(--gvc,#F5C542)}
 .gv-wedge.right{right:calc(var(--gvR,300px) * -1);top:calc(50% - var(--gvR,300px));transform-origin:50% 50%;
-  transform:translate(calc(var(--gvo,0px) * -1),0) scale(var(--gvv,0))}
+  transform:translate(calc(var(--gvd,0px) - var(--gvo,0px)),0) scale(var(--gvv,0))}
 .gv-wedge.left{left:calc(var(--gvR,300px) * -1);top:calc(50% - var(--gvR,300px));transform-origin:50% 50%;
-  transform:translate(var(--gvo,0px),0) scale(var(--gvv,0))}
+  transform:translate(calc(var(--gvo,0px) - var(--gvd,0px)),0) scale(var(--gvv,0))}
 .gv-wedge.top{top:calc(var(--gvR,300px) * -1);left:calc(50% - var(--gvR,300px));transform-origin:50% 50%;
-  transform:translate(0,var(--gvo,0px)) scale(var(--gvv,0))}
+  transform:translate(0,calc(var(--gvo,0px) - var(--gvd,0px))) scale(var(--gvv,0))}
 .gv-wedge.bottom{bottom:calc(var(--gvR,300px) * -1);left:calc(50% - var(--gvR,300px));transform-origin:50% 50%;
-  transform:translate(0,calc(var(--gvo,0px) * -1)) scale(var(--gvv,0))}
+  transform:translate(0,calc(var(--gvd,0px) - var(--gvo,0px))) scale(var(--gvv,0))}
 /* 进磁吸区那一下「吸住」的脉冲（只有没有震动的地方才播，见 Gestures._zBuzz） */
 #gesture-root.gv-tick .gv-edge.on .gve-img,
 #gesture-root.gv-tick .gv-edge.on .gve-ready{animation:gvTick .26s ease-out}
@@ -960,6 +970,8 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 /* 松手收场：spring = 没进磁吸区（弹回去）· launch = 进了（半圆一把铺满、图标飞到屏幕正中）
    fading = 最后那段整体淡出（不然收场是「啪」地一下没掉） */
 #gesture-root.spring .gv-hold,#gesture-root.launch .gv-hold{opacity:0}
+/* ★ v1.16.0：铺满那一场把半圆的投影去掉（两条平边的影子会在屏幕正中压出一条线，她点名去掉） */
+#gesture-root.launch .gv-wedge{filter:none}
 #gesture-root.launch .gv-edge{opacity:0;transition:opacity .2s ease}
 #gesture-root.launch .gv-edge.on{opacity:1;transition:transform .46s cubic-bezier(.2,.85,.25,1),opacity .2s ease}
 #gesture-root.launch .gv-edge.left.on,
@@ -1044,7 +1056,7 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 .page-load{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;
   opacity:0;filter:blur(var(--pl-b,0px));transition:opacity .16s ease,filter var(--pl-t,600ms) ease-out}
 .page-load.on{opacity:1;filter:blur(0)}
-.page-load.out{opacity:0;transition:opacity .3s ease}
+.page-load.out{opacity:0;transition:opacity var(--pl-out,.8s) ease}   /* ★ v1.17.1：消散时长走 --pl-out（表里的 OUT_MS） */
 /* 点击跳转那档（设置里可切）：停在画上等你看够，点一下才进页——
    右下角一行小提示，别让她以为软件卡住了 */
 .page-load.tap-mode{pointer-events:auto;cursor:pointer}
@@ -1064,12 +1076,20 @@ img[data-her-img].face-fade{animation:faceFade .28s ease}
 .page-load .pl-dots i:nth-child(3){animation-delay:.3s}
 @keyframes plPop{from{transform:scale(.72);opacity:.3}to{transform:scale(1);opacity:1}}
 @keyframes plDot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
-/* 有过渡图的那几页（mimi/<页面名>过渡图.png）：纯色垫底、画在**自己那一层**（.pl-art）里
-   慢慢淡入——满屏颜色「溶」成画（v1.12.0 她点名的；淡入与整层的模糊→清晰同一拍走，见 --pl-t）。
-   中间那套「图标 + 名字 + 三个点」收起来（图本身就是完整一张画，叠字上去只会盖住画面） */
-.page-load .pl-art{position:absolute;inset:0;opacity:0;transition:opacity var(--pl-t,600ms) ease-out;
+/* 过渡图那一层（mimi/<页面名>过渡图.png，没有就用 mimi/她的空间过渡图.png 兜底）。
+   ★ v1.17.3：画**一上来就铺满**（她点名的「去掉纯色全屏，跟她的空间的过渡图统一」）——
+   以前是 opacity:0 慢慢淡入（v1.12.0 的「颜色溶成画」），现在不垫纯色那一拍：
+   看得见的只有整层的模糊→清晰（--pl-t），跟长按进她空间那一档同一个节奏。
+   底色（这一页的页面色）仍然垫在底下，只当图没解码出来时的兜底。
+   中间那套「图标 + 名字 + 三个点」收起来（图本身就是完整一张画，叠字上去只会盖住画面）
+   ★ v1.17.4（她点名的「我现在只想要卡片在中间的效果」）：**拖卡片进来那一场**（.has-card）
+   这一层慢慢淡入、从卡片上面盖上去——她拖进来的那张插画先留在屏幕正中，画再糊→清楚地压上来。
+   ⚠️ 只有这一档（.has-card）恢复淡入：没有卡片那几条路（双击进对话页）照旧一上来就铺满，
+      v1.17.3 她点名的「不要纯色先占屏」不能退回去 */
+.page-load .pl-art{position:absolute;inset:0;
   background-position:center;background-size:cover;background-repeat:no-repeat}
-.page-load.has-art.on .pl-art{opacity:1}
+.page-load.has-card .pl-art{opacity:0;transition:opacity var(--pl-t,600ms) ease-out}
+.page-load.has-card.on .pl-art{opacity:1}
 .page-load.has-art .pl-inner{display:none}
 
 /* 看板娘投喂（v1.2）：完成待办的瞬间，点心从卡片飞向左下角的迷你看板娘，
@@ -1311,7 +1331,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.14.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.17.9', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -1744,7 +1764,7 @@ const CONFIG = {
     /* 她切出去也能找到你（系统通知）：只在页面被切走时发，内容就是她说的话 */
     NOTIFY_ICON:'apple-touch-icon.png'
   },
-  /* ── 她会动了 v1.6a：她的身体（表情差分 / Q版 / 动作图）、情绪、动作、敏感度 ──
+  /* ── 她会动了 v1.6a：一起玩吧（表情差分 / Q版 / 动作图）、情绪、动作、敏感度 ──
      ★ 全部数值和槽位表都在这一块，实机手感要调就调这里
      ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（那 6 个图文件夹）> 旧版「看板娘.png」> 内置小可爱
        ——缺哪一张都不影响跑，只是那一处用回普通的样子 */
@@ -1770,7 +1790,7 @@ const CONFIG = {
     BUILTIN_FILE:{shy:'害羞'},
     /* 情绪 → 头顶小圆脸的 emoji（空=不显示浮标） */
     EMO_FACE:{happy:'😊', worried:'🥺', sad:'😢', angry:'😤', sleepy:'😴', shy:'😳', neutral:''},
-    /* 情绪 → 说人话（「她的身体」页顶部那句、日记里也用） */
+    /* 情绪 → 说人话（「一起玩吧」页顶部那句、日记里也用） */
     EMO_TEXT:{happy:'开心', worried:'有点担心', sad:'难过', angry:'生气', sleepy:'困了', shy:'害羞', neutral:'平静'},
     MOOD_HOLD_MS:90*1000,   // 一件事惹出来的情绪保持多久（之后她自己淡回平静）
     NIGHT_FROM:23,          // 几点之后她困了（强制 sleepy）
@@ -1799,7 +1819,17 @@ const CONFIG = {
     NIGHT_FROM:23, NIGHT_TO:4,
     VOL:{low:0.6, mid:1, high:1.5},            // 音量三档 → 音效组增益倍数（mid=默认，温和）
     BGM_VOL:{low:0.10, mid:0.18, high:0.30},   // BGM 元素音量（音乐永远比音效轻）
-    /* 配方名 → 中文文件名（声音/<中文名>.mp3 就覆盖这一条音效；BGM = 声音/bgm.mp3） */
+    EFF_EXT:['.mp3','.m4a','.wav'],            // 音效文件的后缀顺序：声音/<中文名>.<后缀>
+    /* ★ v1.17.5（她：「找到不少背景音乐，希望可以随机播放，或用户能选择性的播放」）：
+       音乐可以放好几首——声音/BGM/01.mp3、02.mp3 …（最多 20 首，.mp3/.m4a/.wav 都行）：
+       播完一首自动换下一首（随机 / 顺序在设置里切，也能直接点「第 N 首」）。
+       ⚠️ 静态网页没有「列目录」这回事，只能按号码一个个探（探过的 404 会被 sw 记住，只问一次）。
+       老位置 声音/bgm.mp3 照旧认——它算第 1 首，你以前放的那首不会丢。 */
+    /* ★ v1.17.8（她报「找不到音乐」）：她把歌放进了**根目录的 `BGM/`**（没建外面那层
+       `声音/`），软件只认 `声音/BGM/` → 「曲目（找到 0 首）」。两个位置都认了，她一个文件都不用挪。
+       顺序 = 先推荐位置、再根目录（两处都有同名文件时以 `声音/BGM/` 为准，跟文档一致）。 */
+    BGM_DIR:'声音/BGM/', BGM_DIRS:['声音/BGM/','BGM/'], BGM_MAX:20, BGM_EXT:['.mp3','.m4a','.wav'],
+    /* 配方名 → 中文文件名（声音/<中文名>.mp3 就覆盖这一条音效；BGM 见上面那几条） */
     FILE:{todoNew:'记下来', todoDone:'完成待办', spaceNew:'新空间', recordNew:'新记录',
           rhythmStart:'开始计时', rhythmStop:'计时结束', slotEnd:'时段结束',
           quotaEnd:'额度用完', loveUp:'好感上升', levelUp:'升级', greet:'问候',
@@ -1819,13 +1849,17 @@ const CONFIG = {
       loveUp:     s=>{ s.tone(523,.20,{type:'triangle'}); s.tone(659,.20,{type:'triangle',delay:.10}); s.tone(784,.30,{type:'triangle',delay:.20}); },  // C-E-G 琶音
       levelUp:    s=>{ s.tone(659,.20,{type:'triangle'}); s.tone(880,.20,{type:'triangle',delay:.10}); s.tone(1318,.34,{type:'triangle',delay:.20}); },  // E-A-E 大琶音（最亮）
       greet:      s=>{ s.tone(587,.24,{type:'triangle'}); s.tone(784,.24,{type:'triangle',delay:.12}); s.tone(988,.30,{type:'triangle',delay:.24,vol:.7}); },
-      tap:        s=>s.tone(320,.06,{type:'triangle',vol:.5}),                          // 点她：极轻 pop
+      /* ★ v1.17.5（她：「点击音效太闷了」）：点击类全换成高频 + 更短——320Hz/900Hz 的三角波
+         正落在手机小喇叭最闷的那一段，听着像「咚」；换成 1.5k~2k 的纯音就是清亮的「嗒」 */
+      /* ★ v1.17.9（她：「点击声音可以再大一些」）：只把这两条的**配方音量**抬上去
+         （不动全局 VOL 三档——那会让事件音效跟着一起吵）。她点的就是这两下：点她 / 点按钮。 */
+      tap:        s=>{ s.tone(1568,.05,{type:'sine',vol:.85}); s.tone(2093,.04,{delay:.03,vol:.48}); },  // 点她：清亮一下（G6 + C7）
       tapAngry:   s=>s.tone(160,.12,{type:'square',vol:.3}),                            // 连戳生气：闷闷一下
       shake:      s=>s.tone(140,.25,{type:'triangle',to:90}),                           // 摇晃：低频下滑（头晕）
       magnet:     s=>{ s.tone(1200,.05,{vol:.4}); s.tone(1500,.06,{delay:.05,vol:.4}); }, // 磁吸：两下极轻高频 tick
       launch:     s=>{ s.tone(440,.30,{to:880}); s.tone(1760,.15,{delay:.16,vol:.6}); }, // 松手进页：嗖 + 亮音
       spring:     s=>s.tone(300,.09,{type:'triangle',to:180,vol:.6}),                   // 弹回：软软一弹
-      ui:         s=>s.tone(900,.035,{type:'triangle',vol:.3})                          // 通用按钮：极短 tick
+      ui:         s=>s.tone(1760,.032,{type:'sine',vol:.75})                            // 通用按钮：又短又清的一下（A6；v1.17.9 抬过音量）
     }
   },
   /* ── 她的房间背景（v1.7.3）：她的空间的背景按时间段换（图在她的图文件夹里，名字就是时段名）──
@@ -1913,12 +1947,19 @@ const CONFIG = {
     TAP_FACES:['happy','shy','happy','worried']  // 连戳第 1~4 下依次的表情（第 5 下=生气）
   },
   /* ── 进页过渡 v1.7.14：拉够松手 / 长按水晶球之后闪的那一下 ──
-     总时长 = 模糊→清晰(BLUR_MS) + 停在清晰上(CLEAR_MS)，一共 1 秒，然后跳页。
-     ★ 想改快慢就改前两个数（跳页定时器、动画时长、模糊用时全跟着这张表走，不用改别处）
+     ★ v1.17.2 她重新定了这两拍（一共 1.3 秒，两段相加就是她说的那个数）：
+         ① 模糊→清晰 BLUR_MS 0.6 秒 → 到这儿就换页（全清楚了，底下新页面已经画好）
+         ② 清晰→消散 OUT_MS  0.7 秒 → 画在这一段里化开、露出新页面
+       中间**不留**「停一拍」（CLEAR_MS 0，她这版点名不要）——
+       想再留一拍就把 CLEAR_MS 加回去，跳页会自动往后挪。
+     ★ v1.17.4 她又给了一条：**整个消散过程统一延长 0.5 秒**——OUT_MS 0.7 → 1.2，
+       两条路（过渡页 --pl-out / 传送图 --po-out）一起跟着改，一改就是 0.6 + 1.2 = 1.8 秒。
+     ★ 想改快慢就改这几个数（跳页定时器、动画时长、消散时长全跟着这张表走，不用改别处）
      ★ 设置里能切「自动跳转 / 点击跳转」：点击那档就停在画上等你看够（见 Settings.transMode） */
   TRANS:{
-    BLUR_MS:600,     // 从模糊到清晰用多久（过渡图登场时是糊的，慢慢对上焦）
-    CLEAR_MS:400,    // 清晰之后停多久再进页（这 0.4 秒是留给「看一眼」的）
+    BLUR_MS:600,     // ① 从模糊到清晰用多久（过渡图登场时是糊的，慢慢对上焦）
+    CLEAR_MS:0,      // ② 清晰之后还停多久才换页（★ v1.17.2：0 = 对上焦就换页，不停）
+    OUT_MS:1200,     // ③ 换页之后画化开用多久（★ v1.17.4：她说的「消散统一延长 0.5 秒」= 0.7 + 0.5）
     BLUR_PX:16       // 登场时糊到什么程度
   },
   /* ══ 她开口了 v1.7.17：对话框 / 剧情章节 / 她的走位 ══════════════════════
@@ -5968,12 +6009,30 @@ const Rhythm = {
     }
     return cov;
   },
+  /* ★ v1.15.0：某天的「有效日程」= 当天实体槽位 + 每周规则投影。
+     她点名的「每天周流转」：未来几天与每周重复**合并**——选星期一到日（可多选）就是
+     一条永远生效的每周规则，不再生成 28 天副本（旧的实体副本照常工作，数据不动） */
+  slotsOf(dk, doc){
+    doc = doc || dayDoc(dk);
+    const out = (doc.autoSchedules || []).slice();
+    const rules = (S.settings.autoRules || []);
+    if(rules.length){
+      const wd = D.weekdayOf(dk);
+      for(const r of rules){
+        if((r.weekdays || []).indexOf(wd) < 0) continue;
+        if(out.some(x => x.id === r.id)) continue;
+        out.push({id:r.id, _rule:true, spaceId:r.spaceId, start:r.start, end:r.end,
+                  note:r.note || '', createdAt:r.createdAt || 0, sourceId:null});
+      }
+    }
+    return out;
+  },
   /* 某天槽位的惰性核算：把 [s, min(now,槽位结束)] 的未覆盖段按额度截断补上（进行中的剩余段由 ticker 接手） */
   reconcileDay(dk){
     const now = Date.now();
     if(this.remainingMinutesOn(dk, now) <= 0) return;   // 该日额度已尽
     const doc = dayDoc(dk);
-    for(const slot of doc.autoSchedules||[]){
+    for(const slot of this.slotsOf(dk, doc)){
       if((doc.slotSkips||{})[slot.id]) continue;          // 跳过段不补算
       const s = D.hhmmToTs(D.dkToTs(dk), slot.start);
       const e = D.hhmmToTs(D.dkToTs(dk), slot.end);
@@ -5991,7 +6050,7 @@ const Rhythm = {
     const dk = D.dateKey(now);
     const doc = dayDoc(dk);
     let changed = false;
-    for(const slot of doc.autoSchedules||[]){
+    for(const slot of this.slotsOf(dk, doc)){
       if((doc.slotSkips||{})[slot.id]) continue;          // 今日已手动跳过/提前结束
       const s = D.hhmmToTs(D.dkToTs(dk), slot.start);
       const e = D.hhmmToTs(D.dkToTs(dk), slot.end);
@@ -6040,7 +6099,7 @@ const Rhythm = {
       if(a.mode!=='auto') continue;
       let endTs = this.dayStartMin(a.day) + 86400000;
       const doc = Store.loadDay(a.day);
-      const slot = doc && doc.autoSchedules ? doc.autoSchedules.find(sl=>sl.id===a.scheduleId) : null;
+      const slot = this.slotsOf(a.day, doc).find(sl=>sl.id===a.scheduleId);
       if(slot) endTs = Math.min(endTs, D.hhmmToTs(D.dkToTs(a.day), slot.end));
       this.finalizeSessionsOnDay(a.day, [a.id], endTs, 'slotEnd');
     }
@@ -6052,7 +6111,7 @@ const Rhythm = {
       const dk = k.slice(4);
       if(dk > today) continue;
       const doc = Store.loadDay(dk);
-      if(!doc || !doc.autoSchedules || doc.autoSchedules.length===0) continue;
+      if(!this.slotsOf(dk, doc).length) continue;
       this.reconcileDay(dk);
     }
   },
@@ -6212,6 +6271,7 @@ const Alarms = {
 const Snd = {
   _files:{}, _probed:{}, _probeKeep:{},     // 探到的用户文件 / 探过的答案 / 探的过程中攥住的引用
   _bgmEl:null, _sfx:null, _last:null,       // _last = 最后一次 play 的名字（e2e 探针专用，逻辑不看它）
+  _tracks:[], _bgmUrl:null,                 // ★ v1.17.5：探到的音乐清单（按号排序）/ 此刻在放的那首
 
   ctx(){
     try{
@@ -6308,7 +6368,8 @@ const Snd = {
   /* 候选链：声音/ 文件夹优先、.mp3 → .m4a → 根目录（不设 .ogg，只会多白 404） */
   cands(name){
     const n = (CONFIG.SND.FILE || {})[name]; if(!n) return [];
-    return ['声音/' + n + '.mp3', '声音/' + n + '.m4a', n + '.mp3'];
+    const exts = CONFIG.SND.EFF_EXT || ['.mp3','.m4a'];
+    return exts.map(e => '声音/' + n + e).concat([n + '.mp3']);
   },
   /* 开机探测（照 HerBody.warm 的「探到才用 + 攥住引用」教训）：请求是同源 GET，
      sw.js 的 cacheFirst 顺手就把文件（和 404）存了 → 之后播放零延迟、断网可听。
@@ -6324,32 +6385,124 @@ const Snd = {
           this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok && !this._files[name]) this._files[name] = u; });
         }
       });
-      for(const u of ['声音/bgm.mp3','声音/bgm.m4a','bgm.mp3']){
-        if(this._bgmEl) break;
-        this._probeOne(u, ok=>{ if(ok && !this._bgmEl) this._bgmEl = this.makeBgm(u); });
-      }
+      this._probeTracks();
     }catch(e){}
   },
   _probeOne(url, cb){
     try{
       const a = new Audio();
       this._probeKeep[url] = a;                        // ⚠️ 攥住引用（元素被回收连 onload 一起没）
-      a.preload = 'auto';
-      a.oncanplaythrough = ()=>{ delete this._probeKeep[url]; cb(true); };
-      a.onerror = ()=>{ delete this._probeKeep[url]; cb(false); };
+      /* ★ v1.17.7：探测只要知道「这个地址有没有、能不能放」——**拿文件头就够了**。
+         以前写 preload='auto' + oncanplaythrough：那等于让浏览器把整首歌先下下来
+         （20 首就是几十上百 MB），而且大文件在手机上可能一直等不到「能流畅播完」那一拍
+         → 「明明放了歌、BGM 却不响」。现在只取头部，metadata 到手就算认。 */
+      a.preload = 'metadata';
+      let done = false;
+      const fin = ok => { if(done) return; done = true; delete this._probeKeep[url]; try{ cb(ok); }catch(e){} };
+      a.onloadedmetadata = ()=> fin(true);
+      a.oncanplay = ()=> fin(true);                    // 兜底：个别浏览器事件顺序不一样
+      a.onerror = ()=> fin(false);
       a.src = url;
     }catch(e){ try{ cb(false); }catch(e2){} }
   },
-  /* BGM：HTMLAudioElement（不走 AudioBufferSource——文件可能 2~4MB，解码要等 ctx 解锁；
-     element.volume 不依赖 ctx；loop 属性流式播放对手机最稳） */
-  makeBgm(u){
+  /* ── ★ v1.17.5：BGM 多首（随机 / 顺序 / 自己挑一首）────────────────────────
+     探的顺序：先把老位置那一条认下来（算第 1 首），再 01、02 … 一个个号试，
+     每个号按 .mp3 → .m4a → .wav 试，**试到就停**（不然一首歌会白探两次）。
+     ⚠️ 全走 _probed（探过的地址只问一次）；重探＝把 _probed 清空再叫一遍（见 bgm-rescan）。 */
+  /* ★ v1.17.7：一个「号」能试的全部地址 = 01.mp3 → 01.m4a → 01.wav → 1.mp3 → 1.m4a → 1.wav
+     （补零那种排前面＝推荐写法；顺手也认不补零的 1.mp3——她要是没按 01 命名也照样认出来。
+      10 及以上两种写法是同一个名字，去重，免得同一个地址白问三遍）
+     ★ v1.17.8：**两个文件夹都认**——`声音/BGM/`（推荐）和根目录 `BGM/`（她就这么放的）。
+     先一个家整套试完、再换下一个家（她那个家第 7 个候选就命中，十来次 404 而已）。 */
+  _bgmCands(i){
+    const pad = i < 10 ? '0' + i : '' + i;
+    const exts = CONFIG.SND.BGM_EXT || ['.mp3'];
+    const pres = (pad === '' + i) ? [pad] : [pad, '' + i];
+    const dirs = CONFIG.SND.BGM_DIRS || [CONFIG.SND.BGM_DIR];
+    const out = [];
+    dirs.forEach(d => pres.forEach(p => exts.forEach(e => out.push(d + p + e))));
+    return out;
+  },
+  _probeTracks(){
+    this._tracks = [];
+    let i = 1;
+    const next = ()=>{
+      if(i > (CONFIG.SND.BGM_MAX || 20)){ this._pickBgm(true); return; }
+      const cands = this._bgmCands(i); i++;
+      const tryOne = k=>{
+        if(k >= cands.length) return next();
+        const u = cands[k];
+        if(this._probed[u] === true){ this._tracks.push(u); return next(); }
+        if(this._probed[u] === false) return tryOne(k + 1);
+        this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok){ this._tracks.push(u); next(); } else tryOne(k + 1); });
+      };
+      tryOne(0);
+    };
+    /* 老位置（v1.13.0 那一条）先认：声音/bgm.mp3 → .m4a → 根目录 bgm.mp3 */
+    const legacy = ['声音/bgm.mp3','声音/bgm.m4a','bgm.mp3'];
+    const tryLegacy = k=>{
+      if(k >= legacy.length) return next();
+      const u = legacy[k];
+      if(this._probed[u] === true){ this._tracks.push(u); return next(); }
+      if(this._probed[u] === false) return tryLegacy(k + 1);
+      this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok){ this._tracks.push(u); next(); } else tryLegacy(k + 1); });
+    };
+    tryLegacy(0);
+  },
+  /* 重探时要走的全部候选（音效 + 音乐）——交给 sw 的 ps-refresh 一条条 cache:reload 真的去问服务器，
+     这样「她刚放进来的新文件」才能翻过 sw 里那条 404 的旧记忆（见 Actions['bgm-rescan']） */
+  allCands(){
+    const out = [];
+    Object.keys(CONFIG.SND.FILE || {}).forEach(name => out.push({ name:'snd:' + name, cands:this.cands(name) }));
+    for(let i = 1; i <= (CONFIG.SND.BGM_MAX || 20); i++){
+      out.push({ name:'bgm:' + i, cands:this._bgmCands(i) });   // v1.17.7：两种命名都算（见 _bgmCands）
+    }
+    out.push({ name:'bgm:legacy', cands:['声音/bgm.mp3','声音/bgm.m4a','bgm.mp3'] });
+    return out;
+  },
+  trackCount(){ return (this._tracks || []).length; },
+  trackIdx(){ return this._tracks ? this._tracks.indexOf(this._bgmUrl) : -1; },
+  /* 探完了（或重探完了）挑一首起播：已经在放的那首还在名单里就别打断它 */
+  _pickBgm(init){
+    const t = this._tracks || [];
+    if(!t.length){ this._setBgm(null); return; }
+    if(init && this._bgmUrl && t.indexOf(this._bgmUrl) >= 0) return;
+    this.next(!init);
+  },
+  /* 换一首：顺序 = 下一首；随机 = 不重复地抽一首（只有一首时它自己 loop，不动） */
+  next(auto){
+    const t = this._tracks || [];
+    if(!t.length) return false;
+    const i = t.indexOf(this._bgmUrl);
+    if(t.length === 1){ if(i < 0) this._setBgm(t[0]); return true; }
+    let n;
+    if(S.settings.bgmMode === 'seq'){ n = (i + 1) % t.length; }
+    else { n = i; while(n === i) n = Math.floor(Math.random() * t.length); }
+    this._setBgm(t[n]);
+    return true;
+  },
+  playTrack(i){
+    const t = this._tracks || [];
+    if(!(i >= 0) || i >= t.length) return false;
+    this._setBgm(t[i]);
+    return true;
+  },
+  /* BGM：HTMLAudioElement（不走 AudioBufferSource——文件可能好几 MB，解码要等 ctx 解锁；
+     element.volume 不依赖 ctx；loop 属性流式播放对手机最稳）。
+     多首时 loop=false，放完由 a.onended 换下一首（单首时 loop=true，一直循环）。 */
+  _setBgm(url){
     try{
-      const a = new Audio(u);
-      a.loop = true; a.preload = 'auto';
+      if(this._bgmEl){ try{ this._bgmEl.pause(); }catch(e){} }
+      this._bgmEl = null; this._bgmUrl = url || null;
+      if(!url) return;
+      const a = new Audio(url);
+      a.loop = (this._tracks || []).length <= 1;
+      a.preload = 'auto';
       a.volume = 0;                                    // apply() 再定档
+      a.onended = ()=>{ this.next(true); };
+      this._bgmEl = a;
       this.apply();
-      return a;
-    }catch(e){ return null; }
+    }catch(e){}
   }
 };
 /* 闹钟弹窗（id 为空则新建） */
@@ -6574,15 +6727,25 @@ const Actions = {
   'todo-form'(btn){ openTodoForm(btn.dataset.id || null, btn.dataset.space || null); },
   'seg'(btn){
     const g = btn.dataset.group, v = btn.dataset.val;
-    if(g==='weekday' || g==='slotwd' || g==='alwd'){ const n = +v; S.form[g].has(n) ? S.form[g].delete(n) : S.form[g].add(n); }
-    else if(g==='slotday'){ const n = +v; const i = S.form.slotDays.indexOf(n); i>=0 ? S.form.slotDays.splice(i,1) : S.form.slotDays.push(n); }
+    /* ⚠️ 组名（HTML 里的 data-group）和表单键名不是同一个词——表在这张映射上：
+       weekday→weekdays（待办）/ slotwd→slotWeekdays（自流转）/ alwd→weekdays（闹钟）。
+       老代码直接拿组名去 S.form 里找，永远 undefined → 星期 chip 一直点不动
+       （她报的「每天周流转选不了，默认了12345」就是它；待办/闹钟的同款 chip 一起修） */
+    const SET_KEY = {weekday:'weekdays', slotwd:'slotWeekdays', alwd:'weekdays'};
+    if(SET_KEY[g]){
+      const n = +v;
+      const set = S.form[SET_KEY[g]];
+      if(set && set.has) set.has(n) ? set.delete(n) : set.add(n);
+    }
     else S.form[g] = v;
     const panel = document.querySelector('.modal-panel');
     if(panel){
       panel.querySelectorAll('[data-group="'+g+'"]').forEach(c=>{
         let on;
-        if(g==='weekday' || g==='slotwd' || g==='alwd') on = S.form[g].has(+c.dataset.val);
-        else if(g==='slotday') on = S.form.slotDays.includes(+c.dataset.val);
+        if(SET_KEY[g]){
+          const set2 = S.form[SET_KEY[g]];
+          on = !!(set2 && set2.has && set2.has(+c.dataset.val));
+        }
         else on = c.dataset.val === S.form[g];
         c.classList.toggle('on', on);
       });
@@ -6591,12 +6754,6 @@ const Actions = {
       ['once','daily','weekly'].forEach(r=>{
         const f = document.getElementById('tf-'+r);
         if(f) f.style.display = (r===S.form.repeat) ? '' : 'none';
-      });
-    }
-    if(g==='slotrep'){
-      ['days','weekdays'].forEach(r=>{
-        const f = document.getElementById('sl-'+r);
-        if(f) f.style.display = (r===S.form.slotRep) ? '' : 'none';
       });
     }
     if(g==='alrep'){
@@ -6954,48 +7111,59 @@ const Actions = {
     const note = document.getElementById('sl-note').value.trim();
     const base = {spaceId, start, end, note};
     let slot;
-    if(id){
+    const rule0 = id ? (S.settings.autoRules||[]).find(x=>x.id===id) : null;
+    if(rule0){
+      /* 改一条每周规则 → 以后每周都照这个来 */
+      Object.assign(rule0, base, {weekdays:[...S.form.slotWeekdays].sort()});
+      saveSettings();
+      UI.toast('每周规则已更新');
+    }else if(id){
       slot = (doc.autoSchedules||[]).find(x=>x.id===id);
       if(!slot) return;
       Object.assign(slot, base);
+      saveDay(dk);
     }else{
-      slot = {id:uid('as_'), createdAt:Date.now(), sourceId:null, ...base};
-      doc.autoSchedules = doc.autoSchedules || [];
-      doc.autoSchedules.push(slot);
-      /* 重复副本 */
-      const copies = [];
-      if(S.form && S.form.slotRep==='days'){
-        for(const n of S.form.slotDays) copies.push(D.dateKey(D.addDaysTs(Date.now(), n)));
-      }else if(S.form && S.form.slotRep==='weekdays'){
-        for(let n=1;n<=28;n++){
-          const dk2 = D.dateKey(D.addDaysTs(Date.now(), n));
-          if(S.form.slotWeekdays.has(D.weekdayOf(dk2))) copies.push(dk2);
-        }
+      /* ★ v1.15.0：选了星期 = 建一条永远生效的每周规则；一个都不选 = 仅今天这一次 */
+      if(S.form.slotWeekdays.size > 0){
+        S.settings.autoRules = S.settings.autoRules || [];
+        S.settings.autoRules.push({id:uid('ar_'), createdAt:Date.now(),
+          spaceId, start, end, note, weekdays:[...S.form.slotWeekdays].sort()});
+        saveSettings();
+        UI.toast('每周规则已添加（选了星期几，以后每周那天都自动流转）');
+      }else{
+        slot = {id:uid('as_'), createdAt:Date.now(), sourceId:null, ...base};
+        doc.autoSchedules = doc.autoSchedules || [];
+        doc.autoSchedules.push(slot);
+        saveDay(dk);
       }
-      for(const dk2 of copies){
-        const dd = dayDoc(dk2);
-        dd.autoSchedules = dd.autoSchedules || [];
-        dd.autoSchedules.push({id:uid('as_'), createdAt:Date.now(), sourceId:slot.id, ...base});
-        saveDay(dk2);
-      }
-      if(copies.length) UI.toast('已复制到 '+copies.length+' 天');
     }
-    /* 重叠提示（今天） */
+    /* 重叠提示（今天，含规则投影） */
     const s0 = D.hhmmToTs(D.dkToTs(dk), start), e0 = D.hhmmToTs(D.dkToTs(dk), end);
-    for(const other of doc.autoSchedules){
-      if(other.id===slot.id) continue;
+    for(const other of Rhythm.slotsOf(dk, doc)){
+      if(slot && other.id === slot.id) continue;
       const a = D.hhmmToTs(D.dkToTs(dk), other.start), b = D.hhmmToTs(D.dkToTs(dk), other.end);
       if(s0 < b && a < e0){ UI.toast('与「'+other.start+'~'+other.end+'」日程重叠：重叠时段将双倍消耗额度'); break; }
     }
-    saveDay(dk);
     Rhythm.reconcileDay(dk);   // 立即补算今天已过去的时段
     UI.closeModal();
     scheduleRender();
-    UI.toast('日程已保存');
+    if(!rule0) UI.toast('日程已保存');
   },
   'slot-del'(btn){
     const dk = D.dateKey(Date.now());
     const doc = dayDoc(dk);
+    /* ★ v1.15.0：先查每周规则（按 id），再查实体槽位 */
+    const rule = (S.settings.autoRules||[]).find(x=>x.id===btn.dataset.id);
+    if(rule){
+      UI.confirmDialog('删除每周规则', '删除每周 '+rule.start+'~'+rule.end+' 的流转？以后每周那天都不再自动开始。已消耗的时间记录会保留。', true, ()=>{
+        S.settings.autoRules = (S.settings.autoRules||[]).filter(x=>x.id!==rule.id);
+        saveSettings();
+        UI.closeModal();
+        scheduleRender();
+        UI.toast('每周规则已删除');
+      });
+      return;
+    }
     const slot = (doc.autoSchedules||[]).find(x=>x.id===btn.dataset.id);
     if(!slot) return;
     UI.confirmDialog('删除日程', '删除 '+slot.start+'~'+slot.end+' 的日程？已消耗的时间记录会保留。', true, ()=>{
@@ -7327,7 +7495,46 @@ const Actions = {
     scheduleRender();
     UI.toast(S.settings.bgmOn ? '背景音乐：开' : '背景音乐：关');
   },
-  /* —— 看板娘互动 / 她的空间（v1.3：等级成长/服装/她眼中的我 都在她的空间里） —— */
+  /* —— ★ v1.17.5：多曲 BGM —— */
+  'bgm-mode'(btn){
+    S.settings.bgmMode = btn.dataset.mode === 'seq' ? 'seq' : 'shuffle';
+    saveSettings();
+    scheduleRender();
+    UI.toast(S.settings.bgmMode === 'seq' ? '背景音乐：一首一首按顺序放' : '背景音乐：随机播');
+  },
+  'bgm-next'(){
+    if(typeof Snd === 'undefined' || !Snd.next(false)){ UI.toast('还没有音乐——先放进「声音/BGM/」'); return; }
+    scheduleRender();
+    UI.toast('换一首');
+  },
+  'bgm-pick'(btn){
+    if(typeof Snd === 'undefined') return;
+    const i = parseInt(btn.dataset.i, 10) || 0;
+    Snd.playTrack(i);
+    scheduleRender();
+    UI.toast('放第 ' + (i + 1) + ' 首');
+  },
+  /* 重探：把「问过的地址」全部作废再问一遍（她刚放进新歌就点这个）。
+     ⚠️ 光重探不够——网上那份 404 的旧记忆在 sw 缓存里躺着（cacheFirst 认它），
+     所以先借「刷新她的图」那条通道让 sw 绕开缓存真的去问一遍（cache:reload + 写回），
+     回来再重探就看得见新文件了；file:// 没有 sw，直接重探就是最新的。 */
+  'bgm-rescan'(){
+    if(typeof Snd === 'undefined') return;
+    const again = n => {
+      try{
+        Snd._probed = {}; Snd._files = {};
+        Snd._tracks = []; Snd._setBgm(null);
+        Snd.probeAll();
+      }catch(e){}
+      setTimeout(()=>{ try{ renderView(); }catch(e){} }, 2500);   // 探完再画一次（曲目 chip 才会冒出来）
+      if(n < 0) UI.toast('重新找了一遍（没连上网，只看了本机的文件）');
+      else UI.toast('重新找了一遍声音——回来看「曲目」那一行');
+    };
+    if(Notify.swOK() && Notify._reg && Notify._reg.active) Notify.refreshArt(again, Snd.allCands());
+    else again(0);
+    UI.toast('在重新找一遍声音…稍等几秒');
+  },
+  /* —— 看板娘互动 / 她的空间（v1.3：我们的羁绊/服装/她眼中的我 都在她的空间里） —— */
   /* —— 她的衣柜（服装页）—— */
   'outfit-wear'(el){
     if(el && el.__held){ el.__held = false; return; }   // 刚长按过（删除），这次点击不算「穿上」
@@ -7335,7 +7542,7 @@ const Actions = {
     Outfit.wear(id === '' ? null : id);
   },
   'outfit-upload'(){ Outfit.upload(); },
-  /* —— 她的身体（v1.6a）：点槽位=传这张，右上角 ×=清空 —— */
+  /* —— 一起玩吧（v1.6a）：点槽位=传这张，右上角 ×=清空 —— */
   'body-upload'(el){ if(el) HerBody.upload(el.dataset.form, el.dataset.key); },
   'body-clear'(el){
     if(!el) return;
@@ -7446,7 +7653,7 @@ function todoCardHtml(t, now, live){
     const c = sp ? sp.color : '#8A93A3';
     meta += '<span class="badge badge--space" style="--space-color:'+c+';--space-soft:'+c+'22;--space-line:'+c+'55">来自'+esc(spaceNameOf(t.spaceId))+'</span>';
   }
-  return '<div class="todo-card '+cls+'"'+(live?' data-bind="todo"':' data-day="'+D.dateKey(now)+'"')+' data-id="'+t.id+'" data-action="tap-todo">'+
+  const card = '<div class="todo-card '+cls+'"'+(live?' data-bind="todo"':' data-day="'+D.dateKey(now)+'"')+' data-id="'+t.id+'" data-action="tap-todo">'+
     '<div class="todo-main">'+
       '<div class="todo-title">'+esc(t.title)+'</div>'+
       '<div class="todo-sub">'+meta+'</div>'+
@@ -7456,6 +7663,7 @@ function todoCardHtml(t, now, live){
     '<div class="todo-side">'+side+'</div>'+
     '<button class="icon-btn todo-edit" data-action="todo-form" data-id="'+t.id+'" aria-label="编辑">✎</button>'+
   '</div>';
+  return card;
 }
 function segChips(group, vals, labels, cur){
   return vals.map((v,i)=>'<button class="chip'+(String(v)===String(cur)?' on':'')+'" data-action="seg" data-group="'+group+'" data-val="'+v+'">'+labels[i]+'</button>').join('');
@@ -7601,7 +7809,7 @@ function gcImages(){
   if(S.settings.mascotId && S.settings.mascotId!=='placeholder') refs.add(S.settings.mascotId);   // 看板娘立绘（正在穿的那套）
   /* 她的衣柜（v1.3）：衣柜里没穿着的那些也必须登记，否则下次启动全被当垃圾清掉 */
   if(Array.isArray(S.settings.outfits)) for(const id of S.settings.outfits) refs.add(id);
-  /* 她的身体（v1.6a）：表情差分 / Q版 / 动作图 同样要登记（和衣柜一个坑，漏了下次启动全被清掉） */
+  /* 一起玩吧（v1.6a）：表情差分 / Q版 / 动作图 同样要登记（和衣柜一个坑，漏了下次启动全被清掉） */
   if(typeof HerBody !== 'undefined') for(const id of HerBody.refs()) refs.add(id);
   let removed = 0;
   for(const k of Store.allKeys()){
@@ -8048,23 +8256,52 @@ function pageOfMeta(meta){
   for(const k in PAGE_META){ if(PAGE_META[k] === meta) return k; }
   return null;
 }
-/* 进入页面前的加载页：整屏目标页面颜色的色块 + 图标 + 名称，约0.5秒后再切页
+/* 进入页面前的加载页：整屏她画的过渡图，由糊变清楚，之后切页（v1.17.3 起四条路统一长这样）
    v1.7.5：这一页有过渡图（mimi/<页面名>过渡图.png）就整屏换成她画的画面，
-   中间那套「图标 + 名字 + 三个点」收起（见 .page-load.has-art）。纯色仍然留在底下当兜底 */
-function pageLoad(meta, done){
+   中间那套「图标 + 名字 + 三个点」收起（见 .page-load.has-art）
+   ★ v1.17.3（她点名的「感觉只有长按进入她的空间的过渡图感觉是对的，去掉纯色全屏，
+     跟她的空间的过渡图统一」）：① 没画自己那张过渡图的页面（她的空间里那几个子页就没有）
+     → **拿她空间那张兜底**（PORTAL_TRANS_ART，长按进她空间用的就是它）；
+     ② 画一上来就铺满（见 CSS 里 .pl-art 那条），**不再让纯色先占满屏再溶成画**——
+     看得见的只有「糊 → 清楚」，跟传送那一档同一个节奏。
+     纯色只剩**最后一道兜底**：两张图都没温到（第一次打开、本地还没存图）时照旧用它，
+     免得整屏空白
+   ★ v1.17.4（她点名的「我现在只想要卡片在中间的效果。此外整个消散过程统一延长 0.5 秒」）：
+     ① 她拖进来的那张卡片插画**留在屏幕正中**，过渡图再从它上面糊→清楚地盖上来。
+        做法不是在这一层重画一张卡片（尺寸/位置对不齐就会跳），而是**这一档什么都不铺**
+        （opts.card，只有 Gestures._launch 传）：底下 #gesture-root 那层的半圆铺满色 + 那张
+        真卡片照样看得见（它飞完正好落在屏幕正中），过渡图淡入盖住它，然后整层收掉。
+     ② 消散时长 +0.5 秒（CONFIG.TRANS.OUT_MS 0.7 → 1.2，两条路一起）。
+     ⚠️ 返回值：元素本身。调用方要问「卡片那档生没生效」（是不是要留住底下那层）——
+        has-card 这个类就是那个答案（见 _launch） */
+function pageLoad(meta, done, opts){
   const el = document.createElement('div');
   el.className = 'page-load';
-  const page = pageOfMeta(meta), trans = page ? pageTransImg(page) : null;
+  const page = pageOfMeta(meta), own = page ? pageTransImg(page) : null;
   /* 图得先探到（开机后台温过）才用：没温到就老老实实纯色块，别让一张还没解码的图在闪的过程中跳出来
-     v1.7.6：探的是「这个后缀在不在」——mimi/ 里是 .webp 就用 .webp（见 artCands） */
-  const transOK = (trans && typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(artCands(trans)) : null;
+     v1.7.6：探的是「这个后缀在不在」——mimi/ 里是 .webp 就用 .webp（见 artCands）
+     ★ v1.17.3：自己那张没探到就试她空间那张（子页没有自己的过渡图，全走兜底）
+     ★ v1.17.4：先按 pageTransCands 那条名单试（认「过渡/<页面名>.png」这种少写三个字的名字，
+       见那个函数的注释），再退回老那一个名字、最后才是她空间那张 */
+  const warm = (u)=> (u && typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(artCands(u)) : null;
+  const warmList = (l)=> (l && l.length && typeof HerBody !== 'undefined' && HerBody.warmed) ? HerBody.warmed(l) : null;
+  const transOK = warmList(page ? pageTransCands(page) : null) || warm(own) || warm(PORTAL_TRANS_ART);
   const useArt = !!transOK;
+  /* ★ v1.17.4：拖卡片进来那一场 = 这一档（详见函数头上的注释）。
+     ⚠️ 得有画可看才算数：兜底（连图都没温到）那档没东西会盖住卡片，
+        卡片就会一直杵在那儿 → 退回老样子（铺底色、照常收场） */
+  const useCard = !!(opts && opts.card) && useArt;
   if(useArt){
-    /* v1.12.0：这一页的纯色**垫底**、画放在自己那层（.pl-art）里慢慢淡入——
-       满屏颜色「溶」进过渡图（她点名的：不然刷地一下变成一张大图，太突兀）。
-       ⚠️ 底只写 backgroundColor：写成 background 简写会连 size/position 一起按内联定死，
-       把 .pl-art 那句 background-size:cover 盖掉 → 画按原始尺寸从左上角铺（贴歪） */
-    el.style.backgroundColor = meta.color;
+    if(useCard){
+      /* 这一档什么都不铺：底下的半圆铺满色 + 她拖的那张卡片（正落在屏幕正中）透上来，
+         过渡图由 .has-card 那条 CSS 慢慢淡入盖住它 */
+      el.classList.add('has-card');
+    }else{
+      /* 底色仍垫这一页的纯色（图万一没解码出来就靠它顶着，不让屏幕露白）。
+         ⚠️ 底只写 backgroundColor：写成 background 简写会连 size/position 一起按内联定死，
+         把 .pl-art 那句 background-size:cover 盖掉 → 画按原始尺寸从左上角铺（贴歪） */
+      el.style.backgroundColor = meta.color;
+    }
     el.classList.add('has-art');
   }else{
     el.style.background = meta.color;
@@ -8081,6 +8318,7 @@ function pageLoad(meta, done){
   const T = CONFIG.TRANS;
   el.style.setProperty('--pl-t', T.BLUR_MS + 'ms');
   el.style.setProperty('--pl-b', T.BLUR_PX + 'px');
+  el.style.setProperty('--pl-out', (T.OUT_MS || 800) + 'ms');   // ★ v1.17.1：消散时长（表里的 OUT_MS）
   /* 点击跳转那档：停在画上等你看够，点一下才进页（右下角一行小提示） */
   const tapMode = (S.settings.transMode === 'tap');
   if(tapMode){
@@ -8101,7 +8339,9 @@ function pageLoad(meta, done){
     try{ done(); }catch(err){ console.error('[pageLoad]', err); }
     el.removeEventListener('click', land);
     el.classList.add('out');
-    setTimeout(()=>el.remove(), 340);
+    /* ⚠️ 摘掉元素的时刻必须**晚于**消散时长：早了就是化到一半被抽走（v1.17.0 那版
+       340ms 配 0.5s 的淡出，实际只化了 0.34 秒——画还没化完就没了） */
+    setTimeout(()=>el.remove(), (T.OUT_MS || 800) + 60);
   };
   if(tapMode){
     el.addEventListener('click', land);
@@ -8110,6 +8350,7 @@ function pageLoad(meta, done){
   }else{
     t = setTimeout(land, T.BLUR_MS + T.CLEAR_MS);
   }
+  return el;   /* ★ v1.17.4：调用方要看 has-card（卡片那档生没生效，见 _launch） */
 }
 /* 当日递归圆圈：灰色圆环=24小时底盘，每段递归按分钟占比画成扇形（颜色=空间色），
    中心显示当日合计，下方图例按空间拆分（进行中的段会呼吸闪烁） */
@@ -8207,9 +8448,9 @@ function deleteRhythmEntry(dk, id){
 function openSlotFormModal(id){
   const dk = D.dateKey(Date.now());
   const doc = dayDoc(dk);
-  const slot = id ? (doc.autoSchedules||[]).find(x=>x.id===id) : null;
-  S.form = { slotRep:'today', slotDays:[], slotWeekdays:new Set() };
-  const vis = r => r===S.form.slotRep ? '' : ' style="display:none"';
+  const rule = id ? (S.settings.autoRules||[]).find(x=>x.id===id) : null;
+  const slot = id && !rule ? (doc.autoSchedules||[]).find(x=>x.id===id) : null;
+  S.form = { slotWeekdays:new Set(rule ? (rule.weekdays||[]) : (id ? null : [1,2,3,4,5])) };
   UI.openModal(
     '<div class="modal-title">'+(slot?'编辑自流转日程':'添加自流转日程')+'<button class="x" data-action="modal-close">×</button></div>'+
     '<div class="field"><label>可能性空间</label>'+
@@ -8220,21 +8461,18 @@ function openSlotFormModal(id){
       '<input type="time" class="input num" id="sl-end" value="'+esc(slot?slot.end:'11:00')+'"></div></div>'+
     '<div class="field"><label>备注（可选）</label>'+
       '<input class="input" id="sl-note" maxlength="40" value="'+esc(slot?slot.note:'')+'" placeholder="如：到点自动开始消耗节律递归时间"></div>'+
-    (!slot ? (
-    '<div class="field"><label>重复方式</label><div class="chip-row">'+
-      segChips('slotrep',['today','days','weekdays'],['仅今天','未来几天','每周重复'],S.form.slotRep)+
-    '</div></div>'+
-    '<div class="field" id="sl-days"'+vis('days')+'><label>复制到未来哪些天（可多选）</label><div class="chip-row">'+
-      [1,2,3,4,5,6,7].map(n=>{
-        const dk2 = D.dateKey(D.addDaysTs(Date.now(), n));
-        return '<button class="chip'+(S.form.slotDays.includes(n)?' on':'')+'" data-action="seg" data-group="slotday" data-val="'+n+'">'+D.fmtDateShort(dk2)+'</button>';
-      }).join('')+
-    '</div></div>'+
-    '<div class="field" id="sl-weekdays"'+vis('weekdays')+'><label>每周哪几天（可多选）</label><div class="chip-row">'+
+    (!rule && !slot ? (
+    '<div class="field"><label>每周哪几天流转（可多选）</label><div class="chip-row">'+
       ['一','二','三','四','五','六','日'].map((n,i)=>
         '<button class="chip'+(S.form.slotWeekdays.has(i+1)?' on':'')+'" data-action="seg" data-group="slotwd" data-val="'+(i+1)+'">'+n+'</button>').join('')+
-      '</div><div class="hint">生成未来28天内的对应副本（课程表式）</div></div>'
-    ) : '')+
+      '</div><div class="hint">★ 每天周流转：选了哪天，以后每周那天到点自动开始（永远生效，可随时改/删）。'+
+      '一个都不选 = 仅今天这一次。</div></div>'
+    ) : (rule ? (
+    '<div class="field"><label>每周哪几天流转（可多选）</label><div class="chip-row">'+
+      ['一','二','三','四','五','六','日'].map((n,i)=>
+        '<button class="chip'+(S.form.slotWeekdays.has(i+1)?' on':'')+'" data-action="seg" data-group="slotwd" data-val="'+(i+1)+'">'+n+'</button>').join('')+
+      '</div><div class="hint">这是一条每周规则：改星期 = 以后每周都照这个来</div></div>'
+    ) : ''))+
     '<div class="modal-actions">'+
       (slot?'<button class="btn btn--danger" data-action="slot-del" data-id="'+slot.id+'">删除</button>':'')+
       '<button class="btn" data-action="modal-close">取消</button>'+
@@ -8245,7 +8483,7 @@ function openSlotFormModal(id){
 function slotListHtml(dk, editable){
   const now = Date.now();
   const doc = dayDoc(dk);
-  const slots = [...(doc.autoSchedules||[])].sort((a,b)=>a.start<b.start?-1:1);
+  const slots = [...Rhythm.slotsOf(dk, doc)].sort((a,b)=>a.start<b.start?-1:1);
   let h = '';
   if(editable) h += '<button class="btn btn--block" data-action="slot-form">＋ 添加自流转日程</button>';
   if(slots.length===0){
@@ -8305,7 +8543,7 @@ function shellHtml(hide, small){
    9. Views 视图渲染（首页/待办/空间/节律表/设置）
    ══════════════════════════════════════════════════════════════ */
 const Views = {
-  /* —— 立绘层（首页与「她的空间」共用）：她的身体槽位 > 现穿着的那套 > 系统默认的她（她的图文件夹）> 旧版「看板娘.png」 > 内置小可爱 ——
+  /* —— 立绘层（首页与「她的空间」共用）：身体槽位（一起玩吧页传的）> 现穿着的那套 > 系统默认的她（她的图文件夹）> 旧版「看板娘.png」 > 内置小可爱 ——
      force=true 时无视「隐藏看板娘」设置（她的空间里她必须在场）
      v1.6a：外面多了两层——.mascot-anim 是「姿势」（露头/走近/坐下…），#mascot 是「冲动」（蹦跳/吓一跳…）；
      用户的摆位在 .mascot-pos 的内联 transform 上，动作层绝不碰它 */
@@ -8349,7 +8587,7 @@ const Views = {
     h += '</div>';
     return h;
   },
-  /* —— 等级成长（她的空间 · 向上拉出）：等级/称号/经验条/台词解锁/经验来源 —— */
+  /* —— 我们的羁绊（她的空间 · 向上拉出）：等级/称号/经验条/台词解锁/经验来源 —— */
   mgrow(){
     const info = Grow.xpInfo();
     const caught = Grow.catchUp();      // 升级时你不在场 → 打开这页补报一次（幂等，只补一次）
@@ -8357,7 +8595,7 @@ const Views = {
     const streakText = info.todayChecked
       ? '已连续打卡 ' + info.streak + ' 天'
       : (info.streakYesterday > 0 ? '昨天已连续打卡 ' + info.streakYesterday + ' 天，今天还没打卡哦' : '今天还没有打卡记录');
-    let h = '<section class="sec"><h2 class="sec-title">等级成长<span class="sec-extra">她的成长进度</span></h2>';
+    let h = '<section class="sec"><h2 class="sec-title">我们的羁绊<span class="sec-extra">她的成长进度</span></h2>';
     h += '<div class="grow-level">'+
       (caught ? '<div class="gl-catchup">🎉 这段时间你已经升到了 Lv.'+caught+' · '+esc(Grow.titleOf(caught))+'</div>' : '')+
       '<div class="gl-head"><div class="gl-lv">Lv.'+info.level+'</div><div class="gl-tit">'+esc(info.title)+'</div></div>'+
@@ -8501,7 +8739,7 @@ const Views = {
     h += '</section>';
     return h;
   },
-  /* —— 她的身体（她的空间 · 向左拉出，v1.6a 由「服装」升级而来）：
+  /* —— 一起玩吧（她的空间 · 向左拉出，v1.6a 由「服装」升级而来）：
      她的表情差分 / Q版 / 动作图（一组槽位，缺哪张都能跑）+ 衣柜（回退用，也是老用户的东西） —— */
   moutfit(){
     const mId = S.settings.mascotId;
@@ -8519,7 +8757,7 @@ const Views = {
         '<span class="bs-tag">'+(id ? '已收好' : '点我上传')+'</span>'+
       '</button>';
     }).join('') + '</div>';
-    let h = '<section class="sec"><h2 class="sec-title">她的身体<span class="sec-extra">她的样子</span></h2>';
+    let h = '<section class="sec"><h2 class="sec-title">一起玩吧<span class="sec-extra">她的样子</span></h2>';
     /* 现在的她 */
     h += '<div class="moutfit-cur">'+
       '<div class="mo-ava">'+ HerBody.imgHtml('normal', Emo.slot(), {small:true}) +'</div>'+
@@ -8837,7 +9075,14 @@ const Views = {
       const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
       if(da==null) return 1; if(db==null) return -1; return da-db;
     });
-    done.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+    /* ★ v1.15.0（她点名的）：这一页只显示「待办 + 今天已完成的」——
+       更早完成的只记录不显示，要去「我们的共识」按日期回看 */
+    const todayDk = D.dateKey(now);
+    const doneToday = [], doneOld = [];
+    for(const t of done){
+      (t.completedAt && D.dateKey(t.completedAt) === todayDk ? doneToday : doneOld).push(t);
+    }
+    doneToday.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
     let h = '<section class="sec"><h2 class="sec-title">事务待办</h2>';
     h += '<button class="btn btn--primary btn--block" data-action="todo-form" style="margin-bottom:6px">＋ 新建待办</button>';
     h += '<div class="sec-sub">进行中<span class="cnt">'+pending.length+'</span></div>';
@@ -8846,9 +9091,12 @@ const Views = {
     }else{
       for(const t of pending) h += todoCardHtml(t, now);
     }
-    if(done.length>0){
-      h += '<div class="sec-sub">已完成<span class="cnt">'+done.length+'</span><span style="font-weight:400;letter-spacing:0">点击灰色卡片可恢复为未完成</span></div>';
-      for(const t of done) h += todoCardHtml(t, now);
+    if(doneToday.length>0){
+      h += '<div class="sec-sub">今天已完成<span class="cnt">'+doneToday.length+'</span><span style="font-weight:400;letter-spacing:0">点击灰色卡片可恢复为未完成</span></div>';
+      for(const t of doneToday) h += todoCardHtml(t, now);
+    }
+    if(doneOld.length>0){
+      h += '<div class="hint" style="font-size:12px;color:var(--text-2)">更早完成的 '+doneOld.length+' 件在「我们的共识」里按日期回看</div>';
     }
     h += '</section>';
     return h;
@@ -9082,6 +9330,11 @@ const Views = {
     const sndOn = S.settings.soundOn !== false;
     const sndVol = S.settings.soundVol || 'mid';
     const bgmOn = S.settings.bgmOn !== false;
+    /* ★ v1.17.5：音乐可以放好几首（声音/BGM/01.mp3…），随机或顺序播；下面这几行是当场问 Snd 要的实数 */
+    const bgmMode = S.settings.bgmMode === 'seq' ? 'seq' : 'shuffle';
+    const bgmN = (typeof Snd !== 'undefined') ? Snd.trackCount() : 0;
+    const bgmI = (typeof Snd !== 'undefined') ? Snd.trackIdx() : -1;
+    const effNames = Object.keys((CONFIG.SND && CONFIG.SND.FILE) || {}).map(k => CONFIG.SND.FILE[k]).join('、');
     h += '<section class="sec"><h2 class="sec-title">声音</h2><div class="card pad">'+
       '<div class="field"><label>声音开关</label>'+
         '<div class="chip-row"><button class="chip'+(sndOn?' on':'')+'" data-action="sound-toggle" data-on="1">开</button>'+
@@ -9091,10 +9344,31 @@ const Views = {
         [['low','轻'],['mid','中（推荐）'],['high','响']].map(o=>
           '<button class="chip'+(sndVol===o[0]?' on':'')+'" data-action="sound-vol" data-level="'+o[0]+'">'+o[1]+'</button>').join('')+
         '</div></div>'+
-      '<div class="field"><label>背景音乐（声音/bgm.mp3，可选）</label>'+
+      '<div class="field"><label>背景音乐</label>'+
         '<div class="chip-row"><button class="chip'+(bgmOn?' on':'')+'" data-action="bgm-toggle" data-on="1">开</button>'+
         '<button class="chip'+(bgmOn?'':' on')+'" data-action="bgm-toggle" data-on="0">关</button></div></div>'+
-      '<div class="hint">音效是现场合成的，不占空间；把文件放进「声音/」文件夹（如 声音/完成待办.mp3）就能替换成你自己的。23:00~4:00 她收声，音量自动减半。</div>'+
+      /* ★ v1.17.5：播放方式 + 曲目单（探到几首就有几个 chip）+ 下一首 */
+      '<div class="field"><label>播放方式</label>'+
+        '<div class="chip-row">'+
+        [['shuffle','随机'],['seq','按顺序']].map(o=>
+          '<button class="chip'+(bgmMode===o[0]?' on':'')+'" data-action="bgm-mode" data-mode="'+o[0]+'">'+o[1]+'</button>').join('')+
+        '</div></div>'+
+      '<div class="field"><label>曲目'+(bgmN ? '（找到 '+bgmN+' 首）' : '')+'</label>'+
+        (bgmN
+          ? '<div class="chip-row">'+Array.from({length:bgmN}, (_,i)=>
+              '<button class="chip'+(i===bgmI?' on':'')+'" data-action="bgm-pick" data-i="'+i+'">第 '+(i+1)+' 首</button>').join('')+
+            '</div><div class="chip-row" style="margin-top:8px">'+
+            '<button class="btn btn--small" data-action="bgm-next">下一首 ▸</button></div>'
+          : '<div class="hint" style="margin:0">还没找到音乐——按下面说的放好文件，再点「重新找一遍声音」。</div>')+
+      '</div>'+
+      '<div class="chip-row"><button class="btn btn--small" data-action="bgm-rescan">重新找一遍声音（放好音乐后点一下）</button></div>'+
+      '<div class="hint"><b>背景音乐怎么放：</b>建一个叫 <b>BGM</b> 的文件夹，把歌传进去、'
+        +'命名成 <b>01.mp3、02.mp3……</b>（不补零的 <b>1.mp3、2.mp3</b> 也认；最多 20 首，mp3 / m4a / wav 都认）。'
+        +'这个 <b>BGM</b> 文件夹放在「声音」里（<b>声音/BGM/</b>）或者直接放在 index.html 旁边（<b>BGM/</b>）都认。放好之后点上面的「重新找一遍声音」，'
+        +'再回设置就能看到「第 1 首…」了：想听哪首点哪首，或者让它自己随机 / 顺序播下去。一首都不放也行——那就安静，只有音效。<br>'
+        +'<b>其他音效怎么放：</b>把文件放进「声音」文件夹、用下面这些名字（<b>声音/完成待办.mp3</b> 这样），那条音效就换成你的了：<br>'
+        +effNames+'。没放的照旧用她现场的合成音，不占空间、也不报错。</div>'+
+      '<div class="hint">23:00~4:00 她收声，音量自动减半。</div>'+
     '</div></section>';
     /* 她说话的频率（v1.4：她会主动开口了） */
     const herLv = S.settings.herVoice || 'normal';
@@ -10133,13 +10407,22 @@ const Talk = {
   open(now){
     now = now || Date.now();
     if(S.view !== 'home' && S.view !== 'mspace') return false;
-    if(this._script) return false;                            // 正演着剧情，别插队
-    if(Bubbles.active && Bubbles.active.opts) return false;    // 她正问着你话
+    /* ★ v1.15.0：她报「有时候点击对话框唤不出」——原来是这两道静默的闸：
+       正演着的那段（多半是她主动搭话的剧本）把她拦住了、点了没反应。
+       现在点框 = 你要说话，旧的让位：剧本当场收掉、挂着的问话也收掉 */
+    if(this._script) this.abort(false);
+    if(Bubbles.active && Bubbles.active.opts) Bubbles.dismiss();
+    /* ★ v1.15.0：她报「有时候常驻消失不了」——开完这一次，那串「........」就收回去
+       （下次再想说话 = 再点她一下，两个动作从头来） */
+    this._boxShown = false;
+    Bubbles.idleText = '';
     const opts = this.three().map(t=>({t:t.t, action:'talk-pick', k:t.k}));
     /* key 每次都不同：对话框不是「提醒」，今天点几次都该有反应
+       （同一毫秒连点两下也算两次——后面缀个序号，防去重把它吞了）
        ★ v1.9.0：story:true → 「故事」那个竖排框就站在这一条旁边（她要的位置：点开之后） */
+    const openKey = 'talk-open-' + now + '-' + (this._openN = (this._openN || 0) + 1);
     Bubbles.push(Her.fill('想跟我说点什么？', Her.ctx(now)),
-      {key:'talk-open-'+now, sub:CONFIG.TALK.SUB, opts, hold:60000, story:true});
+      {key:openKey, sub:CONFIG.TALK.SUB, opts, hold:60000, story:true});
     return true;
   },
   /* 你挑了一个话题 → 她说一句（变脸 + 小动作 + 那张差分） */
@@ -10336,7 +10619,7 @@ const Talk = {
   },
   finish(){
     this.abort(true);
-    Bubbles.dismiss();                                    // 收场（那个位置自己会变回对话框）
+    Bubbles.dismiss();                                    // 收场
     return true;
   }
 };
@@ -11261,7 +11544,7 @@ const Mascot = {
     return out;
   },
   randomLine(level){ const l = this.linesFor(level || 1); return l[Math.floor(Math.random()*l.length)]; },
-  /* 台词总句数（等级成长页的解锁进度分母，别再手写数字） */
+  /* 台词总句数（我们的羁绊页的解锁进度分母，别再手写数字） */
   lineTotal(){ return this.lines.base.length + this.lines.L5.length + this.lines.L10.length + this.lines.L20.length; },
   /* 从 from 升到 to 这中间新解锁的台词（按档位由低到高） */
   unlockLinesBetween(from, to){
@@ -11306,7 +11589,7 @@ const Mascot = {
     if(typeof Love !== 'undefined') Love.gain('tap', Date.now());
     /* ★ v1.14.0：点过她 → 那串「........」对话框允许留出来（她拍板的两个动作：
        点她出对话框 → 再点对话框弹话题） */
-    if(typeof Talk !== 'undefined'){ Talk._boxShown = true; try{ Bubbles.render(); }catch(e){} }
+    if(typeof Talk !== 'undefined'){ Talk._boxShown = true; try{ Talk.box(); Bubbles.render(); }catch(e){} }
     /* 白圆黑星入口（几秒后收起）：长按进她的空间 / 长按回来。大小位置不用调钮：单指拖动、双指缩放 */
     this.showPortal();
   },
@@ -11502,7 +11785,7 @@ const Mascot = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   9.585 她会动了（v1.6a）：她的身体 HerBody / 情绪 Emo / 动作导演 Director /
+   9.585 她会动了（v1.6a）：一起玩吧 HerBody / 情绪 Emo / 动作导演 Director /
          摇一摇 Shake / 忙碌页角落的她 QCorner
    ★ 零迁移：新数据只挂在 settings 上（herAssets / herMood / herCornerAsked / herShake）
    ★ 她的样子有回退链：槽位图 > 你给她穿的那套（衣柜）> 系统默认的她（那 6 个图文件夹）> 旧版「看板娘.png」> 内置小可爱
@@ -11647,7 +11930,7 @@ const HerBody = {
     const s = this.slots(form).find(x => x[0] === key);
     return (s ? s[1] : key);
   },
-  /* 传过任何一张她的图没有（决定「她的身体」页怎么说） */
+  /* 传过任何一张她的图没有（决定「一起玩吧」页怎么说） */
   any(){
     for(const f of this.forms()){ const g = this.assets()[f] || {}; for(const k in g) if(g[k]) return true; }
     return false;
@@ -11816,9 +12099,9 @@ const HerBody = {
     S.pendingFileCb = handleBodyFile;
     fi.value = ''; fi.click();
   },
-  /* 她现在的样子叫什么（「她的身体」页顶部那句） */
+  /* 她现在的样子叫什么（「一起玩吧」页顶部那句） */
   lookName(){
-    if(this.any()) return '你上传的「她的身体」';
+    if(this.any()) return '你上传的「一起玩吧」';
     const mId = S.settings.mascotId;
     if(mId === 'placeholder') return '内置小可爱';
     return mId ? Outfit.name(mId) : '系统默认的「米米」（那 6 个图文件夹）';
@@ -12024,7 +12307,7 @@ const Director = {
     out.sort((a, b) => a.at - b.at);
     return out;
   },
-  /* 按时间线演一场（先停掉上一场，避免两场戏抢她的身体） */
+  /* 按时间线演一场（先停掉上一场，避免两场戏抢她的立绘） */
   play(steps, opt){
     opt = opt || {};
     const plan = this.plan(steps);
@@ -12673,9 +12956,11 @@ const Portal = {
   _active:false,
   HOLD_MS:500,     // 长按星标多久触发
   FLY_MS:470,      // 白圆黑星那档外扩铺满屏幕的时长（CSS 过渡 .48s）
-  /* v1.7.14：有传送图那一档 = 模糊→清晰(0.6) + 停在画上(0.4)，跟拖拽进页走**同一张表**
+  /* v1.7.14：有传送图那一档 = 模糊→清晰 + 停在画上，跟拖拽进页走**同一张表**
      （CONFIG.TRANS）——两条进她空间的路，节奏得是一个人才对 */
   flyMs(){ const T = CONFIG.TRANS; return T.BLUR_MS + T.CLEAR_MS; },
+  outMs(){ const T = CONFIG.TRANS; return T.OUT_MS || 800; },   // ★ v1.17.1：画化开的时长
+  totalMs(){ return this.flyMs() + this.outMs(); },             // 她定的 1.8 秒 = 0.6（糊→清楚）+ 1.2（消散）
   /* target: 'mspace' | 'home'；anchorEl: 星标元素（星星从它那儿开始外扩） */
   go(target, anchorEl){
     const ov = document.createElement('div');
@@ -12704,6 +12989,7 @@ const Portal = {
       ov.querySelector('.po-art').style.backgroundImage = 'url("'+trans.replace(/"/g, '%22')+'")';
       /* 这一档的时长与模糊程度（见 CSS 的 poArtClear）：表在 CONFIG.TRANS，这里只负责递过去 */
       ov.style.setProperty('--po-t', this.flyMs() + 'ms');
+      ov.style.setProperty('--po-out', this.outMs() + 'ms');   // ★ v1.17.1：换页后画化开的时长
       ov.style.setProperty('--po-blur', CONFIG.TRANS.BLUR_PX + 'px');
       /* ⚠️ 尺寸当场量、宁大勿小（取 client 与 inner 的较大者，保证盖满）；
          margin 把画的心钉在 overlay（= 可视区中心）上 —— 与 v1.7.10 同一条规矩：
@@ -12754,7 +13040,11 @@ const Portal = {
     try{ goView(target); renderView(); }catch(err){ console.error('[Portal]', err); }
     if(ov){
       ov.classList.add('done');
-      setTimeout(()=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); }, 320);
+      /* ⚠️ 同 pageLoad：摘元素的时刻要晚于消散时长，不然画化到一半被抽走 */
+      /* ★ v1.17.4：白圆黑星那档也 +0.5 秒（她说的「整个消散过程**统一**延长 0.5 秒」）
+         ——0.32 是它原本自己的数（没有「画」可化，v1.17.1 起跟有画那档分开算） */
+      const outMs = ov.classList.contains('use-art') ? this.outMs() : 820;
+      setTimeout(()=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); }, outMs + 60);
     }
     this._active = false;
   },
@@ -13179,7 +13469,7 @@ const Console = {
   sig(now){
     const dk = D.dateKey(now);
     const doc = dayDoc(dk);
-    const slots = [...(doc.autoSchedules||[])].sort((a,b)=>a.start<b.start?-1:1);
+    const slots = [...Rhythm.slotsOf(dk, doc)].sort((a,b)=>a.start<b.start?-1:1);
     let s = S.consTab;
     for(const slot of slots){
       const st = this.slotState(slot, doc, now);
@@ -13216,7 +13506,7 @@ const Console = {
       tri.addEventListener('pointerdown', e=>{ this.pullStart(e, tri); }, {passive:false});
     });
     body.querySelectorAll('.sb-card[draggable]').forEach(card=>{
-      card.addEventListener('pointerdown', e=>{ this.dragStart(e, card); }, {passive:false});
+      card.addEventListener('pointerdown', e=>{ this.cardPress(e, card); }, {passive:false});
     });
     /* 猫耳与其它按钮走 data-action 委托，无需单独绑定 */
   },
@@ -13225,7 +13515,7 @@ const Console = {
     const now = Date.now();
     const today = D.dateKey(now);
     const doc = dayDoc(today);
-    const slots = [...(doc.autoSchedules||[])].sort((a,b)=>a.start<b.start?-1:1);
+    const slots = [...Rhythm.slotsOf(today, doc)].sort((a,b)=>a.start<b.start?-1:1);
     const manual = Rhythm.activeManual();
     let h = '';
     /* 手动递归卡（若正在跑） */
@@ -13283,7 +13573,8 @@ const Console = {
       '<div class="sc-row">'+
         '<div class="sc-face">'+st.face+'</div>'+
         '<div class="sc-mid">'+
-          '<div class="sc-name">'+esc(sp?sp.name:'已删除空间')+'</div>'+
+          '<div class="sc-name">'+esc(sp?sp.name:'已删除空间')+
+            (slot._rule ? ' <span class="badge">每周</span>' : '')+'</div>'+
           '<div class="sc-time num">'+esc(slot.start)+' ~ '+esc(slot.end)+'</div>'+
           (slot.note?'<div class="sc-extra">'+esc(slot.note)+'</div>':'')+
         '</div>'+
@@ -13344,8 +13635,14 @@ const Console = {
     const now = Date.now();
     const today = D.dateKey(now);
     const doc = dayDoc(today);
-    const slot = (doc.autoSchedules||[]).find(x=>x.id===slotId);
+    let slot = Rhythm.slotsOf(D.dateKey(Date.now()), doc).find(x=>x.id===slotId);
     if(!slot){ UI.toast('日程不存在', 'err'); return; }
+    const isRule = !!slot._rule;
+    if(isRule){
+      /* 改的是每周规则 → 以后每周都照这个来 */
+      const r = (S.settings.autoRules||[]).find(x=>x.id===slotId);
+      if(r) slot = r; else { UI.toast('日程不存在', 'err'); return; }
+    }
     const m2 = v => (Math.floor(v/60))+':'+pad2(v%60);
     const sm = (+slot.start.slice(0,2))*60+(+slot.start.slice(3,5));
     let em = (+slot.end.slice(0,2))*60+(+slot.end.slice(3,5));
@@ -13358,7 +13655,7 @@ const Console = {
       delete doc.slotSkips[slot.id];
       if(Object.keys(doc.slotSkips).length===0) delete doc.slotSkips;
     }
-    saveDay(today);
+    if(isRule) saveSettings(); else saveDay(today);
     Rhythm.reconcileDay(today);
     UI.toast(dir==='p' ? '已延长到 '+slot.end : '已缩短到 '+slot.end);
     scheduleRender();
@@ -13375,7 +13672,7 @@ const Console = {
     const today = D.dateKey(now);
     const doc = dayDoc(today);
     const slotId = card.dataset.slot;
-    const slot = (doc.autoSchedules||[]).find(x=>x.id===slotId);
+    const slot = Rhythm.slotsOf(today, doc).find(x=>x.id===slotId);
     if(!slot) return;
     const active = S.sessions.find(x=>x.end==null && x.scheduleId===slotId);
     if(!active) return;
@@ -13429,7 +13726,7 @@ const Console = {
       const frac = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
       const targetMin = Math.round(frac * 1440);
       const targetTs = dayStart2 + targetMin*60000;
-      const slot2 = (doc.autoSchedules||[]).find(x=>x.id===slotId);
+      const slot2 = Rhythm.slotsOf(today, doc).find(x=>x.id===slotId);
       const act2 = S.sessions.find(x=>x.end==null && x.scheduleId===slotId);
       if(!act2) return;
       if(kind==='end'){
@@ -13461,6 +13758,37 @@ const Console = {
     window.addEventListener('pointercancel', up);
   },
   /* —— 拖空间卡 → 投放区开始手动递归 —— */
+  /* ★ v1.15.0：长按卡片才起拖（提示文案本来就是「长按卡片拖到下方」）——
+     她报「空间多了要左右滑动找，经常性地拖动空间导致滑不了」：
+     以前 pointerdown 一碰卡片就起拖，横滑浏览被当成拖拽抢走。
+     现在按下先等 420ms（手指挪过 8px 就当滑动、取消长按）→ 到点才起拖。
+     ⚠️ 只对鼠标按 preventDefault（压掉桌面端的原生拖拽/选字）；触摸不拦，
+     这样横滑由浏览器原生滚动接手，永远滑得动 */
+  cardPress(e, card){
+    if(card.classList.contains('add')) return;
+    if(e.pointerType === 'mouse'){ try{ e.preventDefault(); }catch(e2){} }
+    const hold = {card, x:e.clientX, y:e.clientY, t:setTimeout(()=>{
+      this._cardHold = null;
+      this.dragStart(e, card);
+    }, 420)};
+    this._cardHold = hold;
+    const mv = ev=>{
+      const h = this._cardHold;
+      if(h && h.card === card && Math.hypot(ev.clientX - h.x, ev.clientY - h.y) > 8){
+        clearTimeout(h.t); this._cardHold = null;   // 这是滑动找空间，不是想拖
+      }
+    };
+    const up = ()=>{
+      const h = this._cardHold;
+      if(h && h.card === card){ clearTimeout(h.t); this._cardHold = null; }
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', mv, {passive:true});
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  },
   dragStart(e, card){
     if(card.classList.contains('add')) return;
     e.preventDefault();
@@ -13526,10 +13854,10 @@ const PAGE_META = {
   spaces: {name:'空间',      ico:'✦',  color:'#274B9F'},   // 深蓝
   rhythm: {name:'节律表',    ico:'⏱',  color:'#E2483F'},   // 红
   /* 她的空间里的三个页面（v1.3） */
-  mgrow:  {name:'等级成长',   ico:'⭐', color:'#E874A4'},   // 粉
-  moutfit:{name:'她的身体',   ico:'👗', color:'#9B7EDE'},   // 紫（v1.6a 由「服装」升级）
+  mgrow:  {name:'我们的羁绊',   ico:'⭐', color:'#7FB2E5'},   // ★ v1.17.6 浅蓝（v1.17.5 先换成海蓝 #2E86AB，她说太深 → 再改浅）
+  moutfit:{name:'一起玩吧',   ico:'👗', color:'#4FB6E8'},   // ★ v1.17.5 天蓝（原来紫 #9B7EDE）；v1.6a 由「服装」升级
   mcons:  {name:'她眼中的我', ico:'💌', color:'#F2A6BE'},   // 桃
-  mdairy: {name:'她的日记',   ico:'📔', color:'#7FB2E5'},   // 蓝
+  mdairy: {name:'她的日记',   ico:'📔', color:'#E874A4'},   // ★ v1.17.5 粉（= 原来「我们的羁绊」那个粉；原来这页是蓝 #7FB2E5）
   mtalk:  {name:'对她说',     ico:'💬', color:'#FFB4D0'},   // 浅粉（v1.5；在 mspace 里双击进入）
   /* v1.8.0 新开的两页：story=她的故事（主线剧情）· tdiary=全部时间轴日记 */
   story:  {name:'她的故事',   ico:'📖', color:'#8E6BD8'},   // 紫（她读故事的那一页）
@@ -13537,7 +13865,7 @@ const PAGE_META = {
 };
 /* 她的空间（v1.3 起）：四个方向四个页面——第四个方向（向下）v1.4 补齐成「她的日记」 */
 const MSPACE_PULL_META = {
-  up:   {page:'mgrow',   edge:'bottom', arrow:'↑'},   // 向上拉 → 等级成长从下面来
+  up:   {page:'mgrow',   edge:'bottom', arrow:'↑'},   // 向上拉 → 我们的羁绊从下面来
   left: {page:'moutfit', edge:'right',  arrow:'←'},   // 向左拉 → 服装从右边来
   right:{page:'mcons',   edge:'left',   arrow:'→'},   // 向右拉 → 她眼中的我从左边来
   down: {page:'mdairy',  edge:'top',    arrow:'↓'}    // 向下拉 → 她的日记从上面来
@@ -13546,7 +13874,7 @@ const MSPACE_PULL_META = {
    真去找图的是 artCands（同名 .webp 排第二）。所以别把这里的 .png 改成 .webp：
    一改，她新画一张 PNG 丢进任何一个图文件夹就赢不了了（换图零代码靠的就是这个顺序） */
 /* 提示卡上的插画（v1.7.3）：默认看 mimi/<页面名>.png——
-   我们的共识.png / 待办.png / 节律表.png…（她的空间那四页同理：等级成长.png 等，放进去就有）
+   我们的共识.png / 待办.png / 节律表.png…（她的空间那四页同理：我们的羁绊.png 等，放进去就有）
    名字和页面名对不上的，在 FILE 里点一下名（比如「空间」这页的标题是「可能性空间」）
    文件不在 = 那张卡自动退回「箭头 + 图标圈 + 名字」那一版，什么都不影响 */
 const CARD_IMG = {
@@ -13579,6 +13907,32 @@ function pageTransImg(page){
   const n = pageArtName(page);
   return n ? CARD_IMG.DIR + n + CARD_IMG.TRANS + '.png' : null;
 }
+/* ★ v1.17.4：进页那张整屏画**该按什么顺序试**（原来只试 pageTransImg 那一个名字）。
+   起因：她 2026-09-15 传的四张过渡图没写「过渡图」三个字，直接叫「过渡/一起玩吧.png」——
+   少三个字也得认，不然她白画。
+   顺序（前两个是正路）：
+     ① 过渡/<页面名>过渡图.png   老规矩那张
+     ② 过渡/<页面名>.png         她新写的这种
+     ③ 根目录 / 别家文件夹的同名图（她放错文件夹也照样生效，照 artCands 的老脾气）
+     ④ 提示卡插画（卡片/<页面名>.png）——只在她连过渡图都没画时才会轮到它
+   ⚠️ 红线不破：**所有 .png 都排在任何 .webp 前面**。所以不能把两个 artCands 直接接起来
+      （那样「页面名.webp」会插到「页面名过渡图.png」前头，新画的 PNG 就赢不了了） */
+function pageTransCands(page){
+  const n = pageArtName(page);
+  if(!n) return [];
+  /* ⚠️ 两个名字都得带 'mimi/' 记号再交给 artCands：不带的话它不是「逻辑名」，
+     会被当成一条现成的地址（只补个后缀就完事），「该住哪个家」那趟展开就没了 */
+  const all = artCands(CARD_IMG.DIR + n + CARD_IMG.TRANS + '.png')
+                .concat(artCands(CARD_IMG.DIR + n + '.png'));
+  const home = [], rest = [];                      // ①「过渡」家里那两条正路拎到最前面
+  for(const u of all){
+    if(u.indexOf('过渡/') === 0){ if(home.indexOf(u) < 0) home.push(u); }
+    else if(rest.indexOf(u) < 0) rest.push(u);
+  }
+  const png = [], webp = [];
+  for(const u of home.concat(rest)) (u.slice(-4).toLowerCase() === '.png' ? png : webp).push(u);
+  return png.concat(webp);
+}
 /* 她的空间那两张（v1.7.5）：水晶球=入口按钮，整屏那张=传送过渡（都没有就退回白圆黑星） */
 const PORTAL_UI_ART = CARD_IMG.DIR + '她的空间.png';
 const PORTAL_TRANS_ART = CARD_IMG.DIR + '她的空间' + CARD_IMG.TRANS + '.png';
@@ -13592,7 +13946,11 @@ const PULL_COMMIT = 0.70;
 const PULL_FEEL = {
   MAG_RIDE:16,    // 进了磁吸区，这一簇再被「吸」进去多少 px
   SPRING_MS:520,  // 没拉够松手：弹回原位用多久
-  COVER_MS:420    // 拉够了松手：半圆铺满整屏用多久
+  COVER_MS:420,   // 拉够了松手：半圆铺满整屏用多久
+  /* ★ v1.17.5：半圆「被拉出来」的那一段占整个拖动的多少（0.35 = 前 35%）。
+     这一段里它从边上探出一条浅弧慢慢鼓出来；过了这一档它就是完整的半圆。
+     ⚠️ 要小于 PULL_COMMIT（0.70）——不然进了磁吸区还没长成完整的半圆就露馅了 */
+  GROW_P:0.35
 };
 const SECTOR_HALF = 90;     // 半圆色块：张角 180°（平边贴着屏幕边缘，圆边朝画面里）
 
@@ -13878,6 +14236,7 @@ const Gestures = {
     root.style.setProperty('--gvi', '0');
     root.style.setProperty('--gvv', '0');
     root.style.setProperty('--gvo', '0px');
+    root.style.setProperty('--gvd', '0px');   // ★ v1.17.5：外推量（0 = 完整的半圆）
     root.style.setProperty('--ride', '0px');
   },
   _showEdges(x, y){
@@ -13929,6 +14288,13 @@ const Gestures = {
     root.style.setProperty('--gvp', p.toFixed(3));
     root.style.setProperty('--gvi', this.iconP(p).toFixed(3));
     root.style.setProperty('--gvv', v.toFixed(4));
+    /* ★ v1.17.5「像真的有一个半圆被拉出来」：早期把整块往外推，屏幕上看得到的只是探出来的一条弧。
+       ease 用 smoothstep（两头慢、中间快）：最开始那一下几乎不出东西＝刚从边里露头，
+       然后很快鼓起来，到 GROW_P 处外推量归零＝完整的半圆。
+       可见深度 = v·R − gvd = v·R·ease ≥ 0，任何一帧都不会出现「负的」（= 半圆整个跑到屏幕外） */
+    const gt = Math.max(0, Math.min(1, p / PULL_FEEL.GROW_P));
+    const ge = gt * gt * (3 - 2 * gt);
+    root.style.setProperty('--gvd', ((1 - ge) * v * this._maxR()).toFixed(1) + 'px');
     /* ⚠️ --gvo 拖动时**不写**（保持 0 = 半圆平边死死贴着屏幕边）——它只留给铺满那场 */
     root.style.setProperty('--gvc', m.color);
     const inZone = p >= PULL_COMMIT;
@@ -13986,13 +14352,17 @@ const Gestures = {
     if(!root) return;
     if(typeof Snd !== 'undefined') Snd.play('spring');   // v1.13.0：没拉够弹回那一下的软响
     const p0 = this._gvp, v0 = this.curve(p0);
-    const s = { p:p0, i:this.iconP(p0), v:v0, r:this._ride };
+    const gt0 = Math.max(0, Math.min(1, p0 / PULL_FEEL.GROW_P));
+    const ge0 = gt0 * gt0 * (3 - 2 * gt0);
+    const s = { p:p0, i:this.iconP(p0), v:v0, r:this._ride, d:(1 - ge0) * v0 * this._maxR() };
     if(typeof PullMini !== 'undefined') PullMini.back();   // 她和那一簇一起弹回去
     root.classList.add('spring');
     const clamp0 = x => x < 0 ? 0 : x;
     this._anim(PULL_FEEL.SPRING_MS, k=>{
       const u = this._springK(k);            // 1 → 0（中途冲过 0 再荡回来一点点）
       root.style.setProperty('--gvv', (s.v * clamp0(u)).toFixed(4));
+      /* 外推量跟着一起缩回 0：可见深度 = (s.v·R − s.d)·u → 那条弧缩着缩着就退回边上没了 */
+      root.style.setProperty('--gvd', (s.d * clamp0(u)).toFixed(1) + 'px');
       root.style.setProperty('--gvi', (s.i * clamp0(u)).toFixed(3));
       root.style.setProperty('--gvp', (s.p * clamp0(u)).toFixed(3));
       /* 卡片簇回弹时允许往回缩一点点（橡皮筋那一下），但不能真甩出屏幕 */
@@ -14003,6 +14373,8 @@ const Gestures = {
   /* 拉够了松手（她点名的第 7 条）：半圆一把铺满整屏、当前那个图标飞到屏幕正中、再无缝进页。
      无缝的关键：半圆的颜色就是目标页面的颜色，加载页（.page-load）底色也是它 ——
      半圆先铺满，加载页再淡淡地压上来，颜色一模一样，中间那一下看不出来。
+     ★ v1.17.4：卡片那档连「底色那一下」都不要了——加载页什么都不铺（has-card），
+     她拖的那张卡片就留在屏幕正中，过渡图再从它上面糊→清楚地盖上来（见下面那段）。
      半圆只有一半 → 把对边那个半圆也叫起来：两个半圆对着鼓、圆心各自挪到屏幕正中，
      正好拼成一个整圆盖住全屏（中间那条缝两边同色同弧，看不出来） */
   _launch(dir){
@@ -14016,11 +14388,14 @@ const Gestures = {
     const root = document.getElementById('gesture-root');
     const w = window.innerWidth || 360, h = window.innerHeight || 640;
     const v0 = this.curve(this._gvp);
-    /* 铺满要多大：圆心从屏幕边走到屏幕正中（沿拉进来那条轴挪半个屏幕），半径长到能盖住最远的那个角 */
-    const half = (pm.edge === 'left' || pm.edge === 'right') ? w/2 : h/2;
+    /* 铺满要多大：圆心从屏幕边走到屏幕正中（沿拉进来那条轴挪半个屏幕），半径长到能盖住最远的那个角。
+       ★ v1.16.0：+2px 让两个半圆的平边在正中**重叠**一点点——不然两条平边并排拼在一起，
+       各自的投影压出来就是她看到的那条「中间的线」 */
+    const half = ((pm.edge === 'left' || pm.edge === 'right') ? w/2 : h/2) + 2;
     const cover = Math.sqrt(w*w + h*h) / 2 / Math.max(1, this._maxR()) * 1.06;
     const OPP = {left:'right', right:'left', top:'bottom', bottom:'top'};
     this._launching = true;
+    if(root) root.style.setProperty('--gvd', '0px');   // ★ v1.17.5：铺满那场不许有外推量（拼整圆的几何原样）
     if(root){
       const c = this._home && this._home[dir];
       root.style.setProperty('--gvcx', ((w/2) - (c ? c.x : w/2)).toFixed(1) + 'px');
@@ -14037,9 +14412,16 @@ const Gestures = {
       root.style.setProperty('--gvo', (half * e).toFixed(1) + 'px');   // 拖动时贴边（0）→ 铺满时圆心到屏幕正中
     }, ()=>{
       /* 加载页上来了：底色和刚铺满的半圆同色 → 这时候把这一层收掉，眼睛看不出接缝 */
-      pageLoad(PAGE_META[page], ()=>{ goView(page); });
-      if(root) root.classList.add('fading');   // 铺满之后整层轻轻淡出，别「啪」地一下没掉
-      setTimeout(()=>{ this._launching = false; this._hideEdges(); }, 260);
+      const pl = pageLoad(PAGE_META[page], ()=>{ goView(page); }, {card:true});
+      /* ★ v1.17.4（她点名的「我现在只想要卡片在中间的效果」）：
+         卡片那档**这一层不淡出、也先不收**——她拖的那张插画刚飞到屏幕正中，
+         要留在那儿等过渡图从它上面糊→清楚地盖上来（加载页那档没铺底色，透出这层）。
+         过渡图铺满那一刻（--pl-t = BLUR_MS）再把整层收掉：那会儿画已经是不透明的了，
+         收得干干净净、眼睛看不出。没有画可看的兜底档照旧（260ms 收，别杵着） */
+      const keep = !!(pl && pl.classList && pl.classList.contains('has-card'));
+      if(root && !keep) root.classList.add('fading');   // 铺满之后整层轻轻淡出，别「啪」地一下没掉
+      setTimeout(()=>{ this._launching = false; this._hideEdges(); },
+                 keep ? CONFIG.TRANS.BLUR_MS + 120 : 260);
     });
   },
   _hideEdges(){
@@ -14177,7 +14559,7 @@ const PullMini = {
        小拉   ① 这个方向的小拉  ② 不分方向的小拉
        用力拉 ① 这个方向的用力拉 ② 不分方向的用力拉 ③ 这个方向的小拉 ④ 不分方向的小拉
      一句话：**「用力拉」实在没有才会去借「小拉」；轻轻一拉绝不会拿到一张使劲的脸。**
-     在「她的身体 → 动作图」里传过那两张（不分方向的）→ 全听你的，压过 mimi/ 里任何一个文件。
+     在「一起玩吧 → 动作图」里传过那两张（不分方向的）→ 全听你的，压过 mimi/ 里任何一个文件。
      只画了 pull.png 一张 = 四个方向都用它，跟以前一样；只画了朝左的、没画朝右的 →
      往右拉退回那张不分方向的（不会空着）。图裂了 → 先接力回她平常的样子（fb 名单） */
   DIRS:['left','right','up','down'],               // 你划的方向（不是卡片在哪条边）
@@ -14207,7 +14589,7 @@ const PullMini = {
     if(q && q.src) fb.push(q.src);
     if(q && q.fb) fb.push.apply(fb, q.fb);
     const keys = this.keys(hard, dir);
-    for(const k of keys){                           // ① 你在「她的身体」里传过的
+    for(const k of keys){                           // ① 你在「一起玩吧」里传过的
       const id = HerBody.id('acts', k);
       const u = id ? Store.getImage(id) : null;
       if(u) return {src:u, fb, key:k};
@@ -14399,9 +14781,21 @@ const Notify = {
     try{ if(typeof Talk !== 'undefined') Talk.allFiles().forEach(push); }catch(e){}
     return out;
   },
-  refreshArt(cb){
+  refreshArt(cb, extra){
     if(!this.swOK() || !this._reg || !this._reg.active){ if(cb) cb(-1); return; }
     const names = this.artNames().map(n => ({ name:n, cands:artCands(n) }));
+    /* ★ v1.17.5：声音那一串也走同一条通道（她点了「重新找一遍声音」时传进来） */
+    if(extra && extra.length) names.push.apply(names, extra);
+    /* ★ v1.17.4：进页那张整屏画再按**它自己的顺序**单独走一遍（pageTransCands）——
+       因为「过渡/<页面名>.png」这种新名字在普通 artCands 里排在卡片插画后面，
+       刷新时试到卡片那张就停了（sw 是「试到第一张有的就停」），永远轮不到它 →
+       她以后换一张过渡图会一直看不见。name 只是报账用的，sw 只认 cands */
+    try{
+      Object.keys(PAGE_META).forEach(k => {
+        const c = pageTransCands(k);
+        if(c.length) names.push({ name: 'trans:' + k, cands: c });
+      });
+    }catch(e){}
     let done = false;
     const fin = n => { if(done) return; done = true; if(this._artCb === fin) this._artCb = null; if(cb) cb(n); };
     this._artCb = fin;
@@ -14441,7 +14835,7 @@ const Notify = {
 
 /* 渲染入口：home=纯净看板娘页（无顶栏无静态UI），其余为带返回按钮的子页 */
 const VIEW_TITLES = {home:'', mspace:'', summary:'我们的共识', todos:'事务待办', spaces:'可能性空间', rhythm:'节律表', settings:'设置', alarm:'闹钟', space:'',
-  mgrow:'等级成长', moutfit:'她的身体', mcons:'她眼中的我', mdairy:'她的日记', mtalk:'对她说',
+  mgrow:'我们的羁绊', moutfit:'一起玩吧', mcons:'她眼中的我', mdairy:'她的日记', mtalk:'对她说',
   story:'她的故事', tdiary:'全部时间轴日记'};
 function renderView(){
   const root = document.getElementById('view-root');
@@ -14606,10 +15000,16 @@ function bootMain(){
       setTimeout(function(){
         try{
           const list = [];
-          /* 每个页面都按名字算一遍（她往 mimi/ 里丢一张「等级成长过渡图.png」就自动生效，零代码）——
+          /* 每个页面都按名字算一遍（她往 mimi/ 里丢一张「我们的羁绊过渡图.png」就自动生效，零代码）——
              没有那几页的文件就是几个很小的 404，不占带宽也不报错 */
           Object.keys(PAGE_META).forEach(function(k){
             const t = pageTransImg(k); if(t) list.push(t);
+            /* ★ v1.17.4：pageTransCands 头三个也探一遍 —— 主要是「过渡/<页面名>.png」
+               这一种新名字（她 2026-09-15 传的那四张）。少了这一行，那几张
+               在「刷新她的图」之前一次都不会被探到（warmed 不知道它存在，就用不上）。
+               ⚠️ 这几个是**完整地址**（不带 mimi/ 记号），artCands 只给它们补一个后缀，
+                  不会再按「该住哪个家」展开一遍 */
+            try{ pageTransCands(k).slice(0, 3).forEach(function(c){ list.push(c); }); }catch(e){}
           });
           list.push(PORTAL_UI_ART, PORTAL_TRANS_ART, Q_DRAG_ART);
           /* v1.7.12 眨眼帧（<脸>-blink.png，她还没画就是几个很小的 404）——
