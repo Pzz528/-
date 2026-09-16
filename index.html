@@ -1339,7 +1339,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.21.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.22.0', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10, lang:'zh'},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -1913,7 +1913,10 @@ const CONFIG = {
   SND:{
     NIGHT_FROM:23, NIGHT_TO:4,
     VOL:{low:0.6, mid:1, high:1.5},            // 音量三档 → 音效组增益倍数（mid=默认，温和）
-    BGM_VOL:{low:0.10, mid:0.18, high:0.30},   // BGM 元素音量（音乐永远比音效轻）
+    /* ★ v1.21.1（她报「背景音乐老是放不出来」）：音量三档整体抬上去 ——
+       老数值 0.10/0.18/0.30 是照着耳机定的，手机外放上「在放」和「没放」听不出区别
+       （她连点击音效都嫌小过，见 v1.17.9）。音乐照旧比音效轻，只是不再轻到听不见。 */
+    BGM_VOL:{low:0.14, mid:0.28, high:0.45},   // BGM 元素音量（音乐永远比音效轻）
     EFF_EXT:['.mp3','.m4a','.wav'],            // 音效文件的后缀顺序：声音/<中文名>.<后缀>
     /* ★ v1.17.5（她：「找到不少背景音乐，希望可以随机播放，或用户能选择性的播放」）：
        音乐可以放好几首——声音/BGM/01.mp3、02.mp3 …（最多 20 首，.mp3/.m4a/.wav 都行）：
@@ -8597,6 +8600,8 @@ const Store = {
 const S = {
   view:'home', spaceId:null, backTarget:'home', dayFilter:null, homeDay:null, rhythmDay:null, sumDay:null,
   mdiaryDay:null,                                        // 她的日记：正在翻的那一天（null = 今天）
+  todoDay:null,                                          // 待办页日历：正在看的那一天（null = 今天/默认口径）
+  todoCalY:null, todoCalM:null,                          // 待办页日历：正在翻的年月（懒初始化）
   consOpen:false, consTab:'slots',                       // 节律操控台（双击呼出）
   sbOpen:false,                                          // 空间栏模式（双击后左滑）
   alarms:[], alarmFired:{},
@@ -9239,11 +9244,15 @@ const Snd = {
       return Alarms._ctx;
     }catch(e){ return null; }
   },
-  /* 与 Alarms.unlockAudio 在同一个 once 监听里叫：resume 共享 ctx + 拉起 BGM */
+  /* 与 Alarms.unlockAudio 在同一个监听里叫（★ v1.21.1 起**每一下点屏幕都会叫**，
+     不再是一次性的）：resume 共享 ctx + 「该放却没放」就补一下。
+     ⚠️ 老版本这里是 `this._bgmEl.play()` —— 无条件放。那时监听只跑一次还看不出来，
+     现在它每下都跑，就必须走 apply 那套判断：关了音乐/半夜静音的时候
+     绝不能又偷偷放起来（音量 0 地空转也是白耗电）。 */
   unlock(){
     this.ctx();
     try{ if(Alarms._ctx && Alarms._ctx.state === 'suspended') Alarms._ctx.resume(); }catch(e){}
-    try{ if(this._bgmEl) this._bgmEl.play().catch(function(){}); }catch(e){}
+    this.apply();
   },
   /* 23:00~4:00 她收声：音量自动减半（懒计算，不挂定时器） */
   nightFactor(now){
@@ -9254,15 +9263,21 @@ const Snd = {
   vol(){
     return (CONFIG.SND.VOL[S.settings.soundVol] != null ? CONFIG.SND.VOL[S.settings.soundVol] : 1) * this.nightFactor();
   },
+  /* ★ v1.21.1：BGM 音量也收成一处（原来 apply 里写死一个 0.18 兜底 ——
+     她根本没进过设置页，soundVol 就是 undefined，于是**永远是那个写死的数**，
+     改 CONFIG 里的三档等于白改。诊断里亲眼看到：CONFIG 改成 0.28 了，元素还是 0.18）。 */
+  bgmVol(){
+    const V = CONFIG.SND.BGM_VOL || {};
+    const v = (V[S.settings.soundVol] != null) ? V[S.settings.soundVol] : (V.mid != null ? V.mid : 0.28);
+    return v * this.nightFactor();
+  },
   /* 设置变了 / 回到前台 / 开机时刷一遍（总开关 × 音量档 × 深夜系数，单一来源不双重乘算） */
   apply(){
     try{
       const g = this.on() ? this.vol() : 0;
       if(this._sfx) this._sfx.gain.value = g;
       if(this._bgmEl){
-        const v = (this.on() && S.settings.bgmOn !== false)
-          ? (CONFIG.SND.BGM_VOL[S.settings.soundVol] != null ? CONFIG.SND.BGM_VOL[S.settings.soundVol] : 0.18) * this.nightFactor()
-          : 0;
+        const v = (this.on() && S.settings.bgmOn !== false) ? this.bgmVol() : 0;
         this._bgmEl.volume = v;
         if(v <= 0){ try{ this._bgmEl.pause(); }catch(e){} }
         else if(this._bgmEl.paused && !document.hidden){ this._bgmEl.play().catch(function(){}); }
@@ -9332,7 +9347,10 @@ const Snd = {
   /* 开机探测（照 HerBody.warm 的「探到才用 + 攥住引用」教训）：请求是同源 GET，
      sw.js 的 cacheFirst 顺手就把文件（和 404）存了 → 之后播放零延迟、断网可听。
      「刷新她的图」不纳入声音：发版必换缓存名 → 旧缓存整批作废 → 下次开机自动重探。 */
-  probeAll(){
+  /* ★ v1.21.1：`full` = 20 格全扫（不看「连着三格空」那条收手规矩）。
+     开机走默认的快速扫（早出声要紧）；她点「重新找一遍声音」走 full —— 那条路
+     得认下所有排法（比如她只放了个 10.mp3、前九格全空），不能也被收手规矩掐掉。 */
+  probeAll(full){
     if(typeof Audio !== 'function') return;
     try{
       Object.keys(CONFIG.SND.FILE || {}).forEach(name=>{
@@ -9343,7 +9361,7 @@ const Snd = {
           this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok && !this._files[name]) this._files[name] = u; });
         }
       });
-      this._probeTracks();
+      this._probeTracks(full);
     }catch(e){}
   },
   _probeOne(url, cb){
@@ -9381,18 +9399,33 @@ const Snd = {
     dirs.forEach(d => pres.forEach(p => exts.forEach(e => out.push(d + p + e))));
     return out;
   },
-  _probeTracks(){
+  /* ★ v1.21.1（她报「背景音乐老是放不出来」）：**探到第一首就起播**、
+     连着三格空就收手。真浏览器里量出来的老毛病：
+       ① 原来要把 20 格全问完才挑歌 —— 她那 4 首那次实测问了 **233 个地址**、
+          第 10 秒播放器才建出来（手机上更久）；这十来秒里一点声都没有；
+       ② 那期间「第一下点屏幕」早用掉了（老的 unlock 只跑一次），等播放器建好，
+          play() 被自动播放策略挡下（NotAllowedError）就再没人重试 → 歌一直躺着。
+     现在每探到一首就 `_pickBgm(true)`（init 不会打断已在放的那首），声音几秒内就起来；
+     后面几格照旧慢慢扫完，扫到新的歌单跟着长大（设置页「曲目」那行是当场问的）。
+     ⚠️ 收手条件 = 连着三格一个文件都没探到：文档里的命名就是从 01 连着排的，
+     空三格基本可以断定后面没有了（`full` = 她点「重新找一遍声音」那条路，
+     不受这条规矩管：真要只剩 10.mp3，那一下照样认）。 */
+  _probeTracks(full){
     this._tracks = [];
-    let i = 1;
+    let i = 1, emptyRun = 0;
     const next = ()=>{
-      if(i > (CONFIG.SND.BGM_MAX || 20)){ this._pickBgm(true); return; }
+      if(i > (CONFIG.SND.BGM_MAX || 20) || (!full && emptyRun >= 3)){ this._pickBgm(true); return; }
       const cands = this._bgmCands(i); i++;
       const tryOne = k=>{
-        if(k >= cands.length) return next();
+        if(k >= cands.length){ emptyRun++; next(); return; }      // 这一格是空的
         const u = cands[k];
-        if(this._probed[u] === true){ this._tracks.push(u); return next(); }
+        if(this._probed[u] === true){ this._tracks.push(u); emptyRun = 0; this._pickBgm(true); return next(); }
         if(this._probed[u] === false) return tryOne(k + 1);
-        this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok){ this._tracks.push(u); next(); } else tryOne(k + 1); });
+        this._probeOne(u, ok=>{
+          this._probed[u] = ok;
+          if(ok){ this._tracks.push(u); emptyRun = 0; this._pickBgm(true); next(); }
+          else tryOne(k + 1);
+        });
       };
       tryOne(0);
     };
@@ -9401,9 +9434,13 @@ const Snd = {
     const tryLegacy = k=>{
       if(k >= legacy.length) return next();
       const u = legacy[k];
-      if(this._probed[u] === true){ this._tracks.push(u); return next(); }
+      if(this._probed[u] === true){ this._tracks.push(u); this._pickBgm(true); return next(); }
       if(this._probed[u] === false) return tryLegacy(k + 1);
-      this._probeOne(u, ok=>{ this._probed[u] = ok; if(ok){ this._tracks.push(u); next(); } else tryLegacy(k + 1); });
+      this._probeOne(u, ok=>{
+        this._probed[u] = ok;
+        if(ok){ this._tracks.push(u); this._pickBgm(true); next(); }
+        else tryLegacy(k + 1);
+      });
     };
     tryLegacy(0);
   },
@@ -9420,10 +9457,15 @@ const Snd = {
   },
   trackCount(){ return (this._tracks || []).length; },
   trackIdx(){ return this._tracks ? this._tracks.indexOf(this._bgmUrl) : -1; },
-  /* 探完了（或重探完了）挑一首起播：已经在放的那首还在名单里就别打断它 */
+  /* 挑一首起播：已经在放的那首还在名单里就别打断它
+     ★ v1.21.1：现在是**边探边叫**（探到第一首就起播），所以名单会长大 ——
+     单首时 `loop` 是开着的（一首歌就该一直循环），后来多出别的歌就得把它关掉，
+     不然第一首会自己循环一辈子、永远轮不到第二首（原来只在建元素那一刻定一次，
+     那时名单还是全的；改成边探边起播之后，那次定档会定错）。 */
   _pickBgm(init){
     const t = this._tracks || [];
     if(!t.length){ this._setBgm(null); return; }
+    if(this._bgmEl) this._bgmEl.loop = (t.length <= 1);
     if(init && this._bgmUrl && t.indexOf(this._bgmUrl) >= 0) return;
     this.next(!init);
   },
@@ -10259,6 +10301,20 @@ const Actions = {
   'sum-cal-prev'(){ S.sumCalM--; if(S.sumCalM<0){ S.sumCalM=11; S.sumCalY--; } scheduleRender(); },
   'sum-cal-next'(){ S.sumCalM++; if(S.sumCalM>11){ S.sumCalM=0; S.sumCalY++; } scheduleRender(); },
   'sum-cal-day'(btn){ S.sumDay = btn.dataset.dk; scheduleRender(); },
+  /* —— 待办页日历（★ v1.22.0 她点名的）—— */
+  'todo-cal-prev'(){ S.todoCalM--; if(S.todoCalM<0){ S.todoCalM=11; S.todoCalY--; } scheduleRender(); },
+  'todo-cal-next'(){ S.todoCalM++; if(S.todoCalM>11){ S.todoCalM=0; S.todoCalY++; } scheduleRender(); },
+  'todo-cal-toggle'(){
+    S.settings.todoCalOpen = (S.settings.todoCalOpen === false);   // 默认展开
+    saveSettings(); scheduleRender();
+  },
+  /* 点今天那一格 = 回到默认口径（进行中 + 今天已完成），不是翻历史 */
+  'todo-cal-day'(btn){
+    const dk = btn.dataset.dk;
+    S.todoDay = (dk === D.dateKey(Date.now())) ? null : dk;
+    scheduleRender(); window.scrollTo(0,0);
+  },
+  'todo-day-today'(){ S.todoDay = null; scheduleRender(); window.scrollTo(0,0); },
   /* —— 日历选择器 —— */
   'pick-date'(btn){ openDatePickerModal(btn.dataset.target || 'sum'); },
   'dp-prev'(){ S.dpM--; if(S.dpM<0){ S.dpM=11; S.dpY--; } refreshDp(); },
@@ -10527,7 +10583,7 @@ const Actions = {
       try{
         Snd._probed = {}; Snd._files = {};
         Snd._tracks = []; Snd._setBgm(null);
-        Snd.probeAll();
+        Snd.probeAll(true);                 // ★ v1.21.1：全扫 20 格（不看「连着三格空」那条收手规矩）
       }catch(e){}
       setTimeout(()=>{ try{ renderView(); }catch(e){} }, 2500);   // 探完再画一次（曲目 chip 才会冒出来）
       if(n < 0) UI.toast('重新找了一遍（没连上网，只看了本机的文件）');
@@ -10821,13 +10877,37 @@ function gcImages(){
   return removed;
 }
 /* 是否属于「当日待办」（首页收纳卡口径，now 为当天视角）：
-   完成态=已记到该天；未完成=当天到期/已超时/无期限 */
+   完成态=已记到该天；未完成=当天到期/已超时/无期限
+   ★ v1.22.0（她点名的）：单次待办与备忘（非每日/每周的那些）还要落进
+   「创建那天 ~ 完成那天」这个窗口里——办完的从第二天起就收起来，
+   不再天天挂在「我们的共识」里；每日/每周是循环的，不受这条管 */
 function isTodayTodo(t, now){
   const dk = D.dateKey(now);
-  if(todoStatus(t, now)==='done') return true;
+  const done = todoStatus(t, now)==='done';
+  if(t.repeat !== 'daily' && t.repeat !== 'weekly'){
+    if(t.createdAt && dk < D.dateKey(t.createdAt)) return false;               // 还没创建的那天
+    if(done && t.completedAt && dk > D.dateKey(t.completedAt)) return false;   // 完成日的第二天起收起来
+  }
+  if(done) return true;
   const due = TodoLogic.dueAt(t, now);
   if(due == null) return true;
   return due <= D.dkToTs(dk) + 86400000;
+}
+/* 「当日待办」的显示顺序（共识页与待办页日历共用这一份口径，别各抄一份）：
+   未办的排前面（剩余时间最少的在最上面，无期限备忘垫底），
+   已办好的排在后面（其中最后办好的在最上面） */
+function sortDayTodos(arr, now){
+  return [...arr].sort((a,b)=>{
+    const da = todoStatus(a, now)==='done' ? 1 : 0;
+    const db = todoStatus(b, now)==='done' ? 1 : 0;
+    if(da !== db) return da - db;
+    if(da === 1) return (b.completedAt||0) - (a.completedAt||0);   // 已办好：最后办好的最上面
+    const ua = TodoLogic.dueAt(a, now), ub = TodoLogic.dueAt(b, now);
+    if(ua==null && ub==null) return 0;                              // 都无期限：保持原顺序
+    if(ua==null) return 1;                                          // 无期限的排在有期限的后面
+    if(ub==null) return -1;
+    return ua - ub;                                                 // 剩余越少越靠前（超时的最靠前）
+  });
 }
 /* 该空间做过可能性确定的天数 */
 function iterDays(spId){
@@ -11095,6 +11175,61 @@ function spTodosHtml(sp){
     h += '<div class="sec-sub">已完成<span class="cnt">'+done.length+'</span></div>';
     for(const t of done) h += todoCardHtml(t, now);
   }
+  return h;
+}
+
+/* ── 待办页 · 日历（★ v1.22.0 她点名的）──────────────────────────
+   月网格：点任意一天翻看那天的待办；今天粗框、有安排的点圆点、正在看的那天高亮；
+   年月那行可点，收起/展开整个日历（收起状态记在设置里） */
+function todoCalHtml(){
+  if(!S.todoCalY){ const d = new Date(); S.todoCalY = d.getFullYear(); S.todoCalM = d.getMonth(); }
+  const today = D.dateKey(Date.now());
+  const sel = S.todoDay || today;
+  const open = S.settings.todoCalOpen !== false;
+  const startWd = new Date(S.todoCalY, S.todoCalM, 1).getDay();
+  const daysIn = new Date(S.todoCalY, S.todoCalM+1, 0).getDate();
+  let h = '<div class="card pad" style="margin-bottom:12px">'+
+    '<div class="cal-head">'+
+      '<button class="icon-btn" data-action="todo-cal-prev" aria-label="上个月">◀</button>'+
+      '<button class="cal-title" data-action="todo-cal-toggle" aria-label="收起或展开日历">'+D.ym(S.todoCalY, S.todoCalM+1)+' <span class="cal-caret">'+(open?'▾ 收起':'▸ 展开')+'</span></button>'+
+      '<button class="icon-btn" data-action="todo-cal-next" aria-label="下个月">▶</button>'+
+    '</div>';
+  if(open){
+    h += '<div class="cal-grid cal-wd">'+'日一二三四五六'.split('').map(w=>'<span>'+w+'</span>').join('')+'</div>'+
+         '<div class="cal-grid" style="margin-top:4px">';
+    for(let i=0;i<startWd;i++) h += '<span></span>';
+    for(let d=1;d<=daysIn;d++){
+      const dk2 = S.todoCalY+'-'+pad2(S.todoCalM+1)+'-'+pad2(d);
+      /* 这一天有待办可看（口径与「那一年的那一天」完全一致：isTodayTodo 带窗口） */
+      const has = S.todos.some(x=>!x.archived && isTodayTodo(x, D.dkToTs(dk2) + 86400000 - 1));
+      h += '<button class="cal-day'+(dk2===today?' today':'')+(dk2===sel?' sel':'')+(has?' has':'')+'" data-action="todo-cal-day" data-dk="'+dk2+'">'+
+             '<span class="cal-n">'+d+'</span>'+
+           '</button>';
+    }
+    h += '</div>';
+    if(S.todoDay && S.todoDay !== today){
+      h += '<button class="btn btn--small" data-action="todo-day-today" style="margin-top:10px">回到今天</button>';
+    }
+  }else{
+    h += '<div class="hint" style="font-size:11.5px;color:var(--text-2)">日历已收起 · 点上方月份可展开</div>';
+  }
+  h += '</div>';
+  return h;
+}
+/* 待办页 · 翻到某一天时的那份清单（历史日视角：卡片带 data-day，点它可以补记那一天） */
+function todoDayListHtml(dk){
+  const vNow = D.dkToTs(dk) + 86400000 - 1;
+  const list = S.todos.filter(x=>!x.archived && isTodayTodo(x, vNow));
+  const doneCnt = list.filter(x=>todoStatus(x, vNow)==='done').length;
+  let h = '<div class="sec-sub">这一天的待办<span class="cnt">'+list.length+'</span>'+
+          '<span class="cnt" style="color:var(--green)">✓ '+doneCnt+'</span></div>';
+  if(list.length===0){
+    h += '<div class="empty"><span class="empty-ico">☀</span>这一天没有待办</div>';
+  }else{
+    for(const t of sortDayTodos(list, vNow)) h += todoCardHtml(t, vNow, false);
+  }
+  h += '<div class="hint" style="font-size:11.5px;color:var(--text-2);margin-top:8px">'+
+       '点卡片可以给这一天补记 · 点日历上「回到今天」看进行中的</div>';
   return h;
 }
 
@@ -12013,7 +12148,8 @@ const Views = {
     /* 自流转课程表状态 */
     h += '<div class="sec-sub" style="margin-top:4px">自流转日程</div>';
     h += slotListHtml(dk, false);
-    /* 当日待办 */
+    /* 当日待办：★ v1.22.0 起，单次待办与备忘只在「创建那天 ~ 完成那天」之间露面
+       （窗口判据在 isTodayTodo 里，这里不动） */
     const dayTodos = S.todos.filter(x=>!x.archived && isTodayTodo(x, vNow));
     const doneCnt = dayTodos.filter(x=>todoStatus(x, vNow)==='done').length;
     h += '<div class="sec-sub" style="margin-top:14px">当日待办完成情况'+
@@ -12021,20 +12157,7 @@ const Views = {
     if(dayTodos.length===0){
       h += '<div class="hint" style="font-size:12px;color:var(--text-2)">这一天没有待办</div>';
     }else{
-      /* 排序：未办的排前面（其中剩余时间最少的在最上面，无期限备忘垫底），
-         已办好的排在后面（其中最后办好的在最上面） */
-      const sorted = [...dayTodos].sort((a,b)=>{
-        const da = todoStatus(a, vNow)==='done' ? 1 : 0;
-        const db = todoStatus(b, vNow)==='done' ? 1 : 0;
-        if(da !== db) return da - db;
-        if(da === 1) return (b.completedAt||0) - (a.completedAt||0);   // 已办好：最后办好的最上面
-        const ua = TodoLogic.dueAt(a, vNow), ub = TodoLogic.dueAt(b, vNow);
-        if(ua==null && ub==null) return 0;                              // 都无期限：保持原顺序
-        if(ua==null) return 1;                                          // 无期限的排在有期限的后面
-        if(ub==null) return -1;
-        return ua - ub;                                                 // 剩余越少越靠前（超时的最靠前）
-      });
-      for(const t of sorted) h += todoCardHtml(t, isTodayView ? now : vNow, isTodayView);
+      for(const t of sortDayTodos(dayTodos, vNow)) h += todoCardHtml(t, isTodayView ? now : vNow, isTodayView);
     }
     /* 时间轴日记（v1.1 起归属「我们的共识」：任意一天都能补记/编辑/删除） */
     const entries = [...(doc.rhythmEntries||[])].sort((a,b)=>a.at<b.at?-1:1);
@@ -12095,6 +12218,7 @@ const Views = {
   /* —— 事务待办 —— */
   todos(){
     const now = Date.now();
+    const todayDk = D.dateKey(now);
     const list = S.todos.filter(x=>!x.archived);
     const pending = [], done = [];
     for(const t of list){ (todoStatus(t, now)==='done' ? done : pending).push(t); }
@@ -12102,16 +12226,23 @@ const Views = {
       const da = TodoLogic.dueAt(a, now), db = TodoLogic.dueAt(b, now);
       if(da==null) return 1; if(db==null) return -1; return da-db;
     });
+    let h = '<section class="sec"><h2 class="sec-title">事务待办</h2>';
+    /* ★ v1.22.0（她点名的）：这一页顶上加了日历——默认还是老样子（进行中 + 今天已完成），
+       只有从日历上点开别的某一天，才切换成「那一天」的视角（可以补记） */
+    h += todoCalHtml();
+    h += '<button class="btn btn--primary btn--block" data-action="todo-form" style="margin-bottom:6px">＋ 新建待办</button>';
+    if(S.todoDay && S.todoDay !== todayDk){
+      h += todoDayListHtml(S.todoDay);
+      h += '</section>';
+      return h;
+    }
     /* ★ v1.15.0（她点名的）：这一页只显示「待办 + 今天已完成的」——
        更早完成的只记录不显示，要去「我们的共识」按日期回看 */
-    const todayDk = D.dateKey(now);
     const doneToday = [], doneOld = [];
     for(const t of done){
       (t.completedAt && D.dateKey(t.completedAt) === todayDk ? doneToday : doneOld).push(t);
     }
     doneToday.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
-    let h = '<section class="sec"><h2 class="sec-title">事务待办</h2>';
-    h += '<button class="btn btn--primary btn--block" data-action="todo-form" style="margin-bottom:6px">＋ 新建待办</button>';
     h += '<div class="sec-sub">进行中<span class="cnt">'+pending.length+'</span></div>';
     if(pending.length===0){
       h += '<div class="empty"><span class="empty-ico">☀</span>没有进行中的待办<br><span style="font-size:12px">点上方「新建待办」开始记录</span></div>';
@@ -15953,10 +16084,19 @@ const Shake = {
   }
 };
 
+/* 忙碌页上点她的那几句（★ v1.22.0）：她在旁边陪着你忙，话短、贴着手上这件事说 */
+const Q_TAP_LINES = [
+  '嗯嗯，我在这儿陪着你～','加油加油，我盯着你哦','这一件做完就歇一会儿吧？',
+  '要不要我帮你把待办理一理？','我看到你在努力啦！','忙完记得摸摸我～',
+  '累的话就靠一会儿，我在的','嘿咻——我也在认真陪着你'
+];
 /* ── 忙碌页面右下角的她 QCorner（v1.6a）：Q版小人一直在，你做什么她都陪着 ── */
 const QCorner = {
   _built:false, _wired:false, _pts:new Map(), _drag:null, _pinch:null, _t0:0, _moved:0, _tapFired:false, _baseSrc:null, _dragImgOn:false,
+  _holdT:null, _holdOn:false, _tapAt:0, _tapN:0, _lastLine:'',
   el(){ try{ return document.getElementById('q-corner'); }catch(e){ return null; } },
+  /* 长按判定时长：跟手势引擎共用同一份数（她点名的 0.7 秒），别各写一个 */
+  holdMs(){ return (typeof Gestures !== 'undefined' && Gestures.HOLD_MS) || 700; },
   /* 换页时同步：忙碌页出现；纯净页与她的页面不出现（那儿本来就是她的地方，不重复） */
   sync(){
     const el = this.el();
@@ -15974,6 +16114,8 @@ const QCorner = {
       /* v1.7.13：离开忙碌页 → 头顶那个小气泡一起收掉（别让它悬在别的页面上） */
       const qb = document.getElementById('q-bubble');
       if(qb){ qb.innerHTML = ''; qb.classList.add('hidden'); }
+      /* ★ v1.22.0：长按拉页面拉到一半就换页了 → 整场收掉（别留半个扇形） */
+      if(this._holdOn) this._abortHold();
     }
     return busy;
   },
@@ -16015,7 +16157,14 @@ const QCorner = {
         this._drag = {id:e.pointerId, x0:e.clientX, y0:e.clientY, bw, bh, s,
           bx0: (typeof el.offsetLeft === 'number') ? el.offsetLeft : (r.left + (bw * s - bw) / 2),
           by0: (typeof el.offsetTop  === 'number') ? el.offsetTop  : (r.top  + (bh * s - bh))};
+        /* ★ v1.22.0（她点名的）：按住不动 0.7 秒 → 这一指去「拉页面」（见 _holdFire）。
+           手指挪过 8px 就作废——「拖动时不触发」就是这一条 */
+        this._holdOn = false;
+        clearTimeout(this._holdT);
+        this._holdT = setTimeout(()=>this._holdFire(e.pointerId), this.holdMs());
       }else if(this._pts.size === 2){
+        /* 长按拉页面途中又落下一根手指 → 整场收掉（别一半拉着一半捏着） */
+        if(this._holdOn){ this._tapFired = true; this._abortHold(); return; }
         const arr = [...this._pts.values()];
         this._endDrag();                     // 第二指落下 → 拖动收尾（位置照存），转捏合
         this._pinch = {d0: Math.hypot(arr[0][0]-arr[1][0], arr[0][1]-arr[1][1]) || 1, s0: S.settings.qScale || 1};
@@ -16024,6 +16173,15 @@ const QCorner = {
     el.addEventListener('pointermove', e=>{
       if(!this._pts.has(e.pointerId)) return;
       this._pts.set(e.pointerId, [e.clientX, e.clientY]);
+      /* ★ v1.22.0：长按赢了之后，这一指是「拉页面」的，不是拖小人的——原样转给手势引擎的状态机。
+         ⚠️ 必须 stopPropagation：Gestures 那几个监听挂在 document 上、而且 _ptrMove/_ptrUp
+         **没有** _busy 那道门（只有 pointerdown 有）——不拦住就是同一拍算两遍，
+         松手那次还会在「铺满进页」演到一半时又 _reset() 一下，把整场戏掐掉 */
+      if(this._holdOn){
+        try{ e.stopPropagation(); }catch(err){}
+        if(this._drag && this._drag.id === e.pointerId && typeof Gestures !== 'undefined' && Gestures._ptrMove) Gestures._ptrMove(e);
+        return;
+      }
       const arr = [...this._pts.values()];
       if(arr.length === 1 && this._drag && this._drag.id === e.pointerId) this._moveDrag(e.clientX, e.clientY);
       else if(arr.length >= 2 && this._pinch) this._movePinch(Math.hypot(arr[0][0]-arr[1][0], arr[0][1]-arr[1][1]));
@@ -16031,15 +16189,92 @@ const QCorner = {
     const end = e=>{
       if(!this._pts.has(e.pointerId)) return;
       this._pts.delete(e.pointerId);
+      /* ★ v1.22.0：长按拉页面那一指松手 → 交给手势引擎收场（拉够就进页、不够就弹回原位） */
+      if(this._holdOn){
+        try{ e.stopPropagation(); }catch(err){}
+        this._holdOn = false; this._drag = null;
+        if(e.type === 'pointercancel'){ this._abortHold(); return; }   // 被系统取消 → 整场收掉
+        if(typeof Gestures !== 'undefined' && Gestures._ptrUp) Gestures._ptrUp(e);
+        return;
+      }
+      clearTimeout(this._holdT); this._holdT = null;
       if(this._drag && this._drag.id === e.pointerId) this._endDrag();
       if(this._pinch && this._pts.size < 2) this._endPinch();
       if(this._pts.size === 0 && !this._tapFired && Date.now() - this._t0 < 320 && this._moved < 8 && typeof Director !== 'undefined'){
         this._tapFired = true;
-        Director.act('act-jiggle');          // 轻点一下 → 她扭一扭回应你
+        this.tap();                          // 轻点一下 → 动作 + 换脸 + 一句话（见 tap）
       }
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
+  },
+  /* ★ v1.22.0（她点名的）：轻点她 = 多点互动 + 气泡。
+     以前只有「无声地扭一扭」；现在：动作（随机换个花样）+ 每戳必换脸 + 一句话气泡
+     （忙碌页自动落在她头顶 #q-bubble），1.5 秒里连戳 5 下她会真的生气。
+     连戳窗口与换脸序列直接用 CONFIG.SENSE 那一套 —— 和首页立绘同一个手感。
+     ⚠️ 别改成调 Mascot.tap：那条有「只在首页/她的空间」的门，还动 #mascot 那颗 DOM */
+  tap(){
+    const now = Date.now();
+    if(!this._tapAt || now - this._tapAt > CONFIG.SENSE.TAP_WIN){ this._tapAt = now; this._tapN = 0; }
+    this._tapAt = now; this._tapN = (this._tapN || 0) + 1;
+    const angry = this._tapN >= CONFIG.SENSE.TAP_N;
+    if(angry) this._tapN = 0;
+    /* 她在忙碌页只有巴掌大 → 只演眼睛看得出来、不变形的那几个小动作 */
+    if(typeof Director !== 'undefined'){
+      const pool = angry ? ['act-startle'] : ['act-jiggle', 'act-bounce', 'act-jiggle', 'act-spin'];
+      Director.act(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    if(angry){
+      if(typeof Emo !== 'undefined') Emo.set('angry', '连戳', now);
+      buzz(110); if(typeof Snd !== 'undefined') Snd.play('tapAngry');
+      this.say('呀！别戳啦～', 2400);
+      return;
+    }
+    if(typeof Snd !== 'undefined') Snd.play('tap');
+    /* 每戳必换脸（1=开心 2=害羞 3=开心 4=担心）——q 形态只认 base/happy，
+       paintHer 的白名单会把别的表情落回 base（不会去探不存在的 q-sad 那些） */
+    if(typeof Emo !== 'undefined'){
+      const faces = CONFIG.SENSE.TAP_FACES;
+      Emo.set(faces[Math.min(this._tapN - 1, faces.length - 1)], '你戳了戳她', now);
+    }
+    /* 气泡：她的日常台词池（按等级解锁那套）与忙碌页专用短句各占一半 */
+    this.say(Math.random() < .5 ? this.cornerLine() : Mascot.randomLine(Grow.level()), 2600);
+  },
+  /* 忙碌页专用的一句（短、别跟手上那件事抢屏）——同一句不连着说两次 */
+  cornerLine(){
+    let l = Q_TAP_LINES[Math.floor(Math.random() * Q_TAP_LINES.length)];
+    if(l === this._lastLine) l = Q_TAP_LINES[(Q_TAP_LINES.indexOf(l) + 1) % Q_TAP_LINES.length];
+    this._lastLine = l;
+    return l;
+  },
+  /* 说话走那个唯一出口 Bubbles（忙碌页自动落到她头顶的 #q-bubble） */
+  say(text, ms){
+    if(typeof Mascot === 'undefined' || !text) return;
+    Mascot.say(text, ms || 2600);
+  },
+  /* ★ v1.22.0（她点名的）：长按 0.7 秒不动 = 拉页面。
+     忙碌页的手势引擎整体放假（Gestures._busy 那条），所以这里把这一指**补登记**进它的状态机
+     并立刻点火——往后方向判定、扇形、拉够铺满进页全是它那套现成的（含她的音效与好感） */
+  _holdFire(pid){
+    this._holdT = null;
+    if(this._holdOn) return;
+    if(this._pts.size !== 1) return;                     // 指头已经不止一根了
+    if(this._moved >= 8) return;                         // 你是在拖她，不是在按她
+    if(!this._drag || this._drag.id !== pid) return;     // 这一指已经收场了
+    if(typeof Gestures === 'undefined' || typeof Gestures.holdNow !== 'function') return;
+    const d = this._drag;
+    if(!Gestures.holdNow(d.x0, d.y0, d.id)) return;
+    this._holdOn = true;
+    this._pinch = null;                                  // 长按赢了 → 捏合让位
+  },
+  /* 长按拉页面被中途打断（第二指落下 / 切页）：整场收掉，别留半个扇形 */
+  _abortHold(){
+    this._holdOn = false; this._drag = null;
+    if(typeof Gestures === 'undefined') return;
+    try{
+      if(Gestures._ptrs) Gestures._ptrs.clear();
+      Gestures._reset();
+    }catch(e){}
   },
   /* 拖动中：小人跟着手走；动起来就换「拖动图」（acts.pull 传过用图，没有就加个使劲儿姿势） */
   _moveDrag(x, y){
@@ -17475,21 +17710,37 @@ const Gestures = {
     const el = document.getElementById('pull-dim');
     if(el && el.classList) el.classList.toggle('on', !!on);
   },
+  HOLD_MS:700,                          // 长按判定成功要按住多久（忙碌页的小人共用这一份，见 QCorner.holdMs）
   _down(e){
     const now = Date.now();
     if(e.pointerType!=='touch' && e.pointerType!=='mouse' && e.pointerType!=='pen') return;
     this._t0 = now; this._x0 = e.clientX; this._y0 = e.clientY;
     this._moved = 0; this._dir = null; this._mode = 'maybe';
     this._onMascot = !!(e.target.closest && e.target.closest('#mascot'));
-    this._holdT = setTimeout(()=>{
-      if(this._mode!=='maybe') return;
-      if(this._moved > 30) return;      // 手指轻微抖动不打断长按（手机常见）
-      this._mode = 'hold';
-      /* v1.7：长按成功 → 她「砰」地变成小人在你指尖，替你拉页面 */
-      if(typeof Director !== 'undefined') Director.stop();
-      if(typeof PullMini !== 'undefined') PullMini.out(e.clientX, e.clientY);
-      this._showEdges(e.clientX, e.clientY);
-    }, 700);                            // 长按 0.7 秒判定成功
+    this._holdT = setTimeout(()=>{ this._fireHold(e.clientX, e.clientY); }, this.HOLD_MS);   // 长按 0.7 秒判定成功
+  },
+  /* 长按到点：进入「拉页面」模式（她「砰」地变成小人在你指尖 + 四向扇形出场） */
+  _fireHold(x, y){
+    if(this._mode!=='maybe') return;
+    if(this._moved > 30) return;        // 手指轻微抖动不打断长按（手机常见）
+    this._mode = 'hold';
+    /* v1.7：长按成功 → 她「砰」地变成小人在你指尖，替你拉页面 */
+    if(typeof Director !== 'undefined') Director.stop();
+    if(typeof PullMini !== 'undefined') PullMini.out(x, y);
+    this._showEdges(x, y);
+  },
+  /* ★ v1.22.0（她点名的）：忙碌页的 Q版小人长按也走这一套。
+     忙碌页不开 document 监听（_busy 一律挡），所以 QCorner 自己数满 0.7 秒后调这里——
+     把那一指补登记进来并立刻点火；其后的移动与松手由 QCorner 原样转发到 _ptrMove/_ptrUp */
+  holdNow(x, y, id){
+    if(this._mode === 'hold' || this._launching) return false;
+    if(!this._ptrs) this._ptrs = new Map();
+    this._ptrs.set(id, {x, y});
+    this._t0 = Date.now(); this._x0 = x; this._y0 = y;
+    this._moved = 0; this._dir = null; this._onMascot = false;
+    this._mode = 'maybe';
+    this._fireHold(x, y);
+    return this._mode === 'hold';
   },
   _move(e){
     const dx = e.clientX - this._x0, dy = e.clientY - this._y0;
@@ -18605,8 +18856,15 @@ function bootMain(){
     const files = e.target.files ? Array.from(e.target.files) : [];
     if(cb && files.length) cb(files);
   });
-  /* 首次交互解锁音频（闹钟提示音 + v1.13.0 声音系统都需要） */
-  document.addEventListener('pointerdown', function unlockAudio(){ Alarms.unlockAudio(); if(typeof Snd !== 'undefined') Snd.unlock(); }, {once:true});
+  /* 交互解锁音频（闹钟提示音 + v1.13.0 声音系统都需要）
+     ★ v1.21.1：**不再是一次性的**（去掉 {once:true}）—— 她报「背景音乐老是放不出来」，
+     真浏览器里量出来：歌是**开机十来秒后**才探到的，而「第一下点屏幕」早用掉了，
+     于是播放器建出来那一下 play() 被自动播放策略挡下（NotAllowedError）、再没人重试。
+     现在每一下点屏幕都顺手补一次（Snd.unlock → apply：该放而没放才放，
+     关了音乐/深夜静音时不会偷偷播）。代价是每个 pointerdown 多几行判断，可以忽略。 */
+  document.addEventListener('pointerdown', function unlockAudio(){
+    Alarms.unlockAudio(); if(typeof Snd !== 'undefined') Snd.unlock();
+  }, {passive:true});
   window.addEventListener('beforeunload', ()=>{ Store.set('heartbeat', {lastActiveAt:Date.now()}); });
   document.addEventListener('visibilitychange', ()=>{
     if(document.hidden){ if(typeof Snd !== 'undefined' && Snd._bgmEl){ try{ Snd._bgmEl.pause(); }catch(e){} } return; }
