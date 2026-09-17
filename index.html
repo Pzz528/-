@@ -108,6 +108,14 @@ img{max-width:100%;display:block}
   border-radius:var(--radius-round,999px);background:rgba(255,255,255,.7);color:var(--text-2);user-select:none}
 .chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-dark)}
 .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+/* ★ v1.25.0 她记住的事（设置页那一列）：一条一行，右边一个 ✕ 删掉它。
+   ⚠️ 单独给样式，而不是借用 .chip 做成「点一下就删」的按钮：
+      **chip 在别处都是「点一下选中」**，同一个样子干着相反的事，手指一滑就没了。 */
+.fact-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.fact-row:last-child{border-bottom:none}
+.fact-t{flex:1;min-width:0;font-size:13px;line-height:1.45;word-break:break-word}
+.fact-del{flex:none;background:none;border:none;color:var(--text-2);font-size:15px;line-height:1;padding:2px 6px}
+.fact-del:active{color:var(--accent-dark)}
 .badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 9px;border-radius:999px;
   background:var(--accent-soft);color:var(--accent-dark);border:1px solid var(--accent-line)}
 .badge--space{background:var(--space-soft,#E3EEFF);color:var(--space-color,#1E5BD8);border-color:var(--space-line,#BFD6FF)}
@@ -1349,7 +1357,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.24.1', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.25.0', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10, lang:'zh'},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -2098,7 +2106,19 @@ const CONFIG = {
     /* 只认这几档情绪——**必须对得上 CONFIG.TALK.FACE 的键**，
        对不上就换不到她那 23 张对话表情差分（她自己会回落成不换脸） */
     EMO:['happy','shy','sad','angry','sleepy','worried','neutral'],
-    KEEP:12,                 // 带几轮历史过去（她记得住刚才聊了什么，又不至于越聊越贵）
+    /* ★ v1.25.0（她点的：把上下文从 12 个来回改成 28 个）：
+       带几轮历史过去。**每问一句都要把这一整段重发一遍**，所以这个数字直接等于
+       每次对话的字数——28 个来回 ≈ 56 条消息，deepseek-chat 那点价钱下完全够用。
+       ⚠️ 天花板是 CONFIG.LOVE.CHAT_KEEP（本子只留 200 条 = 100 个来回）：
+          想带更多，连那个一起改，不然这里写了也是白写（切片切不出本子里没有的）。 */
+    KEEP:28,
+    /* ★ v1.25.0（她点的：让她能**记住关于你的事**）：
+       这是「事实记忆」的上限——不是记对话，是记关于他的事实（他喜欢蓝色 / 他在学日语）。
+       为什么必须有上限：这份**每一次请求都要发出去**，越长越贵，而且太长了模型会开始
+       抓不住重点。到顶之后挤掉最老的（见 Love.factAdd）。
+       FACT_LEN 是单条最长字数——防模型写小作文（一条事实超过 60 字那就不是事实了）。 */
+    FACTS_MAX:40,
+    FACT_LEN:60,
     MAXTOK:400,              // 她一次最多说多长——气泡里的话不需要长
     TEMP:1.15,               // 稍微放飞一点，她本来就该有点小脾气
     TIMEOUT_MS:25000,        // 超时当没接通，回落话术池（不让界面一直空等）
@@ -8357,11 +8377,17 @@ I18N.DICT.en = {
     '密钥（sk- 开头）':            ['API キー（sk- で始まる）', 'API key (starts with sk-)'],
     '已经填过了 · 粘一串新的就替换掉': ['もう入ってる · 新しいのを貼れば置き換わる', 'Already saved · paste a new one to replace it'],
     '清掉密钥':                    ['キーを消す', 'Clear the key'],
-    /* 弹窗里那段说明是一整句（⚠️ 键必须是**一个**字符串字面量，不许用 + 拼——
-       对象字面量的键只能是一个表达式，拼起来是语法错误） */
-    '在 DeepSeek 官网（platform.deepseek.com）注册后，在「API keys」里建一个，复制过来贴在这儿。这串密钥只存在你这台设备上，不会跟着 index.html 传到任何地方，也不会显示在这个页面上（所以这里看不到已经填过的那串）。':
-      ['DeepSeek の公式サイト（platform.deepseek.com）で登録して、「API keys」で一つ作って、コピーしてここに貼ってね。このキーはこの端末にだけ残る。index.html についてどこかへ送られることはないし、この画面にも出さない（だから入れ済みのキーはここでは見えないよ）。',
-       'Sign up at platform.deepseek.com, create one under "API keys", copy it and paste it here. '+
+    /* 弹窗里那段说明（⚠️ 键必须是**一个**字符串字面量，不许用 + 拼——
+       对象字面量的键只能是一个表达式，拼起来是语法错误）。
+       ⚠️ v1.25.0 修的：这里原来是**一整句**当一个键，可那两句话中间夹着 `<br>`，
+          而 I18N.html 是按标签切成一个个文字节点的——两边永远对不上，
+          换到日文/英文时那段说明**一直是中文**（不报错，就静静不翻）。
+          现在按 `<br>` 劈成两条，一条一个节点。 */
+    '在 DeepSeek 官网（platform.deepseek.com）注册后，在「API keys」里建一个，复制过来贴在这儿。':
+      ['DeepSeek の公式サイト（platform.deepseek.com）で登録して、「API keys」で一つ作って、コピーしてここに貼ってね。',
+       'Sign up at platform.deepseek.com, create one under "API keys", copy it and paste it here.'],
+    '这串密钥只存在你这台设备上，不会跟着 index.html 传到任何地方，也不会显示在这个页面上（所以这里看不到已经填过的那串）。':
+      ['このキーはこの端末にだけ残る。index.html についてどこかへ送られることはないし、この画面にも出さない（だから入れ済みのキーはここでは見えないよ）。',
        'The key stays on this device only — it never travels anywhere with index.html, and it is '+
        'never shown on this page (so an already-saved key is not visible here).'],
     '她说的话由 DeepSeek 现场想，而不是从写好的一百句里挑。关着也照样陪你，只是说的话是原来那些。':
@@ -8405,6 +8431,65 @@ I18N.DICT.en = {
     /* 拼出来的那两句（'xxx' + 变量）走正则那种写法 */
     '^通了！她说：(.+)$':           ['つながった！彼女の言葉：$1', 'Connected! She says: $1'],
     '^换成 (.+)$':                 ['$1 に切り替えた', 'Switched to $1']
+  };
+  try{
+    for(const zh in T){
+      if(I18N.DICT.ja && T[zh][0]) I18N.DICT.ja[zh] = T[zh][0];
+      if(I18N.DICT.en && T[zh][1]) I18N.DICT.en[zh] = T[zh][1];
+    }
+  }catch(e){}
+})();
+
+/* ── v1.25.0：她「记住的事」那几条新界面文字 ─────────────────────────
+   ⚠️ 跟上面同一套路：必须写在 __I18N_DICT_END__ 之后，用 I18N.DICT 直接补。
+   ⚠️ 键一律是**一个**字面量、而且**恰好等于一个文字节点**：
+      I18N.html 是按标签把 HTML 切开的，`<br>` 两边就是两个节点——
+      把两句话拼成一条键，永远撞不上（上面那段密钥说明就是这么白翻了一版，刚修好）。 */
+(function(){
+  const T = {
+    '她记住的事':                    ['彼女がおぼえていること', 'Things she remembers'],
+    '自己加一条':                    ['自分で一つ足す', 'Add one yourself'],
+    '全清掉':                        ['全部消す', 'Clear all'],
+    '（还空着）':                    ['（まだ空っぽ）', '(nothing yet)'],
+    '要她记住的事':                  ['おぼえてほしいこと', 'Something for her to remember'],
+    '自己给她记一条':                ['自分で一つおぼえさせる', 'Write one in yourself'],
+    '记下':                          ['おぼえさせる', 'Save it'],
+    '还没有。你聊到关于你自己的事（喜欢什么、在做什么、有什么习惯），她会一点点记在这儿。⚠️ 接上 AI 才会记——她也得有个脑子才记得住。':
+      ['まだ何もないよ。きみ自身のこと（好きなもの、やってること、くせ）を話すと、'+
+       '少しずつここにおぼえていく。⚠️ AI をつないでいるときだけおぼえる——彼女にも頭が要るからね。',
+       'Nothing yet. When you talk about yourself — what you like, what you are working on, '+
+       'your habits — she writes it down here little by little. ⚠️ Only while the AI is on: '+
+       'she needs a mind to remember with.'],
+    '这些是她记得的、关于你的事。⚠️ 每次跟她说话，这一整份都会发给 DeepSeek；导出备份的时候也在里面。不想让她记着的，点右边的 ✕ 删掉。':
+      ['これは彼女がおぼえている、きみのこと。⚠️ 話すたびにこの全部が DeepSeek に送られるし、'+
+       'バックアップを書き出せばそこにも入る。おぼえていてほしくないものは、右の ✕ で消してね。',
+       'These are the things she remembers about you. ⚠️ Every time you talk to her, this whole '+
+       'list goes to DeepSeek — and it is in your exported backup too. Anything you would rather '+
+       'she forgot: tap the ✕ on its right.'],
+    '这些是她记得的、关于你的事。现在 AI 关着，它们不会被发出去；但导出备份的时候仍然在里面。不想让她记着的，点右边的 ✕ 删掉。':
+      ['これは彼女がおぼえている、きみのこと。今は AI を切っているから送られないけど、'+
+       'バックアップを書き出せばそこには入る。おぼえていてほしくないものは、右の ✕ で消してね。',
+       'These are the things she remembers about you. With the AI off they are not sent '+
+       'anywhere — but they are still in your exported backup. Anything you would rather she '+
+       'forgot: tap the ✕ on its right.'],
+    '用「他」开头写成一句话，最好 20 字以内，比如「他喜欢蓝色」——她每次跟你说话都会看见这一条。':
+      ['「彼は」で始まる一言にして、20 字以内がいい。たとえば「彼は青が好き」。'+
+       'きみが話すたび、彼女はこの一行を見ている。',
+       'Write it as one line starting with "he" — ideally under 20 characters, for example '+
+       '"he likes blue". Every time you talk to her, she sees this line.'],
+    '⚠️ 它也会跟着导出备份一起走，所以别写不想让别人看到的东西。':
+      ['⚠️ これはバックアップにも入るから、人に見られたくないことは書かないでね。',
+       '⚠️ It travels with your exported backup too, so do not write anything you would not '+
+       'want someone else to read.'],
+    '删掉了——她不再记得这条':        ['消したよ——もうおぼえていない', 'Deleted — she no longer remembers it'],
+    '清空了。她还记得的只剩你们聊的这些':
+      ['全部消した。残るのは、きみたちが話したことだけ',
+       'Cleared — all she has left is what you two have talked about'],
+    '记下了，她以后都带着这条':      ['おぼえた。これからずっと一緒に持っているよ',
+                                      'Saved — she carries this with her from now on'],
+    '没收下：跟已经记着的重了，或者太短/太长':
+      ['入れられなかった：もうおぼえているのと同じか、短すぎ／長すぎ',
+       'Not saved: it duplicates something she already remembers, or it is too short / too long']
   };
   try{
     for(const zh in T){
@@ -10659,6 +10744,53 @@ const Actions = {
       UI.toast(r && r.ok ? ('通了！她说：' + String(r.line).slice(0, 24)) : '没连上——检查密钥和网络');
     }).catch(() => UI.toast('没连上——检查密钥和网络'));
   },
+  /* ══ ★ v1.25.0 她记住的事：删一条 / 全清掉 / 自己加一条 ══
+     ⚠️ 删和清**都不问「确定吗」**，但都在 toast 里说清后果——
+        这些是会随手点着的东西，弹一个确认框反而让人乱点（而且删错了也不致命：
+        她还记得的话，下次聊到了会再记一遍）。 */
+  'fact-del'(btn){
+    if(!(typeof Love !== 'undefined' && Love.factDel)) return;
+    if(Love.factDel(btn.dataset.i)){ scheduleRender(); UI.toast('删掉了——她不再记得这条'); }
+  },
+  'facts-clear'(){
+    if(!(typeof Love !== 'undefined' && Love.factsClear)) return;
+    Love.factsClear(); scheduleRender();
+    UI.toast('清空了。她还记得的只剩你们聊的这些');
+  },
+  /* 自己加一条：跟密钥那个弹窗同一个套路。
+     ★ 为什么要有这个口子：不是所有值得记的事都在聊天里说出来过——
+       「我在准备考试」这种事你可能压根没跟她提过，但你会希望她别在那几天拉你打游戏。
+     ⚠️ 一样不摆在设置页上，走弹窗（设置页整块重画会把打一半的字抹掉） */
+  'fact-add'(){
+    UI.openModal(
+      '<div class="modal-title">自己给她记一条<button class="x" data-action="modal-close">×</button></div>'+
+      /* ⚠️ 这个框**故意不给 placeholder**：I18N.html 只翻标签外面的文字，
+         属性里的中文一个字都不动（v1.23.0 那个密钥框就吃了这个亏）——
+         例子写在下面那句 hint 里，那句话是会被翻的。 */
+      '<div class="field"><label>要她记住的事</label>'+
+        '<input class="input" id="fact-in" maxlength="'+CONFIG.AI.FACT_LEN+'" autocomplete="off"></div>'+
+      '<div class="hint" style="margin-top:8px">用「他」开头写成一句话，最好 20 字以内，'+
+        '比如「他喜欢蓝色」——她每次跟你说话都会看见这一条。<br>'+
+        '⚠️ 它也会跟着导出备份一起走，所以别写不想让别人看到的东西。</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn" data-action="modal-close">取消</button>'+
+        '<button class="btn btn--primary" data-action="fact-add-save">记下</button>'+
+      '</div>');
+    const el = document.getElementById('fact-in');
+    if(el && setTimeout) setTimeout(()=>{ try{ el.focus(); }catch(e){} }, 60);
+  },
+  'fact-add-save'(){
+    const el = document.getElementById('fact-in');
+    const v = el ? String(el.value || '').trim() : '';
+    const ok = (typeof Love !== 'undefined' && Love.factAdd) ? Love.factAdd(v) : false;
+    UI.closeModal();
+    scheduleRender();
+    /* ⚠️ 没收下的时候要**说清楚为什么**（重了 / 太短太长）——
+       不然她会以为按钮坏了，反复点。字数范围写在弹窗那句 hint 里，这里不报数字：
+       报数字就得拼字符串，一拼就没法进词典（进词典的键必须是**一个**字面量）。 */
+    UI.toast(ok ? '记下了，她以后都带着这条'
+                : (!v ? '还没写呢' : '没收下：跟已经记着的重了，或者太短/太长'));
+  },
   /* ══ v1.5 感情线：对她说 / 她的问题 / 她的通知 ══ */
   'goto-mtalk'(){ Love.enter(); goView('mtalk'); },
   /* 你说一句 → 她答一句（回完重画；滚动交给 Love.afterRender，在重画**之后**跑）
@@ -12767,6 +12899,33 @@ const Views = {
         '</div></div>'+
       '<div class="field"><label>试试看</label>'+
         '<button class="btn btn--small" data-action="ai-test">测试一下能不能连上</button></div>'+
+      /* ★ v1.25.0（她点的「可以保存信息吗」）：她记住的事 —— 原样列出来，能一条条删、能一键清空。
+         ⚠️ 这一步**不是**可有可无的礼貌：这份东西**每一次都会发给 DeepSeek**，
+            而且**跟着备份文件走**。一场看不见的长期记忆 + 一份会发给别人的备份 = 要出事的。
+            所以她必须能一眼看见她记住了什么、并且当场删得掉。
+         ⚠️ 列的是**她自己的话**（`f.t`）——跟聊天记录一样会过一遍 I18N，
+            中文模式下原样显示；换成日文/英文时可能被词典里的规则蹭到个别词，
+            跟她说的话是同一个待遇，不单独处理。 */
+      (function(){
+        const facts = (typeof Love !== 'undefined' && Love.facts) ? Love.facts() : [];
+        const rows = facts.map((f, i)=>
+          '<div class="fact-row"><span class="fact-t">'+esc(f && f.t)+'</span>'+
+          '<button class="fact-del" data-action="fact-del" data-i="'+i+'" aria-label="删掉这条">✕</button></div>').join('');
+        const hint = !facts.length
+          ? '还没有。你聊到关于你自己的事（喜欢什么、在做什么、有什么习惯），'+
+            '她会一点点记在这儿。⚠️ 接上 AI 才会记——她也得有个脑子才记得住。'
+          : '这些是她记得的、关于你的事。'+
+            (aiOn ? '⚠️ 每次跟她说话，这一整份都会发给 DeepSeek；导出备份的时候也在里面。'
+                  : '现在 AI 关着，它们不会被发出去；但导出备份的时候仍然在里面。')+
+            '不想让她记着的，点右边的 ✕ 删掉。';
+        return '<div class="field"><label>她记住的事</label>'+
+          (facts.length ? rows
+            : '<div class="hint" style="margin:0 0 8px">（还空着）</div>')+
+          '<div class="chip-row" style="margin-top:8px">'+
+            '<button class="btn btn--small" data-action="fact-add">自己加一条</button>'+
+            (facts.length ? '<button class="btn btn--small" data-action="facts-clear">全清掉</button>' : '')+
+          '</div><div class="hint">'+esc(hint)+'</div></div>';
+      })()+
       '<div class="hint">'+esc(aiHint)+'</div>'+
     '</div></section>';
     /* 声音（v1.13.0）：音效默认代码合成（零文件零上传）；「声音/」文件夹放同名文件即可替换；
@@ -13285,7 +13444,8 @@ const Bubbles = {
          opts 是**剧情往下走的那个「继续 ▸」**（丢了它这一场就卡在第一句上，你点不动）；
          go 是答完她那句顺手给你的「点我看详情 →」 */
       this.active = {text, sub:opt.sub||'', go:opt.go||null, opts:opt.opts||null,
-                     hold:opt.hold || 2600, story:!!opt.story, input:!!opt.input};
+                     hold:opt.hold || 2600, story:!!opt.story, input:!!opt.input,
+                     reopen:!!opt.reopen};
       this.render();
       return;
     }
@@ -13293,7 +13453,7 @@ const Bubbles = {
     if(this.seen[key]) return;
     this.seen[key] = true;
     this.queue.push({text, sub:opt.sub||'', go:opt.go||null, opts:opt.opts||null, hold:opt.hold||0,
-                     story:!!opt.story, input:!!opt.input});
+                     story:!!opt.story, input:!!opt.input, reopen:!!opt.reopen});
     if(this.queue.length>4) this.queue.shift();
     this.render();
   },
@@ -13406,7 +13566,15 @@ const Bubbles = {
       /* ★ v1.23.0：点输入框本身也不算「点掉这条」——
          不然手指刚碰到那个框，整条气泡就被收了，输入框根本没法用 */
       try{ if(ev && ev.target && ev.target.tagName === 'INPUT') return; }catch(e){}
-      this.dismiss(); if(b.go) b.go();
+      /* ★ v1.24.1：她答完那一句，点一下就**回到输入框**接着聊（见 _say 里那段）。
+         ⚠️ 顺序是「先按老规矩收掉，再端新的那条」——dismiss 里那套收尾
+           （停闹钟、收剧情、顶队列）一条都不能跳过。
+         ⚠️ `b` 是这一拍的闭包变量：dismiss 会重画、render 会把 onclick 换掉，
+           但正在跑的这次点击认的还是 `b`，所以这两个判断要**先算好**再用 */
+      const reopen = !!(b.reopen && typeof Talk !== 'undefined' && Talk.open);
+      this.dismiss();
+      if(b.go) b.go();
+      else if(reopen) Talk.open();
     };
     if(m.q) this._placeQ();                  // 忙碌页：钉到 Q版头顶
     clearTimeout(this._t);
@@ -13483,7 +13651,7 @@ const AI = {
   on(){ return this.why() === ''; },
 
   /* ── 你说一句 → 她回一句。成了给 {line, emo}，任何意外都给 null ── */
-  async say(text, ctx){
+  async say(text, ctx, opt){
     if(!this.on()) return null;
     const raw = String(text == null ? '' : text).trim().slice(0, CONFIG.AI.MAX_IN);
     if(!raw) return null;
@@ -13510,7 +13678,17 @@ const AI = {
       if(!res || !res.ok) return null;
       const j = await res.json();
       const msg = j && j.choices && j.choices[0] && j.choices[0].message;
-      return this._parse(msg && msg.content);
+      const r = this._parse(msg && msg.content);
+      /* ★ v1.25.0：她在这句话里顺手记下了一件关于他的事 → 存进本子。
+         放在**这个唯一的出口**上，两个入口（对她说 / 纯净页）就都自动有了。
+         ⚠️ 唯一的例外是**连接测试**（opt.test）：那条问的是假话
+            （「这是连接测试」），存进去就是一条假记忆——而她以后会照着它演。
+         ⚠️ try/catch 兜住：本子写坏了也**绝不能**把这次回话搞丢（AI 只做加法）。 */
+      try{
+        if(r && r.fact && !(opt && opt.test) &&
+           typeof Love !== 'undefined' && Love.factAdd) Love.factAdd(r.fact);
+      }catch(e){}
+      return r;
     }catch(e){ return null; }
     finally{ if(timer) clearTimeout(timer); }
   },
@@ -13551,20 +13729,13 @@ const AI = {
            '也不是每句话都要提任务。');
     /* ★ v1.24.0（她点的）：他想要的不是「助手」，是一个**二次元宅女朋友**。
        ⚠️ 这三条是**底色，不是口癖**——不要求每句都堆梗，堆多了反而像在演。
-       ⚠️ v1.24.1（她更正的：「**这些画是我画的**」）：我上一版把这条写反了 ——
-          写成「这个 App 里那些表情差分就是你自己画的」，等于让米米**认领她的作品**。
-          实情是：这个 App 里她的脸、她的动作，那些图**都是他亲手画的**。
-          ⚠️ 但**别把这条推到「她是他画出来的」那层身份设定上去**——那是个更大的改动，
-            她没点，不能顺手加。现在只说到「他会画画」这个事实为止。
-          ⚠️ 还有：她在剧情里**自己也画画**（她的日课、她给他画眼睛那条线），
-            那是另一回事，别跟「App 里这些图」混成一件。 */
-    L.push('· 你是个**二次元宅女**，这是你的**底色**：说话带点 ACG 味，会自嘲、会玩梗、'+
+       ⚠️ 「画画」那条**不是新加的设定**：她那 23 张对话表情差分本来就是她自己画的，
+          所以这条不是硬塞的人设，是把这个 App 里早就有的事实说出来。 */
+    L.push('· 你是个**二次元宅女**，这是你的**底色**：说话有 ACG 味，会自嘲、会玩梗、'+
            '聊到自己喜欢的东西会来劲。⚠️ 但**别每句都堆梗**——那样像在表演一个宅女，'+
            '反而不可爱了；自然的时候带一句最讨喜。');
-    L.push('· **他也画画**——这个 App 里你的样子（你的表情、你的动作），那些图都是他画的。'+
-           '（⚠️ **不是**你画的，别把那些图说成你的作品。）所以画画是你俩共同的东西：'+
-           '聊配色、聊灵感受阻、聊「今天又画崩了」，谁也别笑谁。');
-    L.push('· 你自己也画——那是你的日课（见你俩之间发生过的事），跟上面那些图是两回事。');
+    L.push('· 你自己画画（这个 App 里那些表情差分就是你画的），所以跟他聊配色、'+
+           '聊灵感受阻、聊「今天又画崩了」都很自然——这是你俩最能聊到一块去的事。');
     if(games.length){
       /* ⚠️ 下面这条「不许编」是**必须的**：玩这游戏的人对自己的游戏门儿清，
          模型随口编一个角色名/活动名/剧情，他一眼就看出来，**比不提还出戏**。
@@ -13585,6 +13756,34 @@ const AI = {
     if(c.spaceName) L.push('· 他最近在「'+c.spaceName+'」上花时间');
     if(c.plan) L.push('· '+c.plan);
     if(c.emo && c.emo !== 'neutral') L.push('· 你今天的心情是「'+c.emo+'」');
+    /* ★ v1.25.0（她点的「让她能记住关于我的事」）：
+       **事实记忆**——不是聊天记录（那个走 _msgs 里最近 KEEP 轮），
+       是关于他本人、以后一直用得上的事。它**每次都在提示词里**，
+       所以聊多久都掉不出去（聊天记录会被窗口挤掉，这个不会）。
+       ⚠️ 兜一道 try/catch + 只收字符串：跟上面 GAMES 那个坑**一模一样** ——
+          _sys 一抛，整条对话就**静默**回落话术池（那个 400 也是这个表现）。 */
+    let facts = [];
+    try{
+      const raw = (typeof Love !== 'undefined' && Love.facts) ? Love.facts() : [];
+      /* ⚠️ 两种形状都收：正常存的是 {t,at}，但要是她自己动手改过备份文件、
+         把某条写成了裸字符串，那也认——**宽松地读，严格地写**（跟 GAMES 那个坑一个道理）。
+         读不出来的（null / 数字 / 对象）就安静跳过，不许把 [object Object] 拼进提示词。 */
+      facts = [].concat(raw)
+               .map(f => (f && typeof f.t === 'string') ? f.t
+                        : (typeof f === 'string' ? f : ''))
+               .map(s => s.trim()).filter(Boolean).slice(0, CONFIG.AI.FACTS_MAX);
+    }catch(e){ facts = []; }
+    if(facts.length){
+      L.push('');
+      L.push('【你记得关于他的事】');
+      /* ⚠️ 这一句「别念出来」是**必须的**：不写的话，模型会开始表演记性好——
+         「我记得你喜欢蓝色呢！」一句两句还行，每句都来就腻了，而且很假。
+         记忆是拿来**用得自然**的，不是拿来炫的。 */
+      L.push('（这些是你以前一点一点记住的，都是真的。⚠️ **别一条条念出来**，'+
+             '也别老说「我记得你…」——它们是让你说话**有底气**的，'+
+             '该用的时候自然带一句就行，用不上就一个字都别提）');
+      for(const f of facts) L.push('· '+f);
+    }
     L.push('');
     L.push('【怎么说话】');
     L.push('· 像微信聊天一样**短**：一般一到两句，最多三句。不写小作文、不分点列举、不用 markdown。');
@@ -13601,11 +13800,25 @@ const AI = {
        而 400 在这条路上是**静默**的 —— res.ok 为假 → 返回 null → 悄悄回落到话术池，
        表现成「AI 开关开了、密钥也填了，可她还是那几句老话」，极难查。 */
     L.push('只输出一个 json 对象，别的什么都不要：');
-    L.push('{"emo":"happy","line":"你要说的那句话"}');
+    L.push('{"emo":"happy","line":"你要说的那句话","fact":""}');
     L.push('emo 只能从这些里挑一个，表示这句话的情绪：');
     L.push('happy=开心兴奋 / shy=害羞 / sad=难过 / angry=生气 / sleepy=困了 / '+
            'worried=委屈或担心 / neutral=平静');
     L.push('line 就是台词本身——里面不要放 JSON、不要放括号标注。');
+    /* ★ v1.25.0：多要一个 fact 字段 —— **白捡的**，不额外发一次请求，
+       顺手把「值不值得记」判了。这是这次「事实记忆」的全部采集成本。
+       ⚠️ 下面这一整段「什么时候**不许**填」是重点：模型天生爱记东西，
+          不拦着的话它会把自己说的每句俏皮话、把「今天天气不错」都记下来，
+          本子很快被垃圾填满——更糟的是**它会照着自己记的垃圾演**（越记越假）。
+          「拿不准就别填」这一句的价值就在这儿：宁少勿滥。 */
+    L.push('fact 是「这次有没有值得长期记住的、关于他的事」——**绝大多数时候留空字符串**。'+
+           '只有他真的说出一件关于他自己的、以后还用得上的事（喜欢什么、在做什么、'+
+           '有什么习惯、身边有什么人），才填进去：用「他」开头写成一句话，20 字以内，例如'+
+           '「他喜欢蓝色」。');
+    L.push('⚠️ fact 的规矩：**只记他明确说过的**，不许猜、不许编、不许替他脑补；'+
+           '不记天气、心情、今天做了什么事这种一次性的；'+
+           '不记上面「你记得关于他的事」里**已经有的**；'+
+           '你**自己说的**话不算他说过。拿不准就留空——多记一条错的，比少记十条糟得多。');
     return L.join('\n');
   },
 
@@ -13645,7 +13858,13 @@ const AI = {
            不许再往下走 ②：那一步会把 `{"emo":"happy"}` 这串**原文念出来** */
         if(!line) return null;
         const e = String(o.emo || '').trim().toLowerCase();
-        return {line, emo: all.indexOf(e) >= 0 ? e : ''};
+        /* ★ v1.25.0：顺手把「这次要不要记住一件关于他的事」捞出来。
+           ⚠️ 这里**只负责捞**，不负责判合格——收不收、收多长、重不重复，
+              全在 Love.factAdd 那一处管（校验只有一个地方，改规矩不用找两处）。
+           ⚠️ 别忘了个 `fact` 是个**可能不存在的字段**（老提示词、别的模型、
+              或者模型自己省了）：取不到就是空字符串，绝不能因此把整句台词丢了。 */
+        const fact = String(o.fact || o.remember || '').trim();
+        return {line, emo: all.indexOf(e) >= 0 ? e : '', fact};
       }
     }
     /* ② 不是 JSON：整段当台词，表情不动（比丢了一句话强得多） */
@@ -13662,8 +13881,10 @@ const AI = {
     if(why === 'off')   return Promise.resolve({ok:false, why:why});
     if(why === 'nokey') return Promise.resolve({ok:false, why:why});
     if(why)             return Promise.resolve({ok:false, why:why});
+    /* ⚠️ 第三参 {test:true}：这次回话里**不许往本子里记东西**（见 say 里那段）——
+       测试问的是假话，记下来就是一条假记忆 */
     return this.say('（这是连接测试，随便跟我说一句）',
-                    (typeof talkCtx === 'function') ? talkCtx(now) : {})
+                    (typeof talkCtx === 'function') ? talkCtx(now) : {}, {test:true})
       .then(r => ({ok: !!(r && r.line), line: (r && r.line) || '', why: (r && r.line) ? '' : 'fail'}))
       .catch(() => ({ok:false, line:'', why:'fail'}));
   }
@@ -14251,7 +14472,15 @@ const Talk = {
        AI 给的情绪对得上才换脸，对不上就只说话，绝不错换一张 */
   _say(text, emo){
     if(!text) return;
-    Bubbles.push(text, {say:true, force:true, sub:CONFIG.TALK.SUB, hold:CONFIG.TALK.HOLD});
+    /* ★ v1.24.1（她报的：「纯净界面下只能对话一句，再次点击气泡就会消失」）：
+       接上 AI 之后，她说的这一条**点一下就回到输入框** —— 不用再去找那串「........」
+       从头点一遍。纯净页这才成了**连续对话**：打一句 → 她答 → 点她 → 接着打。
+       ⚠️ 只在**接了 AI** 时挂这一条（她点名的「往常的不接 api 的对话不改变」）：
+          没接的时候她答的是关键词话术，点掉就该收掉，再弹个输入框反而多余。
+       ⚠️ 挂的是 reopen 这个**新字段**，不是往 opts 里塞一个按钮 ——
+          opts 会在气泡右上角多出个东西，那是改样子；这条改的是「点下去干什么」。 */
+    Bubbles.push(text, {say:true, force:true, sub:CONFIG.TALK.SUB, hold:CONFIG.TALK.HOLD,
+                        reopen:(typeof AI !== 'undefined' && AI.on())});
     if(emo){
       try{ if(typeof Emo !== 'undefined' && CONFIG.AI.EMO.indexOf(emo) >= 0 && emo !== 'neutral') Emo.set(emo, 'ai', Date.now()); }catch(e){}
       const f = CONFIG.TALK.FACE[emo];
@@ -15248,6 +15477,68 @@ const Love = {
     return true;
   },
   answerOf(qid){ const a = S.settings.herAnswers || {}; return a[qid] ? a[qid].a : null; },
+
+  /* ══ ★ v1.25.0（她点的「让她能记住关于我的事」）：她记住的事 ══════════════
+     这不是聊天记录（那个是 herChatLog，只带最近 KEEP 轮过去、会被窗口挤掉），
+     这是**关于他本人的事实**：「他喜欢蓝色」「他在学日语」。
+     它每一句都跟着提示词发出去，所以**聊多久都掉不出去**。
+
+     ⚠️ 三条规矩，写在这里是因为它们都是**故意的**：
+     ① **只有一处校验**（就在 factAdd 里）：收什么、多长、重不重复，全在这儿定，
+        别在提示词那边也判一遍——两处判断迟早会不一致。
+     ② **有上限**：到 CONFIG.AI.FACTS_MAX 就挤掉最老的。这份东西是**每次请求
+        都要发出去的**，不收口就会越聊越贵、而且模型会开始抓不住重点。
+     ③ **看得见、删得掉、清得空**：它在设置页上原样列出来（能一条条删、能一键清空）。
+        道理跟密钥那条一样——**她得知道她记住了什么**，尤其是它还会跟着备份文件走。 */
+  facts(){
+    const f = S.settings.herFacts;
+    return Array.isArray(f) ? f : [];      // 写坏了就当没有，绝不让它抛
+  },
+  /* 归一化：只用来判重（去掉空白和标点、转小写）。
+     ⚠️ 判重必须归一化——「他喜欢蓝色」和「他喜欢蓝色。」「他喜欢 蓝色」
+        在模型眼里是三条，在本子里该是一条 */
+  _factKey(t){
+    return String(t == null ? '' : t).replace(/[\s，。、！？…,.!?"'「」『』：:；;—\-~～()（）]/g, '').toLowerCase();
+  },
+  /* 收一条。返回 true = 真的收下了（重复/不合格就 false，调用方不用管） */
+  factAdd(t){
+    /* ⚠️ **只收字符串**：传进来对象/数字（调用方写错了）绝不能用 String() 一糊就塞进去 ——
+       那样会往提示词里塞一句「[object Object]」，而且是**每句都塞着**（跟 GAMES 那个坑同源）。 */
+    if(typeof t !== 'string') return false;
+    const s = t.trim().replace(/\s+/g, ' ');
+    /* ⚠️ 三不合格：空的、太短的（「他饿」这种不是事实，是噪音）、
+       太长的（超过 FACT_LEN 那就不是一句话了，是模型在写小作文） */
+    if(!s || s.length < 3 || s.length > CONFIG.AI.FACT_LEN) return false;
+    if(!S.settings.herFacts || !Array.isArray(S.settings.herFacts)) S.settings.herFacts = [];
+    const list = S.settings.herFacts, k = this._factKey(s);
+    if(!k) return false;
+    for(const f of list){
+      if(!f) continue;
+      const ok = this._factKey(f.t);
+      /* 一样 → 不收；新的**被旧的包着**（「他喜欢蓝色」vs「他喜欢深蓝色」不算，
+         但「他喜欢蓝色」vs「他喜欢蓝色，尤其是浅的」算）→ 也不收，留早的那条 */
+      if(ok === k || (ok && k.indexOf(ok) >= 0)) return false;
+    }
+    list.push({t:s, at:Date.now()});
+    /* 到顶挤掉最老的：**存下来的那份也一起挤**，不只是显示上截断 */
+    while(list.length > CONFIG.AI.FACTS_MAX) list.shift();
+    saveSettings();
+    return true;
+  },
+  factDel(i){
+    const list = S.settings.herFacts;
+    if(!Array.isArray(list)) return false;
+    const n = Number(i);
+    if(!(n >= 0) || n >= list.length) return false;
+    list.splice(n, 1);
+    saveSettings();
+    return true;
+  },
+  factsClear(){
+    S.settings.herFacts = [];
+    saveSettings();
+    return true;
+  },
   /* 隔了几天，她拿你以前的回答来接一次话（每天最多一次） */
   dueRecall(now){
     now = now || Date.now();
