@@ -710,6 +710,9 @@ body.reading .pure-screen #bubble-root{bottom:calc(56vh + 10px)}   /* 她说话�
   border-bottom-right-radius:5px;animation:lvPop .3s cubic-bezier(.2,1.2,.4,1) both}
 /* 她答话时慢半拍落下——像是想了一下才开口（纯观感，不影响任何逻辑） */
 .lv-msg--her{animation-delay:.26s}
+/* ★ v1.23.0：她正在想（AI 那条路上，从你发出去到她回话之间）——
+   淡一点、不慢半拍，一眼看出「还在等」而不是「这就是她的回答」 */
+.lv-msg--think{opacity:.55;animation-delay:0s}
 @keyframes lvPop{0%{opacity:0;transform:translateY(8px) scale(.96)}100%{opacity:1;transform:none}}
 .lv-chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
 .lv-input{display:flex;gap:8px;align-items:center}
@@ -1260,6 +1263,11 @@ body.pure-mode #app{height:100dvh;display:block}
 .pure-screen #bubble-root .bb-opt{padding:6px 11px;border-radius:11px;font-family:inherit;font-size:12.5px;line-height:1.3;
   cursor:pointer;color:var(--text);background:rgba(255,255,255,.66);border:1px solid rgba(255,170,205,.8);transition:transform .12s}
 .pure-screen #bubble-root .bb-opt:active{transform:scale(.95)}
+/* ★ v1.23.0：气泡里的输入行（纯净页的「我自己打字」）——
+   跟话题选项同一套观感，但它占满一整行，手机上才好打字 */
+.pure-screen #bubble-root .bb-in-row{display:flex;gap:6px;align-items:center;margin-top:9px}
+.pure-screen #bubble-root .bb-in{flex:1;min-width:0;font-size:13px;padding:7px 10px;border-radius:11px;text-align:left}
+.pure-screen #bubble-root .bb-send{flex:none;margin:0}
 /* ★ v1.7.17 对话框（她说话的地方也就是你跟她说话的地方）：
    没话可说的时候，这个位置留给一个**框**——点它就弹出话题选项。
    它比气泡更「平」：虚线边、没有尾巴，一眼看出是「待输入」的那一档 */
@@ -1276,6 +1284,8 @@ body.pure-mode #app{height:100dvh;display:block}
 .pure-screen #bubble-root.has-story{display:flex;align-items:center;justify-content:center;gap:9px;
   max-width:min(92vw,430px)}
 .pure-screen #bubble-root.has-story .mascot-bubble{max-width:min(64vw,300px)}
+/* ★ v1.23.0：这条气泡里带输入框 → 把故事框旁边空着的余量借过来（窄了没法打字） */
+.pure-screen #bubble-root.has-story.has-in .mascot-bubble{max-width:min(80vw,340px)}
 .story-box{flex:0 0 auto;display:flex;align-items:center;justify-content:center;
   writing-mode:vertical-rl;text-orientation:upright;
   padding:13px 9px;border-radius:14px;cursor:pointer;font-family:inherit;
@@ -1339,7 +1349,7 @@ body.pure-mode #app{height:100dvh;display:block}
    0. CONFIG 常量与默认值
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  APP_NAME:'可能性空间', VERSION:'1.22.0', SCHEMA:1,
+  APP_NAME:'可能性空间', VERSION:'1.24.1', SCHEMA:1,
   PREFIX:'ps1:',
   DEFAULT_SETTINGS:{rhythmQuotaMinutes:480, defaultYellowMinutes:240, defaultRedMinutes:30, confirmSeconds:10, lang:'zh'},
   /* 纯净首页日期/时间字号（可在设置里自定义，这里只是默认值与可选范围） */
@@ -2067,6 +2077,36 @@ const CONFIG = {
     CLEAR_MS:0,      // ② 清晰之后还停多久才换页（★ v1.17.2：0 = 对上焦就换页，不停）
     OUT_MS:1200,     // ③ 换页之后画化开用多久（★ v1.17.4：她说的「消散统一延长 0.5 秒」= 0.7 + 0.5）
     BLUR_PX:16       // 登场时糊到什么程度
+  },
+  /* ══ 她的脑子 v1.23.0：接大模型，让她**真的会说话** ═══════════════════════
+     ★ 为什么纯前端能直连、不用搭后端：DeepSeek 的接口在响应里回
+       access-control-allow-origin（本机实测过预检与真实 POST 两条），
+       所以浏览器直接 fetch 就通。网上大量「必须搭代理」的文章是过时的。
+     ★ 为什么不用后端也安全：密钥是**她自己的**，填在她自己这台设备上，
+       存进 settings（跟别的设置一起进 IndexedDB）——这是「自带密钥」模式。
+       代价只是「这台设备上看得到这串密钥」，而**本文件里永远不出现任何密钥**。
+     ★ 铁律：AI 是**加法**不是替换。关着 / 没填密钥 / 断网 / 超时 / 报错 /
+       返回看不懂——一律静默回落原来的关键词话术池，
+       她的行为跟没接 AI 时一模一样，绝不会因此坏掉。 */
+  AI:{
+    MODEL:'deepseek-chat',   // 默认模型
+    /* 设置页那几个 chip。第一个是默认；reasoner 会先想再答，慢但更会聊 */
+    MODELS:[['deepseek-chat','deepseek-chat（快、便宜）'],
+            ['deepseek-reasoner','deepseek-reasoner（想好了再说，慢一点）']],
+    BASE:'https://api.deepseek.com',
+    PATH:'/chat/completions',
+    /* 只认这几档情绪——**必须对得上 CONFIG.TALK.FACE 的键**，
+       对不上就换不到她那 23 张对话表情差分（她自己会回落成不换脸） */
+    EMO:['happy','shy','sad','angry','sleepy','worried','neutral'],
+    KEEP:12,                 // 带几轮历史过去（她记得住刚才聊了什么，又不至于越聊越贵）
+    MAXTOK:400,              // 她一次最多说多长——气泡里的话不需要长
+    TEMP:1.15,               // 稍微放飞一点，她本来就该有点小脾气
+    TIMEOUT_MS:25000,        // 超时当没接通，回落话术池（不让界面一直空等）
+    MAX_IN:400,              // 你一次最多说多长（防手滑粘一大段进去）
+    /* ★ v1.24.0（她点的：二次元宅女朋友 / 明日方舟 / 原神 / 画画同好）：
+       她玩什么游戏。**只写在这里，提示词里是拼上去的** —— 想换随时改这一行。
+       留空数组 = 不提游戏，只留画画那条底气。 */
+    GAMES:['明日方舟','原神']
   },
   /* ══ 她开口了 v1.7.17：对话框 / 剧情章节 / 她的走位 ══════════════════════
      ★ 纯净界面上那个「对话框」是一个出口：她说的话、你点它跟她说的话（选项）、
@@ -8295,6 +8335,85 @@ I18N.DICT.en = {
 };
 /*__I18N_DICT_END__*/
 
+/* ── v1.23.0：AI 对话那几条新界面文字 ──────────────────────────────
+   ⚠️ 必须写在 __I18N_DICT_END__ **之后**：上面那一大块由本机工具
+      ._i18n_fill.js 灌注，写在里面会被下一次灌注冲掉。
+   这里用 Object.assign 补进去——灌注照跑，这几条不会被碰。
+   注：'发送' 沿用「对她说」那个按钮的现成词条，不在这里重复。 */
+(function(){
+  const T = {
+    /* 短标签：词典里原本没有的那几个（'开'/'关'/'发送' 已有，不重复加） */
+    '开关':                       ['スイッチ', 'Switch'],
+    '密钥':                       ['API キー', 'API key'],
+    '模型':                       ['モデル', 'Model'],
+    '试试看':                     ['ためしてみる', 'Try it'],
+    '说点什么吧':                 ['何か言ってみて', 'Say something'],
+    '她的脑子（AI 对话）':        ['彼女のあたま（AI 会話）', 'Her mind (AI chat)'],
+    '去填 DeepSeek 的密钥':       ['DeepSeek の API キーを入れる', 'Enter your DeepSeek API key'],
+    '已填好 · 点这里换':          ['設定済み · ここで変更', 'Saved · tap to change'],
+    '测试一下能不能连上':          ['つながるか試してみる', 'Test the connection'],
+    '跟她说点什么…':              ['彼女に何か言ってみて…', 'Say something to her…'],
+    'DeepSeek 密钥':              ['DeepSeek の API キー', 'DeepSeek API key'],
+    '密钥（sk- 开头）':            ['API キー（sk- で始まる）', 'API key (starts with sk-)'],
+    '已经填过了 · 粘一串新的就替换掉': ['もう入ってる · 新しいのを貼れば置き換わる', 'Already saved · paste a new one to replace it'],
+    '清掉密钥':                    ['キーを消す', 'Clear the key'],
+    /* 弹窗里那段说明是一整句（⚠️ 键必须是**一个**字符串字面量，不许用 + 拼——
+       对象字面量的键只能是一个表达式，拼起来是语法错误） */
+    '在 DeepSeek 官网（platform.deepseek.com）注册后，在「API keys」里建一个，复制过来贴在这儿。这串密钥只存在你这台设备上，不会跟着 index.html 传到任何地方，也不会显示在这个页面上（所以这里看不到已经填过的那串）。':
+      ['DeepSeek の公式サイト（platform.deepseek.com）で登録して、「API keys」で一つ作って、コピーしてここに貼ってね。このキーはこの端末にだけ残る。index.html についてどこかへ送られることはないし、この画面にも出さない（だから入れ済みのキーはここでは見えないよ）。',
+       'Sign up at platform.deepseek.com, create one under "API keys", copy it and paste it here. '+
+       'The key stays on this device only — it never travels anywhere with index.html, and it is '+
+       'never shown on this page (so an already-saved key is not visible here).'],
+    '她说的话由 DeepSeek 现场想，而不是从写好的一百句里挑。关着也照样陪你，只是说的话是原来那些。':
+      ['彼女の言葉は DeepSeek がその場で考える。用意してある百のセリフから選ぶんじゃない。'+
+       '切っていても隣にいるけど、言葉はもとのものになる。',
+       'Her words are thought up by DeepSeek on the spot, not picked from a hundred prepared lines. '+
+       'With it off she keeps you company just the same — she just says the original lines.'],
+    '还差一步：把 DeepSeek 的密钥填进去。密钥只存在你这台设备上，不会跟着 index.html 传到任何地方。':
+      ['あと一歩：DeepSeek の API キーを入れてね。キーはこの端末にだけ残る。'+
+       'index.html についてどこかへ送られることはない。',
+       'One step left: enter your DeepSeek API key. It stays on this device only — '+
+       'it never travels anywhere with index.html.'],
+    '这个打开方式用不了网络（本地文件）。把它部署到网上、用网址打开就可以了。':
+      ['この開き方だとネットが使えない（ローカルのファイル）。ネット上に置いて、'+
+       'URL から開けば使えるようになる。',
+       'This way of opening it cannot use the network (a local file). Publish it online and '+
+       'open it by URL, and it will work.'],
+    '这个浏览器不支持联网请求，用不了 AI——她会照旧陪你说话。':
+      ['このブラウザは通信に対応していないから AI は使えない。彼女はこれまで通り話すよ。',
+       'This browser has no network request support, so AI is unavailable — '+
+       'she will keep talking the way she always has.'],
+    '通了。网络不好或者密钥过期的时候，她会自动回到原来那些话，不会卡住。':
+      ['つながった。ネットが悪いときやキーの期限が切れたときは、'+
+       '自動でもとの言葉に戻るから、止まったりはしない。',
+       'Connected. If the network is poor or the key expires, she falls back to her original '+
+       'lines automatically — nothing gets stuck.'],
+    '好，她会开始用脑子想事情了':    ['うん、これからは自分で考えるよ', 'Okay — she will start thinking for herself'],
+    '她会回到原来那些话（照样陪你）': ['もとの言葉に戻るね（それでも隣にいる）', 'She goes back to her original lines (still with you)'],
+    '记下了。点「测试一下能不能连上」看看通没通':
+      ['おぼえた。「つながるか試してみる」を押して確認してね',
+       'Saved. Tap "Test the connection" to see if it works'],
+    /* ⚠️ 「打开看一眼、顺手点保存」绝不能把密钥弄没 —— 这句 toast 就是那件事的说明 */
+    '没改动，还是原来那串':          ['変えてないよ、もとのまま', 'No change — still the same key'],
+    '还没填呢':                    ['まだ入ってないよ', 'Nothing entered yet'],
+    '密钥清掉了，她会回到原来那些话': ['キーを消した。もとの言葉に戻るね', 'Key cleared — she goes back to her original lines'],
+    '还没填密钥':                   ['キーがまだ入っていない', 'No API key yet'],
+    '这个打开方式用不了网络':        ['この開き方だとネットが使えない', 'This way of opening it cannot use the network'],
+    '先把上面的开关打开':            ['まず上のスイッチを入れて', 'Turn the switch on first'],
+    '让她想一句……':                ['考えてもらってる……', 'Letting her think…'],
+    '没连上——检查密钥和网络':        ['つながらなかった——キーとネットを確認して', 'No connection — check the key and the network'],
+    /* 拼出来的那两句（'xxx' + 变量）走正则那种写法 */
+    '^通了！她说：(.+)$':           ['つながった！彼女の言葉：$1', 'Connected! She says: $1'],
+    '^换成 (.+)$':                 ['$1 に切り替えた', 'Switched to $1']
+  };
+  try{
+    for(const zh in T){
+      if(I18N.DICT.ja && T[zh][0]) I18N.DICT.ja[zh] = T[zh][0];
+      if(I18N.DICT.en && T[zh][1]) I18N.DICT.en[zh] = T[zh][1];
+    }
+  }catch(e){}
+})();
+
 /* ══════════════════════════════════════════════════════════════
    2. Dates 日期时间（全部基于本地时区）
    ══════════════════════════════════════════════════════════════ */
@@ -9495,6 +9614,7 @@ const Snd = {
       if(this._bgmEl){ try{ this._bgmEl.pause(); }catch(e){} }
       this._bgmEl = null; this._bgmUrl = url || null;
       if(!url) return;
+      this._warmTrack(url);                            // ★ v1.22.1：顺手存一份给「下次打开」
       const a = new Audio(url);
       a.loop = (this._tracks || []).length <= 1;
       a.preload = 'auto';
@@ -9502,6 +9622,26 @@ const Snd = {
       a.onended = ()=>{ this.next(true); };
       this._bgmEl = a;
       this.apply();
+    }catch(e){}
+  },
+  /* ★ v1.22.1：**顺手把这首歌存进 sw 的缓存**（她报「音乐方面还是有问题」的真根子）。
+     为什么必须单独做这一下：媒体元素自己去拉歌时发的是 **Range 请求**、服务器回 **206**，
+     而 sw 的 `cache.put()` **存 206 会被规范直接拒绝**（TypeError）—— 那句 `.catch(){}`
+     把它悄悄吞了。真浏览器里量出来的：缓存里 139 条音频**全是 404**，四首真歌一条都没进去
+     → 每次打开都得重新从 GitHub 拖几 MB 下来，网一慢就「放不出来」。
+     这里用**普通 fetch**（不带 Range）拿一份 → 200 → sw 的 cacheFirst 顺手就存下了。
+     ⚠️ 只取不播：播放照旧走元素自己那条路（首声出来得快），这份是给「下次打开」和断网用的。
+     file:// / 老环境没有 fetch → 静默跳过，什么都不影响。 */
+  _warmTrack(url){
+    if(!url || typeof fetch !== 'function') return;
+    if(/^(blob:|data:|file:)/.test(url)) return;
+    /* 本机双击打开（file://）没有 sw、没有缓存可存 —— 省下这一次必定失败的 fetch */
+    try{ if(location.protocol === 'file:') return; }catch(e){}
+    if(!this._warmed) this._warmed = {};
+    if(this._warmed[url]) return;
+    this._warmed[url] = true;
+    try{
+      fetch(url).then(r => (r && r.ok) ? r.blob() : null).catch(function(){});
     }catch(e){}
   }
 };
@@ -10434,23 +10574,108 @@ const Actions = {
     scheduleRender();
     UI.toast(lv === 'off' ? '她会安静下来（闹钟与额度提醒照旧）' : '好，她会多说一点话了');
   },
+  /* ══ v1.23.0 她的脑子（AI 对话）：开关 / 密钥 / 模型 / 试连 ══ */
+  'ai-toggle'(btn){
+    const on = btn.dataset.on === '1';
+    if(!S.settings.ai) S.settings.ai = {};
+    S.settings.ai.on = on;
+    saveSettings();
+    scheduleRender();
+    UI.toast(on ? '好，她会开始用脑子想事情了' : '她会回到原来那些话（照样陪你）');
+  },
+  'ai-model'(btn){
+    if(!S.settings.ai) S.settings.ai = {};
+    S.settings.ai.model = btn.dataset.m || CONFIG.AI.MODEL;
+    saveSettings();
+    scheduleRender();
+    UI.toast('换成 ' + S.settings.ai.model);
+  },
+  /* 密钥用弹窗收 —— 跟「闹钟备注 / 空间名」同一套路子。
+     ★ 为什么不直接把输入框摆在设置页上：设置页每次重画都是整块 innerHTML 重建，
+       摆在页面上的输入框**打一半就被重画抹掉**（renderView 那道焦点守卫会让重画一直推迟，
+       表现成「点了没反应」）。弹窗不参与重画，收集完再落库，最稳。 */
+  'ai-key'(){
+    const has = !!(S.settings.ai && String(S.settings.ai.key || '').trim());
+    /* ⚠️ 输入框**永远不回显**已有的密钥（value 一直是空的）：
+       页面 HTML / DOM 里不留它的任何影子，是「密钥只在你这台设备上」这句承诺的一部分。
+       代价只是「换密钥要重新粘一次」——比把一串长期有效的凭据摆在 DOM 里划算得多。
+       ⚠️ 也正因为框是空的，『留空 + 保存』**绝不能**当成「清掉」：
+       她打开来看一眼、顺手点保存，密钥就没了。清掉走单独的按钮（见 ai-key-clear）。 */
+    UI.openModal(
+      '<div class="modal-title">DeepSeek 密钥<button class="x" data-action="modal-close">×</button></div>'+
+      '<div class="field"><label>密钥（sk- 开头）</label>'+
+        '<input class="input" id="ai-key-in" type="password" autocomplete="off" spellcheck="false" '+
+        'value="" placeholder="'+(has ? '已经填过了 · 粘一串新的就替换掉' : 'sk-...')+'"></div>'+
+      '<div class="hint" style="margin-top:8px">在 DeepSeek 官网（platform.deepseek.com）注册后，'+
+        '在「API keys」里建一个，复制过来贴在这儿。<br>'+
+        '这串密钥只存在你这台设备上，不会跟着 index.html 传到任何地方，'+
+        '也不会显示在这个页面上（所以这里看不到已经填过的那串）。</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn" data-action="modal-close">取消</button>'+
+        (has ? '<button class="btn" data-action="ai-key-clear">清掉密钥</button>' : '')+
+        '<button class="btn btn--primary" data-action="ai-key-save">保存</button>'+
+      '</div>');
+    const el = document.getElementById('ai-key-in');
+    if(el && setTimeout) setTimeout(()=>{ try{ el.focus(); }catch(e){} }, 60);
+  },
+  'ai-key-save'(){
+    const el = document.getElementById('ai-key-in');
+    const v = el ? String(el.value || '').trim() : '';
+    if(!S.settings.ai) S.settings.ai = {};
+    /* ⚠️ 密钥从头到尾只活在 settings 里：不写进本文件、不进 git、不打日志、
+       也不出现在任何渲染出来的 HTML 里（所以设置页和这个弹窗都不回显它） */
+    if(!v){
+      /* 框是空的（本来就不回显）→ 当作「没改」，绝不悄悄清掉她原来那串 */
+      UI.closeModal();
+      UI.toast(S.settings.ai.key ? '没改动，还是原来那串' : '还没填呢');
+      return;
+    }
+    S.settings.ai.key = v;
+    saveSettings();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('记下了。点「测试一下能不能连上」看看通没通');
+  },
+  /* 清掉密钥 = 一个**要她主动点**的动作（连带把开关收掉）——
+     不然她会以为自己在用脑子，其实一直在走回落 */
+  'ai-key-clear'(){
+    if(!S.settings.ai) S.settings.ai = {};
+    S.settings.ai.key = '';
+    S.settings.ai.on = false;
+    saveSettings();
+    UI.closeModal();
+    scheduleRender();
+    UI.toast('密钥清掉了，她会回到原来那些话');
+  },
+  /* 试连：填完密钥先点这个。省得「开关开了、密钥填了，却不知道到底通没通」 */
+  'ai-test'(){
+    if(typeof AI === 'undefined') return;
+    const why = AI.why();
+    if(why === 'off'){ UI.toast('先把上面的开关打开'); return; }
+    if(why === 'nokey'){ UI.toast('还没填密钥'); return; }
+    if(why){ UI.toast('这个打开方式用不了网络'); return; }
+    UI.toast('让她想一句……');
+    AI.test().then(r => {
+      UI.toast(r && r.ok ? ('通了！她说：' + String(r.line).slice(0, 24)) : '没连上——检查密钥和网络');
+    }).catch(() => UI.toast('没连上——检查密钥和网络'));
+  },
   /* ══ v1.5 感情线：对她说 / 她的问题 / 她的通知 ══ */
   'goto-mtalk'(){ Love.enter(); goView('mtalk'); },
-  /* 你说一句 → 她答一句（回完重画，并把她那句轻轻「落」下来：见 .lv-msg--her 的动画延迟） */
+  /* 你说一句 → 她答一句（回完重画；滚动交给 Love.afterRender，在重画**之后**跑）
+     ★ v1.23.0 顺手修的一个坑：原来不 blur，输入框一直占着焦点，
+       renderView 开头那道「正在输入就先别重画」的守卫会把重画无限往后推 ——
+       于是**回车发送等于没反应**（点「发送」按钮反而好，因为焦点跑到按钮上了）。
+       这里反正马上要重建输入框（innerHTML 会把它连根换掉），先失焦才是老实的做法。 */
   'love-send'(){
     const el = document.getElementById('mtalk-in');
     const v = el ? el.value : '';
     if(!String(v||'').trim()){ UI.toast('说点什么吧'); return; }
-    Love.chat(v);
     if(el) el.value = '';
-    Actions._mtalkScroll();
+    if(el && el.blur){ try{ el.blur(); }catch(e){} }
+    Love.chat(v);
     scheduleRender();
   },
-  'love-chip'(btn){ Love.chat(btn.dataset.t || ''); Actions._mtalkScroll(); scheduleRender(); },
-  _mtalkScroll(){
-    if(typeof setTimeout === 'undefined') return;
-    setTimeout(()=>{ const b = document.getElementById('lv-chat'); if(b && b.scrollIntoView){ try{ b.scrollIntoView(false); }catch(e){} } }, 40);
-  },
+  'love-chip'(btn){ Love.chat(btn.dataset.t || ''); scheduleRender(); },
   /* 她在弹窗里问了你一个问题 → 你选了一个。
      ★ v1.7.17：自己先把那条问话收掉（气泡的 onclick 现在会让开选项按钮，不再替我们收）——
        不收的话她还占着 active，紧接着她答的那句「即时台词」会被自己的规矩挡回去
@@ -10466,6 +10691,15 @@ const Actions = {
   'talk-next'(){ Talk.next(); },
   'talk-end'(){ Talk.finish(); },
   'talk-answer'(btn){ Talk.answer(btn.dataset.k || '', +btn.dataset.i); },
+  /* ★ v1.23.0 自己打字那条路：把框里的话交给她（框是跟那三格一起端出来的） */
+  'talk-say'(){
+    const el = document.getElementById('bb-in');
+    const v = el ? String(el.value || '').trim() : '';
+    if(!v){ UI.toast('说点什么吧'); return; }
+    if(el) el.value = '';
+    if(el && el.blur){ try{ el.blur(); }catch(e){} }
+    Talk.say(v);
+  },
   /* 她想请你允许她「走出软件」——这时候才弹系统权限框（过渡与包装） */
   'love-notify-ok'(){
     if(typeof Bubbles !== 'undefined') Bubbles.dismiss();
@@ -12005,6 +12239,12 @@ const Views = {
              '<div class="lv-who">'+(m.w==='me'?'我':esc(nm))+'</div>'+escLn(m.t)+'</div>';
       }
     }
+    /* ★ v1.23.0：接上 AI 之后，从你发出去到她回话之间会有一小段——
+       挂一条「她正在想」，别让聊天框看着像卡住了 */
+    if(Love.busy()){
+      h += '<div class="lv-msg lv-msg--her lv-msg--think">'+
+           '<div class="lv-who">'+esc(nm)+'</div>……</div>';
+    }
     h += '</div>';
     h += '<div class="lv-chips">'+CONFIG.LOVE.CHIPS.map(c=>
       '<button class="chip" data-action="love-chip" data-t="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div>';
@@ -12012,9 +12252,15 @@ const Views = {
       '<input class="input" id="mtalk-in" placeholder="跟'+esc(nm)+'说点什么…" maxlength="200" autocomplete="off">'+
       '<button class="btn btn--primary" data-action="love-send">发送</button>'+
     '</div>';
+    /* ★ v1.23.0：接了 AI 之后这段提示要换说法——小本子那条路她已经不需要了
+       （「等以后接上 AI」这件事真的发生了，提示还留着就成了假话） */
     const notes = Love.notes();
-    h += '<div class="hint">她认得出早安晚安、想你、夸她、难过、无聊这些。暂时听不懂的句子，她会先收进小本子'+
-      (notes.length ? '（已经收着 '+notes.length+' 句）' : '')+'——等以后接上 AI，她会慢慢都学会。</div>';
+    const aiOn = (typeof AI !== 'undefined') && AI.on();
+    h += '<div class="hint">'+(aiOn
+      ? '你说的每句话都由她现场想——认不出关键词也没关系。'
+      : '她认得出早安晚安、想你、夸她、难过、无聊这些。暂时听不懂的句子，她会先收进小本子'+
+        (notes.length ? '（已经收着 '+notes.length+' 句）' : '')+'——等以后接上 AI，她会慢慢都学会。')+
+      '</div>';
     h += '</section>';
     return h;
   },
@@ -12490,6 +12736,38 @@ const Views = {
       '<div class="chip-row">'+I18N.LANGS.map(o=>
         '<button class="chip'+(langNow===o.id?' on':'')+'" data-action="lang-set" data-lang="'+o.id+'">'+o.label+'</button>').join('')+
       '</div><div class="hint">界面文字与她说的话会换过来；剧情正文仍是中文。</div>'+
+    '</div></section>';
+    /* 她的脑子（v1.23.0）：自带密钥接 DeepSeek，让她真的会说话。
+       ★ 密钥**不在这儿直接填**——设置页每次重画都是整块 innerHTML 重建，
+         摆在页面上的输入框打一半就被抹掉（那道焦点守卫还会把重画无限往后推，
+         表现成「点了没反应」）。所以走弹窗收集，跟闹钟备注 / 空间名同一套路。
+       ★ 这里也不显示密钥本身（连掩码都不显示）：页面 HTML 里不留它的任何影子 */
+    const aiCfg = S.settings.ai || {};
+    const aiOn = !!aiCfg.on;
+    const aiHasKey = !!String(aiCfg.key || '').trim();
+    const aiWhy = (typeof AI !== 'undefined') ? AI.why() : 'off';
+    const aiModel = aiCfg.model || CONFIG.AI.MODEL;
+    const aiHint =
+      aiWhy === 'off'     ? '她说的话由 DeepSeek 现场想，而不是从写好的一百句里挑。关着也照样陪你，只是说的话是原来那些。' :
+      aiWhy === 'nokey'   ? '还差一步：把 DeepSeek 的密钥填进去。密钥只存在你这台设备上，不会跟着 index.html 传到任何地方。' :
+      aiWhy === 'file'    ? '这个打开方式用不了网络（本地文件）。把它部署到网上、用网址打开就可以了。' :
+      aiWhy === 'nofetch' ? '这个浏览器不支持联网请求，用不了 AI——她会照旧陪你说话。' :
+                            '通了。网络不好或者密钥过期的时候，她会自动回到原来那些话，不会卡住。';
+    h += '<section class="sec"><h2 class="sec-title">她的脑子（AI 对话）</h2><div class="card pad">'+
+      '<div class="field"><label>开关</label>'+
+        '<div class="chip-row"><button class="chip'+(aiOn?' on':'')+'" data-action="ai-toggle" data-on="1">开</button>'+
+        '<button class="chip'+(aiOn?'':' on')+'" data-action="ai-toggle" data-on="0">关</button></div></div>'+
+      '<div class="field"><label>密钥</label>'+
+        '<button class="btn btn--small" data-action="ai-key">'+
+          (aiHasKey ? '已填好 · 点这里换' : '去填 DeepSeek 的密钥')+'</button></div>'+
+      '<div class="field"><label>模型</label>'+
+        '<div class="chip-row">'+CONFIG.AI.MODELS.map(m=>
+          '<button class="chip'+(aiModel===m[0]?' on':'')+'" data-action="ai-model" data-m="'+esc(m[0])+'">'+
+          esc(m[1])+'</button>').join('')+
+        '</div></div>'+
+      '<div class="field"><label>试试看</label>'+
+        '<button class="btn btn--small" data-action="ai-test">测试一下能不能连上</button></div>'+
+      '<div class="hint">'+esc(aiHint)+'</div>'+
     '</div></section>';
     /* 声音（v1.13.0）：音效默认代码合成（零文件零上传）；「声音/」文件夹放同名文件即可替换；
        BGM = 声音/bgm.mp3 一条循环（可选，没有就安静）。深夜 23:00~4:00 她收声，音量自动减半 */
@@ -13007,7 +13285,7 @@ const Bubbles = {
          opts 是**剧情往下走的那个「继续 ▸」**（丢了它这一场就卡在第一句上，你点不动）；
          go 是答完她那句顺手给你的「点我看详情 →」 */
       this.active = {text, sub:opt.sub||'', go:opt.go||null, opts:opt.opts||null,
-                     hold:opt.hold || 2600, story:!!opt.story};
+                     hold:opt.hold || 2600, story:!!opt.story, input:!!opt.input};
       this.render();
       return;
     }
@@ -13015,7 +13293,7 @@ const Bubbles = {
     if(this.seen[key]) return;
     this.seen[key] = true;
     this.queue.push({text, sub:opt.sub||'', go:opt.go||null, opts:opt.opts||null, hold:opt.hold||0,
-                     story:!!opt.story});
+                     story:!!opt.story, input:!!opt.input});
     if(this.queue.length>4) this.queue.shift();
     this.render();
   },
@@ -13062,6 +13340,7 @@ const Bubbles = {
            ★ v1.9.0 她改了位置 ——「是在你想对我说些什么的对话框旁，不是.......的旁边」：
            所以这一档只剩那串「.........」，故事框搬到**点开之后**那条对话框上（见下面）。 */
         br.classList.remove('has-story');
+        br.classList.remove('has-in');
         br.innerHTML = '<div class="mascot-bubble bb-idle" role="button" data-action="talk-open">'+
                        esc(this.idleText)+'</div>';
         br.classList.remove('hidden');
@@ -13088,15 +13367,31 @@ const Bubbles = {
        替换掉纯净界面原来的表情图片」——所以那张对话表情差分现在由 Talk.showFace
        直接换到**界面里那张大立绘**身上，几秒后自己换回来；气泡回到纯说话。
        连 b.face 这个字段也一起删了：留着它就是「同一件事两套实现」的坑 */
+    /* ★ v1.23.0：带输入框的那条气泡（纯净页的「我自己打字」）——
+       气泡里的 HTML **不走 I18N.html**（render 是直接写 innerHTML 的），
+       所以这两处文字要自己翻一次（跟 push 里翻 opts 是同一个道理）。
+       id 固定 bb-in：同一时刻只会有一条气泡，不用怕撞 */
+    const inHtml = b.input
+      ? '<div class="bb-in-row">'+
+          '<input class="input bb-in" id="bb-in" maxlength="200" autocomplete="off" '+
+            'placeholder="'+esc(I18N.text('跟她说点什么…'))+'">'+
+          '<button class="bb-opt bb-send" type="button" data-action="talk-say">'+
+            esc(I18N.text('发送'))+'</button>'+
+        '</div>'
+      : '';
     const body =
       (b.sub ? '<div style="font-size:10.5px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:2px">'+esc(b.sub)+'</div>' : '')+
       '<div>'+esc(b.text)+'</div>'+
-      (b.go ? '<div style="font-size:10.5px;color:var(--text-2);margin-top:3px">点我看详情 →</div>' : '');
+      (b.go ? '<div style="font-size:10.5px;color:var(--text-2);margin-top:3px">点我看详情 →</div>' : '')+
+      inHtml;
     /* ★ v1.9.0（她点名改的位置）：故事框站在**「想跟我说点什么？」那条对话框旁边**
        （就是点开「.........」之后端上来话题的那一条），不是站在没点开的那串点旁边。
        所以它跟着**这一条气泡**走：push 时带 story:true 才挂（现在只有 Talk.open 那么用） */
     const sbx = (b.story && this.storyBox && !m.q) ? this.storyBox : null;
     br.classList.toggle('has-story', !!sbx);
+    /* ★ v1.23.0：这条带着输入框 → 让气泡宽一点（窄了那个框没法打字）。
+       默认 64vw 只有 249px（390 的屏），旁边故事框的余量本来就空着，借过来用 */
+    br.classList.toggle('has-in', !!b.input);
     br.innerHTML = '<div class="mascot-bubble" role="button" aria-label="提醒">'+ optHtml + body +'</div>'+
       (sbx ? '<button class="story-box" type="button" data-action="story-read" aria-label="'+esc(sbx.aria)+'">'+
              '<span class="sb-t">'+esc(sbx.text)+'</span>'+(sbx.note ? '<i class="sb-n">'+esc(sbx.note)+'</i>' : '')+'</button>' : '');
@@ -13108,10 +13403,23 @@ const Bubbles = {
        选项那条路自己有收尾（topic/answer 开头就 dismiss），这儿只要让开 */
     br.onclick = (ev)=>{
       try{ if(ev && ev.target && ev.target.closest && ev.target.closest('[data-action]')) return; }catch(e){}
+      /* ★ v1.23.0：点输入框本身也不算「点掉这条」——
+         不然手指刚碰到那个框，整条气泡就被收了，输入框根本没法用 */
+      try{ if(ev && ev.target && ev.target.tagName === 'INPUT') return; }catch(e){}
       this.dismiss(); if(b.go) b.go();
     };
     if(m.q) this._placeQ();                  // 忙碌页：钉到 Q版头顶
     clearTimeout(this._t);
+    /* ★ v1.23.0：带输入框的那条**不设定时**——你正打到一半它自己收走，那这框就没法用了。
+       （话题框那三种走的是 opts，点一下就收，不受这条影响） */
+    if(b.input){
+      this._t = null;                        // 明确「这条没有闹钟」，不是留个过期的 id 在这儿
+      /* 一进来就把光标放进去，省得还要再点一下那个框 */
+      if(typeof setTimeout === 'function') setTimeout(()=>{
+        try{ const el = document.getElementById('bb-in'); if(el && el.focus) el.focus(); }catch(e){}
+      }, 50);
+      return;
+    }
     /* 她问你问题时挂久一点（hold）：一句话飘 9 秒就走，问题得留够你看见并选的时间 */
     this._t = setTimeout(()=>{ this.dismiss(); }, b.hold || 9000);
   },
@@ -13128,7 +13436,7 @@ const Bubbles = {
     try{
       const root = document.getElementById('view-root');
       const br = root ? root.querySelector('#bubble-root') : null;
-      if(br){ br.innerHTML=''; br.classList.remove('has-story'); br.classList.add('hidden'); }
+      if(br){ br.innerHTML=''; br.classList.remove('has-story'); br.classList.remove('has-in'); br.classList.add('hidden'); }
       const qb = document.getElementById('q-bubble');
       if(qb){ qb.innerHTML=''; qb.classList.add('hidden'); }   // 忙碌页那个也一起收
     }catch(e){}
@@ -13145,6 +13453,222 @@ function bubbleScene(key, text, go, sub){
   if(typeof Bubbles!=='undefined') Bubbles.push(text, {key, go, sub});
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   9.64 她的脑子 AI（v1.23.0）：接 DeepSeek，让她**真的会说话**
+   ──────────────────────────────────────────────────────────────────────
+   ★ 出口只有一个：AI.say(你说的话, 上下文) → Promise<{line, emo}|null>。
+     null = 没接通 / 关着 / 报错 —— 调用方**一律**回落原来的话术池。
+   ★ 密钥活在 S.settings.ai.key（跟别的设置一起进 IndexedDB）：
+     不写进本文件、不进 git、不打日志、不出现在任何渲染出来的 HTML 里。
+   ★ 这个对象**不许抛异常**。任何一步出岔子都 return null ——
+     接了大模型之后 App 反而变脆，那就本末倒置了。
+   ══════════════════════════════════════════════════════════════════════ */
+const AI = {
+  cfg(){ return S.settings.ai || {}; },
+  key(){ return String(this.cfg().key || '').trim(); },
+  model(){ return String(this.cfg().model || CONFIG.AI.MODEL); },
+  url(){
+    const c = this.cfg();
+    return String(c.base || CONFIG.AI.BASE).replace(/\/+$/, '') + (c.path || CONFIG.AI.PATH);
+  },
+  /* 这一刻到底能不能发请求。返回 '' = 通了；别的值是**原因**——
+     设置页拿它显示「为什么还没通」，别让她对着一个开了却没反应的开关猜 */
+  why(){
+    if(!S.settings.ai || !S.settings.ai.on) return 'off';
+    if(!this.key()) return 'nokey';
+    if(typeof fetch !== 'function') return 'nofetch';
+    try{ if(location.protocol === 'file:') return 'file'; }catch(e){}
+    return '';
+  },
+  on(){ return this.why() === ''; },
+
+  /* ── 你说一句 → 她回一句。成了给 {line, emo}，任何意外都给 null ── */
+  async say(text, ctx){
+    if(!this.on()) return null;
+    const raw = String(text == null ? '' : text).trim().slice(0, CONFIG.AI.MAX_IN);
+    if(!raw) return null;
+    let timer = null;
+    try{
+      const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      if(ctl) timer = setTimeout(()=>{ try{ ctl.abort(); }catch(e){} }, CONFIG.AI.TIMEOUT_MS);
+      const res = await fetch(this.url(), {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + this.key()},
+        body: JSON.stringify({
+          model:this.model(),
+          messages:this._msgs(raw, ctx),
+          max_tokens:CONFIG.AI.MAXTOK,
+          temperature:CONFIG.AI.TEMP,
+          /* ★ 要她把「情绪」和「台词」分成两个字段交回来 ——
+             情绪那个字段是拿来驱动她的脸的（CONFIG.TALK.FACE / Emo.set），
+             这是接上 AI 之后**不浪费她画的那 23 张差分**的关键 */
+          response_format:{type:'json_object'},
+          stream:false
+        }),
+        signal: ctl ? ctl.signal : undefined
+      });
+      if(!res || !res.ok) return null;
+      const j = await res.json();
+      const msg = j && j.choices && j.choices[0] && j.choices[0].message;
+      return this._parse(msg && msg.content);
+    }catch(e){ return null; }
+    finally{ if(timer) clearTimeout(timer); }
+  },
+
+  /* ── 她的设定 + **此刻的真实状态** ──
+     ★ 这是接上 AI 之后最值钱的一处：她看得见真实数据（几点、今天完成了几件、
+       连着几天、她怎么称呼你、你最急的那件事），所以能说出「你今天还有两件没做完呢」，
+       而不是干聊。这些**全是现成的**（Her.ctx / talkCtx），一个新数字都不用造。 */
+  _sys(ctx){
+    const c = ctx || {};
+    const nm = CONFIG.LOVE.NAME;
+    const st = (typeof Love !== 'undefined') ? Love.stage() : {name:'', you:'你'};
+    const langId = (typeof I18N !== 'undefined') ? I18N.cur() : 'zh';
+    const langName = {zh:'中文', ja:'日本語', en:'English'}[langId] || '中文';
+    /* ⚠️ 兜一道：她要是把 CONFIG.AI.GAMES 写成不是数组（或者整个删了），
+       这里不能抛 —— _sys 一抛，整条对话就**静默**回落话术池了（跟那个 400 是同一个坑）。
+       顺手只收字符串：写成 {..} 之类的时候不要把 "[object Object]" 拼进提示词里。 */
+    let games = [];
+    try{
+      const raw = (CONFIG.AI.GAMES == null) ? [] : CONFIG.AI.GAMES;
+      games = [].concat(raw).filter(g => typeof g === 'string').map(g => g.trim()).filter(Boolean);
+    }catch(e){ games = []; }
+    const hh = (typeof c.hour === 'number') ? c.hour : new Date().getHours();
+    const part = hh < 5 ? '凌晨' : hh < 8 ? '清晨' : hh < 11 ? '早上' : hh < 14 ? '中午'
+               : hh < 17 ? '下午' : hh < 20 ? '傍晚' : hh < 23 ? '晚上' : '深夜';
+    const L = [];
+    L.push('你在扮演一个叫「'+nm+'」的女孩子。她住在一个叫「可能性空间」的自律 App 里，'+
+           '是用户一天天养起来的看板娘。');
+    L.push('你**不是**助手，不许说「有什么可以帮您」「需要我做什么吗」这类客服腔——'+
+           '你就是她本人，在跟你最亲近的人说话。');
+    L.push('');
+    L.push('【你是谁】');
+    L.push('· 名字：'+nm);
+    L.push('· 你叫他：'+(c.you || st.you || '你')+'（你们现在的关系是「'+(st.name || '初识')+'」）');
+    if(c.days) L.push('· 你们认识第 '+c.days+' 天了');
+    L.push('· 性格：温柔、有点黏人、会因为他真的做成了事情而高兴；不好意思的时候会结巴；'+
+           '他很久没理你会小声委屈。但你**不说教**，不像打卡软件那样催他，'+
+           '也不是每句话都要提任务。');
+    /* ★ v1.24.0（她点的）：他想要的不是「助手」，是一个**二次元宅女朋友**。
+       ⚠️ 这三条是**底色，不是口癖**——不要求每句都堆梗，堆多了反而像在演。
+       ⚠️ v1.24.1（她更正的：「**这些画是我画的**」）：我上一版把这条写反了 ——
+          写成「这个 App 里那些表情差分就是你自己画的」，等于让米米**认领她的作品**。
+          实情是：这个 App 里她的脸、她的动作，那些图**都是他亲手画的**。
+          ⚠️ 但**别把这条推到「她是他画出来的」那层身份设定上去**——那是个更大的改动，
+            她没点，不能顺手加。现在只说到「他会画画」这个事实为止。
+          ⚠️ 还有：她在剧情里**自己也画画**（她的日课、她给他画眼睛那条线），
+            那是另一回事，别跟「App 里这些图」混成一件。 */
+    L.push('· 你是个**二次元宅女**，这是你的**底色**：说话带点 ACG 味，会自嘲、会玩梗、'+
+           '聊到自己喜欢的东西会来劲。⚠️ 但**别每句都堆梗**——那样像在表演一个宅女，'+
+           '反而不可爱了；自然的时候带一句最讨喜。');
+    L.push('· **他也画画**——这个 App 里你的样子（你的表情、你的动作），那些图都是他画的。'+
+           '（⚠️ **不是**你画的，别把那些图说成你的作品。）所以画画是你俩共同的东西：'+
+           '聊配色、聊灵感受阻、聊「今天又画崩了」，谁也别笑谁。');
+    L.push('· 你自己也画——那是你的日课（见你俩之间发生过的事），跟上面那些图是两回事。');
+    if(games.length){
+      /* ⚠️ 下面这条「不许编」是**必须的**：玩这游戏的人对自己的游戏门儿清，
+         模型随口编一个角色名/活动名/剧情，他一眼就看出来，**比不提还出戏**。
+         宁可让她用「那个新的」「上一期」这种模糊说法带过去。 */
+      L.push('· 你也玩游戏（'+games.join(' / ')+'），所以听得懂抽卡、开荒、长草期这些词。'+
+             '**但绝对不许编具体的角色名、活动名、剧情细节**——记不准就别提，'+
+             '用「那个新角色」「上一期活动」带过去。编错了他一眼看得出来，比不提还糟。');
+    }
+    L.push('· 你住在一个**自律 App** 里，这是他拿来做事的地方：他正事还没做完的时候，'+
+           '别拉他上号、别怂恿他摸鱼。羡慕地提一句可以，但话头要收回到他手上那件事。');
+    L.push('');
+    L.push('【此刻】');
+    L.push('· 现在是'+part+'（'+hh+' 点）');
+    if(c.minText) L.push('· 今天他已经专注了 '+c.minText);
+    if(c.dayDone != null) L.push('· 今天完成了 '+c.dayDone+' 件事');
+    if(c.streak) L.push('· 他已经连续打卡 '+c.streak+' 天');
+    if(c.lv) L.push('· 他的等级是 '+c.lv);
+    if(c.spaceName) L.push('· 他最近在「'+c.spaceName+'」上花时间');
+    if(c.plan) L.push('· '+c.plan);
+    if(c.emo && c.emo !== 'neutral') L.push('· 你今天的心情是「'+c.emo+'」');
+    L.push('');
+    L.push('【怎么说话】');
+    L.push('· 像微信聊天一样**短**：一般一到两句，最多三句。不写小作文、不分点列举、不用 markdown。');
+    L.push('· 可以自然地带出上面「此刻」里的真实情况，但别像在报数据，也别每句都提。');
+    L.push('· 不要复述他刚说过的话，也不要每句都以反问结尾。');
+    /* ⚠️ 梗是**长在语言里**的：中文的梗直译成日文/英文会很怪，比不用梗还糟 */
+    L.push('· 用「'+langName+'」回答。梗和网络用语要**跟着这个语言走**——'+
+           '换成那个语言里真正会说的说法，别把中文的梗直译过去。');
+    L.push('');
+    L.push('【输出格式】');
+    /* ⚠️ 这里的小写 json 是**必须的**：开了 response_format:{type:'json_object'} 之后，
+       DeepSeek 要求提示词里出现 "json" 这个词，不然直接 400。
+       写小写是最保险的（他们文档里就是小写，万一它是大小写敏感就白接了）。
+       而 400 在这条路上是**静默**的 —— res.ok 为假 → 返回 null → 悄悄回落到话术池，
+       表现成「AI 开关开了、密钥也填了，可她还是那几句老话」，极难查。 */
+    L.push('只输出一个 json 对象，别的什么都不要：');
+    L.push('{"emo":"happy","line":"你要说的那句话"}');
+    L.push('emo 只能从这些里挑一个，表示这句话的情绪：');
+    L.push('happy=开心兴奋 / shy=害羞 / sad=难过 / angry=生气 / sleepy=困了 / '+
+           'worried=委屈或担心 / neutral=平静');
+    L.push('line 就是台词本身——里面不要放 JSON、不要放括号标注。');
+    return L.join('\n');
+  },
+
+  /* ── 把最近聊的带上：她得记得住刚才说了什么 ── */
+  _msgs(text, ctx){
+    const hist = (typeof Love !== 'undefined') ? Love.log() : [];
+    const msgs = [{role:'system', content:this._sys(ctx)}];
+    const tail = hist.slice(-CONFIG.AI.KEEP * 2);
+    for(const m of tail){
+      const t = String((m && m.t) || '').trim();
+      if(!t) continue;
+      msgs.push({role: m.w === 'me' ? 'user' : 'assistant', content:t.slice(0, CONFIG.AI.MAX_IN)});
+    }
+    /* ⚠️ 历史最后一条常常就是**这次这句**（调用方先把「我」落库、再来问），
+       那就别再追加一次——不然她看见自己刚说的话出现两遍，会答得莫名其妙 */
+    const last = msgs[msgs.length - 1];
+    if(!(last && last.role === 'user' && last.content === text)) msgs.push({role:'user', content:text});
+    return msgs;
+  },
+
+  /* ── 把模型吐的东西解析成 {line, emo} ──
+     ★ 三种都收：标准 JSON / 裹了 ``` 的 JSON / 干脆就是一整句话。
+       最后那种也照用——**宁可表情不动，也不能因为她没按格式写就不说话**。 */
+  _parse(s){
+    let t = String(s == null ? '' : s).trim();
+    if(!t) return null;
+    const all = CONFIG.AI.EMO;
+    /* ① 剥掉可能的 ``` 围栏，再抠出第一个 { … } 试 JSON */
+    const body = t.replace(/^```[a-zA-Z]*\s*/, '').replace(/```\s*$/, '').trim();
+    const i = body.indexOf('{'), j = body.lastIndexOf('}');
+    if(i >= 0 && j > i){
+      let o = null;
+      try{ o = JSON.parse(body.slice(i, j + 1)); }catch(e){ o = null; }
+      if(o && typeof o === 'object'){
+        const line = String(o.line || o.text || o.say || o.reply || '').trim();
+        /* ⚠️ 认得出是个 JSON、里面却没有台词 → 就当这一句没说话。
+           不许再往下走 ②：那一步会把 `{"emo":"happy"}` 这串**原文念出来** */
+        if(!line) return null;
+        const e = String(o.emo || '').trim().toLowerCase();
+        return {line, emo: all.indexOf(e) >= 0 ? e : ''};
+      }
+    }
+    /* ② 不是 JSON：整段当台词，表情不动（比丢了一句话强得多） */
+    const line = body.replace(/^["「『]+/, '').replace(/["」』]+$/, '').trim();
+    /* ⚠️ 但落下来的要是一坨 **JSON 原文**（模型写错了字段名、只吐了个对象），
+       宁可不说话：让她念「{「emo」:「happy」}」比沉默吓人得多 */
+    if(!line || /^\{[\s\S]*\}$/.test(line)) return null;
+    return {line, emo:''};
+  },
+
+  /* ── 设置页那个「测试一下能不能连上」按钮 ── */
+  test(now){
+    const why = this.why();
+    if(why === 'off')   return Promise.resolve({ok:false, why:why});
+    if(why === 'nokey') return Promise.resolve({ok:false, why:why});
+    if(why)             return Promise.resolve({ok:false, why:why});
+    return this.say('（这是连接测试，随便跟我说一句）',
+                    (typeof talkCtx === 'function') ? talkCtx(now) : {})
+      .then(r => ({ok: !!(r && r.line), line: (r && r.line) || '', why: (r && r.line) ? '' : 'fail'}))
+      .catch(() => ({ok:false, line:'', why:'fail'}));
+  }
+};
+
 /* ══════════════════════════════════════════════════════════════
    9.65 她活过来了 Her（v1.4）：她主动找你说话
    ★ 所有主动台词的唯一出口是 Her.voice()——将来想接真 AI，只改那一个函数；
@@ -13152,7 +13676,12 @@ function bubbleScene(key, text, go, sub){
    ★ 零迁移：只新增 settings.herVoice / herSpoke / herLastOpen / herAsked / herNight
    ══════════════════════════════════════════════════════════════ */
 const Her = {
-  aiHook:null,          // ★ 预留接口：挂 (kind, ctx)=>string|null，返回非空就用它，否则回落话术池
+  /* ★ 预留接口：挂 (kind, ctx)=>string|null，返回非空就用它，否则回落话术池。
+     ⚠️ v1.23.0 的真 AI **没有**挂在这儿，原因只有一个：这个口子是**同步**的
+     （`if(a) return ...`），而大模型要等网络。所以真正的接法在异步那一层
+     （Love.chat / Talk.say：先发出去，回来了落库；没接通才回头叫 _reply → 这里）。
+     这个口子留着不动 —— 将来要是接一个本地即时模型（或者你写死几句），它还用得上。 */
+  aiHook:null,
   _lastAt:0,            // 上一条主动气泡的时刻（冷却用）
   _lastScan:0,          // 上一次检查的时刻
   _lastIdle:0,          // 上一次「日常念叨」的时刻
@@ -13648,10 +14177,18 @@ const Talk = {
     const opts = this.three().map(t=>({t:t.t, action:'talk-pick', k:t.k}));
     /* key 每次都不同：对话框不是「提醒」，今天点几次都该有反应
        （同一毫秒连点两下也算两次——后面缀个序号，防去重把它吞了）
-       ★ v1.9.0：story:true → 「故事」那个竖排框就站在这一条旁边（她要的位置：点开之后） */
+       ★ v1.9.0：story:true → 「故事」那个竖排框就站在这一条旁边（她要的位置：点开之后）
+       ★ v1.23.0：input:true → 底下多一个**输入框**，你想说什么就说什么。
+        它**不占那三格**（她定的「最多三项选择」管的是*话题*）——上面三个是快捷话头，
+        底下这个才是「我自己打字」，两条路并存，谁也不用让位 */
     const openKey = 'talk-open-' + now + '-' + (this._openN = (this._openN || 0) + 1);
+    /* ★ v1.23.0：say + force —— **当场顶上去**，不许排队。
+       走排队那条路的话：她攒着几条没看的提醒时（队列里每条要飘 9 秒），
+       你点了对话框得先看它们一条条放完才轮到话题框，最长能等半分钟——
+       就是她 v1.15.0 报过的「点了对话框唤不出」。
+       点框的语义本来就是「你要说话，旧的让位」（见本函数开头那两条 abort/dismiss） */
     Bubbles.push(Her.fill('想跟我说点什么？', Her.ctx(now)),
-      {key:openKey, sub:CONFIG.TALK.SUB, opts, hold:60000, story:true});
+      {say:true, force:true, key:openKey, sub:CONFIG.TALK.SUB, opts, hold:60000, story:true, input:true});
     return true;
   },
   /* 你挑了一个话题 → 她说一句（变脸 + 小动作 + 那张差分） */
@@ -13672,6 +14209,55 @@ const Talk = {
                                  sub:CONFIG.TALK.SUB, hold:CONFIG.TALK.HOLD});
     if(typeof Love !== 'undefined') Love.gain('talk', now);
     return true;
+  },
+  /* ── ★ v1.23.0 你在那三格底下打的字 → 她答一句 ──────────────────────
+     跟点话题的区别：话题是**她知道的话题**，这句是**你随便说的话**。
+     ★ 没接 AI 时它走 Love._reply（关键词命中，听不懂就老实说 + 收进小本子）——
+       所以这个框**不接 AI 也有用**；接了 AI 就自动升级成真的对话。
+     ★ 落到实处的还是「她说的话」那一条通道（_say），跟点话题完全同源 */
+  say(text, now){
+    now = now || Date.now();
+    const raw = String(text == null ? '' : text).trim().slice(0, CONFIG.AI.MAX_IN);
+    if(!raw || typeof Bubbles === 'undefined') return '';
+    const ctx = Object.assign((typeof talkCtx === 'function') ? talkCtx(now) : Her.ctx(now), {say:raw});
+    if(typeof AI !== 'undefined' && AI.on()){
+      this._think(now);
+      Love.push('me', raw, now);
+      AI.say(raw, ctx).then(r => {
+        if(r && r.line){
+          Love.push('her', r.line, Date.now());
+          this._say(r.line, r.emo);
+        }else{
+          const back = Love._reply(raw, ctx);        // 没接通 → 走原来那条路
+          if(back) this._say(back, '');
+        }
+      }).catch(() => {
+        const back = Love._reply(raw, ctx);
+        if(back) this._say(back, '');
+      });
+      return '';
+    }
+    Love.push('me', raw, now);
+    const back = Love._reply(raw, ctx);
+    if(back) this._say(back, '');
+    return back || '';
+  },
+  /* 「她正在想」——一条临时气泡，真话回来时被 force 那条顶掉 */
+  _think(){
+    try{ Bubbles.push('……', {say:true, force:true, hold:CONFIG.AI.TIMEOUT_MS + 8000}); }catch(e){}
+  },
+  /* 她开口说一句（气泡 + 那张对话表情差分）。
+     ★ 表情/心情走的是跟 topic 同一套通道（Emo.set + showFace）——
+       AI 给的情绪对得上才换脸，对不上就只说话，绝不错换一张 */
+  _say(text, emo){
+    if(!text) return;
+    Bubbles.push(text, {say:true, force:true, sub:CONFIG.TALK.SUB, hold:CONFIG.TALK.HOLD});
+    if(emo){
+      try{ if(typeof Emo !== 'undefined' && CONFIG.AI.EMO.indexOf(emo) >= 0 && emo !== 'neutral') Emo.set(emo, 'ai', Date.now()); }catch(e){}
+      const f = CONFIG.TALK.FACE[emo];
+      if(f){ try{ this.showFace(f, emo); }catch(e){} }
+    }
+    if(typeof Love !== 'undefined'){ try{ Love.gain('talk'); }catch(e){} }
   },
   /* ── ①b 她自己起个话头（★ v1.21.0 活力：她要的「多点主动性」）──────────────
      不用你点对话框：她安静一会儿之后，从话题表里挑一条说给你听。
@@ -14515,6 +15101,7 @@ const Love = {
   _pendingStage:null,   // 升段了但还没演（演出留到 tick——别在渲染/点击过程中弹东西）
   _lastAct:0,           // 你最后一次碰屏幕的时刻（她挑你安静下来的时候才开口）
   _asking:null,         // 正在问她的哪个问题
+  _busy:false,          // ★ v1.23.0：她正在想（AI 那条路上，发出去了还没回来）
 
   /* ── 数据层（全挂 settings，零迁移）── */
   state(){
@@ -14714,12 +15301,47 @@ const Love = {
     this.push('her', text, now);
     return true;
   },
-  /* 你说一句 → 她回一句。纯本地规则（关键词命中），全都不中就老实说没听懂 */
+  /* 你说一句 → 她回一句。
+     ★ v1.23.0：接上 AI 之后这里是**两段式**——先把「我」这句落库（后面失败了也不丢），
+       再去问她的脑子；没接通就自动走原来那条路。返回 '' 表示「她还在想」。 */
   chat(text, now){
     now = now || Date.now();
     const raw = String(text == null ? '' : text).trim();
     if(!raw) return '';
-    const low = raw.toLowerCase();
+    this.push('me', raw, now);
+    const ctx = Object.assign((typeof talkCtx === 'function') ? talkCtx(now) : Her.ctx(now), {say:raw});
+    if(typeof AI !== 'undefined' && AI.on()){
+      this._busy = true;
+      AI.say(raw, ctx).then(r => {
+        this._busy = false;
+        if(r && r.line){
+          this.push('her', r.line, Date.now());
+          this.face(r.emo);                       // 让她脸也跟着变（见 face）
+        }else{
+          const back = this._reply(raw, ctx);     // 没接通 → 老实按原来的路子回一句
+          if(back) this.push('her', back, Date.now());
+        }
+        if(typeof scheduleRender === 'function') scheduleRender();
+      }).catch(() => {
+        this._busy = false;
+        const back = this._reply(raw, ctx);
+        if(back) this.push('her', back, Date.now());
+        if(typeof scheduleRender === 'function') scheduleRender();
+      });
+      if(typeof scheduleRender === 'function') scheduleRender();
+      return '';
+    }
+    const reply = this._reply(raw, ctx);
+    if(reply) this.push('her', reply, now);
+    return reply;
+  },
+
+  /* － 原来那条路：关键词命中 → 话术池；全不中就收进小本子 －
+     ★ 抽成独立一段，是为了让 AI 那条路「没接通」时能**原样复用它**——
+       一套实现，不是两套。它只算不写聊天记录（记录由调用方落库）；
+       但「没听懂」那条小本子记在这里：因为只有走到这一步才算真的没听懂。 */
+  _reply(raw, ctx){
+    const low = String(raw).toLowerCase();
     /* v1.20.0：关键词表本身是中文源；界面切成日/英之后，**用那种语言打字也认**
        （把中文关键词现翻一份再比一次——纯读、不动原表，中文输入照旧） */
     const hit = CONFIG.LOVE.CHAT.filter(r => r.k.some(k => {
@@ -14728,11 +15350,41 @@ const Love = {
       const tr = LT(k);
       return tr !== k && low.indexOf(String(tr).toLowerCase()) >= 0;
     }))[0];
-    const reply = Her.voice(hit ? hit.kind : 'chatFallback', Object.assign(Her.ctx(now), {say:raw}));
-    if(!hit) this.note(raw, now);        // 没听懂 → 收进小本子
-    this.push('me', raw, now);
-    if(reply) this.push('her', reply, now);
-    return reply;
+    if(!hit) this.note(raw, Date.now());   // 没听懂 → 收进小本子
+    return Her.voice(hit ? hit.kind : 'chatFallback', ctx);
+  },
+
+  /* － AI 说她这会儿是什么情绪 → 让她的脸和心情跟着变 －
+     ★ 这就是接上 AI 之后**不浪费她那 23 张对话表情差分**的地方：
+       emo 对得上才换；对不上、没给、或是平静 —— 一律什么都不做，绝不错换一张脸。 */
+  face(emo){
+    try{
+      if(!emo || typeof Emo === 'undefined') return '';
+      if(CONFIG.AI.EMO.indexOf(emo) < 0) return '';
+      if(emo === 'neutral') return '';
+      return Emo.set(emo, 'ai', Date.now());
+    }catch(e){ return ''; }
+  },
+
+  /* 她还在想（AI 那条路上，从发出去到回话之间）—— 界面拿它显示「正在想…」 */
+  busy(){ return !!this._busy; },
+
+  /* ── 重画之后：把聊天框滚到最新那一条 ──
+     ★ v1.23.0 修的是她报的「每说一句，页面就回到最开始的对话」：
+       聊天框自己就是**独立滚动**的（.lv-chat 有 max-height:52vh; overflow-y:auto），
+       而 renderView 每次都把整块 innerHTML 重建 → 它的 scrollTop 归零、显示回最老那几句。
+       老写法 _mtalkScroll 用的是 scrollIntoView —— 那滚的是**整页**，
+       动不了这个框的内部，所以怎么滚都还在开头。
+     ⚠️ 必须**在重画之后**调（renderView 里挨着 Storyline.afterRender）：
+       老写法是在动作里 setTimeout 40 毫秒，跟 requestAnimationFrame 的那次重画赛跑，
+       谁先谁后全看运气——这正是它时好时坏的原因。
+       （同一个坑剧情台词板踩过，见 Storyline.afterRender 的注释） */
+  afterRender(){
+    try{
+      if(S.view !== 'mtalk') return;
+      const el = document.getElementById('lv-chat');
+      if(el && el.scrollHeight != null) el.scrollTop = el.scrollHeight;
+    }catch(e){}
   },
 
   /* ── 她来请求「走出软件」的权限（系统通知）——排在正事之后，且隔了一天以上才问 ── */
@@ -18591,6 +19243,9 @@ function renderView(){
   if(typeof Seq !== 'undefined' && Seq.playing()) Seq.rehost();
   /* v1.8.0：剧情阅读页刚画完 → 台词面板滚到最新那一段（renderView 是新起的 DOM，滚动位置会丢）*/
   if(typeof Storyline !== 'undefined') Storyline.afterRender();
+  /* ★ v1.23.0：「对她说」画完 → 聊天框滚到最新那一条。同一个坑（整块 innerHTML 重建，
+     独立滚动容器的 scrollTop 归零）——修法跟上面那条一模一样，理由见 Love.afterRender */
+  if(typeof Love !== 'undefined') Love.afterRender();
   root.classList.toggle('pure', isPure);
   const hdr = document.getElementById('app-header');
   if(hdr) hdr.classList.toggle('hidden', isPure);
@@ -18766,11 +19421,13 @@ function bootMain(){
     if(typeof Love !== 'undefined') Love.touch();
     if(typeof Director !== 'undefined') Director.userTouch();
   }, {passive:true});
-  /* 「对她说」输入框：回车 = 发送 */
+  /* 「对她说」输入框：回车 = 发送
+     ★ v1.23.0：纯净页气泡里那个框（bb-in）也照同一套——回车就发 */
   viewRoot.addEventListener('keydown', e=>{
-    if(e.key !== 'Enter' || e.target.id !== 'mtalk-in') return;
-    e.preventDefault();
-    Actions['love-send']();
+    if(e.key !== 'Enter') return;
+    const id = e.target && e.target.id;
+    if(id === 'mtalk-in'){ e.preventDefault(); Actions['love-send'](); return; }
+    if(id === 'bb-in'){ e.preventDefault(); Actions['talk-say'](); }
   });
   viewRoot.addEventListener('input', e=>{
     const t = e.target.closest('[data-oninput]');

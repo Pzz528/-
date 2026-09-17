@@ -20,7 +20,7 @@
 
 /* ⚠️ 改版本就改这个缓存名：一改名字，旧缓存会在下次打开时整个丢掉重来一次
    （所以「我发了新版」和「你换了图」这两件事都是靠它刷新的） */
-const CACHE = 'ps-v1.22.0';
+const CACHE = 'ps-v1.24.1';
 
 /* 装机时先存下来的那几样（图不用列在这儿——软件开机自己会把要用的图探一遍，
    探到什么就存什么，见下面 fetch 里的本地优先逻辑）。
@@ -82,13 +82,64 @@ async function revalidate(req){                // 后台更新：每次打开顺
   }catch(err){}
 }
 
+/* ── ★ v1.22.1：媒体（歌 / 音效文件）那条路 ─────────────────────────
+   她报「音乐方面还是有问题」，真根子在两处，都在这几行上：
+
+   ① **歌从来没被存下来过**。媒体元素（<audio>）自己去拉音频时发的是 **Range 请求**、
+      服务器回 **206 Partial Content**，而 Cache API 的 `put()` **存 206 会被规范
+      直接拒绝**（TypeError）—— 原来那句 `.catch(function(){})` 把它悄悄吞了。
+      真浏览器里量出来的：缓存里 139 条音频**全是 404**，她那四首真歌一条都没进去
+      → 每次打开都得重新从 GitHub 拖几 MB（3.6~5.0MB/首），网一慢就是「放不出来」。
+      页面那边现在用**普通 fetch**（不带 Range）把正在放的那首发一份下来 → 200 → 存进这里
+      （见 index.html 的 `Snd._warmTrack`）；存过之后这首歌**断网也能放**。
+
+   ② **存下的整份要按段还回去**。缓存里是整首（200），而播放中媒体元素会一次次要
+      「第 X 字节往后」那一段。拿整份 200 糊弄它，Chrome 多半能凑合，**iOS 上会一直转圈不播**
+      → 所以这里照它要的范围切一条**真正的 206**（`slice206`），跟真服务器给的没两样。 */
+
+/* 从缓存里那份整的切一条 206 出来。切不出来（读不动）就原样还回去——宁可不切，别把播放搞死 */
+async function slice206(req, hit){
+  const rng = req.headers.get('range');
+  if(!rng) return hit;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(rng);
+  if(!m) return hit;
+  let buf = null;
+  try{ buf = await hit.clone().arrayBuffer(); }catch(e){ return hit; }
+  const size = buf.byteLength;
+  if(!size) return hit;
+  let s = 0, e2 = size - 1;
+  if(m[1] === ''){
+    /* ⚠️ `bytes=-N` 是「**最后** N 个字节」（跳到歌尾巴时媒体元素会这么要），
+       不是「第 0 到第 N 个」——差得远，别顺手写成 0 开头 */
+    const n = parseInt(m[2], 10);
+    if(!(n > 0)) return hit;
+    s = Math.max(0, size - n);
+  }else{
+    s = parseInt(m[1], 10);
+    if(m[2] !== '') e2 = Math.min(parseInt(m[2], 10), size - 1);
+  }
+  if(!(s >= 0) || s >= size || e2 < s){
+    return new Response(null, { status:416, headers:{ 'content-range':'bytes */' + size } });
+  }
+  return new Response(buf.slice(s, e2 + 1), { status:206, headers:{
+    'content-type': hit.headers.get('content-type') || 'application/octet-stream',
+    'content-range': 'bytes ' + s + '-' + e2 + '/' + size,
+    'content-length': String(e2 - s + 1),
+    'accept-ranges': 'bytes'
+  }});
+}
+
 /* 图和其它静态文件：本地优先——存过就直接给，**完全不联网**。
    ⚠️ 404 也要存下来（「这个位置没有图」也是一个答案）——
       不存的话，开机那几百次探测每次都要真的去问一遍服务器，秒开就没了 */
 async function cacheFirst(req){
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(req);
-  if(hit) return hit;
+  const ranged = !!req.headers.get('range');
+  /* ⚠️ Range 请求不能直接 `cache.match(req)`：缓存里存的是「整份那个请求」，
+      带着 Range 头去匹配不一定配得上（还受 Vary 影响）→ 一律按**地址**找 */
+  const hit = ranged ? (await cache.match(req.url, {ignoreVary:true}) || await cache.match(req))
+                     : await cache.match(req);
+  if(hit) return ranged ? slice206(req, hit) : hit;
   try{
     const res = await fetch(req);
     if(res && (res.ok || res.status === 404)) cache.put(req, res.clone()).catch(function(){});
